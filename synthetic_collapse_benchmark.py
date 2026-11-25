@@ -34,8 +34,7 @@ def _metric_row(rankings: Mapping[str, List[str]], qrels: Mapping[str, str], k: 
     for query_id, relevant_doc in qrels.items():
         retrieved = rankings[query_id][:k]
         relevant = {relevant_doc}
-        relevance_by_rank = [1 if doc_id in relevant else 0 for doc_id in retrieved]
-        ndcg_scores.append(float(ndcg_at_k(relevance_by_rank, k)))
+        ndcg_scores.append(float(ndcg_at_k(retrieved, relevant, k, binary=True)))
         mrr_scores.append(float(mean_reciprocal_rank(retrieved, relevant)))
         recall_scores.append(float(recall_at_k(retrieved, relevant, k)))
     return {

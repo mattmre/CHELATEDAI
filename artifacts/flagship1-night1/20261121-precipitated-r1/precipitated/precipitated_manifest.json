@@ -1,0 +1,27 @@
+{
+  "budgets": [
+    100,
+    250,
+    500,
+    1000
+  ],
+  "datasets": [
+    "SciFact",
+    "NFCorpus",
+    "FiQA2018"
+  ],
+  "git_sha": "be717ae5c7faf80c67561a1daafc3aa6de17d90e",
+  "job": "night1_precipitated_sets",
+  "seeds": [
+    42,
+    137,
+    2718
+  ],
+  "telemetry": {
+    "cuda_available": true,
+    "cuda_device": "NVIDIA GB10",
+    "peak_rss_mib": 3353.6,
+    "peak_vram_mib": 2564.65
+  },
+  "wall_seconds": 688.98
+}

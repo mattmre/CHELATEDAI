@@ -1,8 +1,13 @@
 # Drift Recovery — Query-Encoder-Swap Arena (PR-A4) — June 2026
 
+> [!WARNING]
+> **LEGACY_METRIC_LINEAGE_BLOCKED (2026-07-23).** Exact nDCG values,
+> comparator ordering, and derived gates below are historical diagnostics, not
+> accepted evidence, until corrected regeneration computes IDCG from all
+> positive qrels rather than only the retrieved relevance vector.
+
 Arena: `query_encoder_swap` (encoder upgrade; the C2 re-embed oracle is defeated).
 Manifest: `experiment_runs/drift-recovery/swap-nfcorpus/swap-campaign-manifest-2026-06.json`.
-Per-run JSON files are not retained in git; the manifest rows are the retained record.
 Base model: `sentence-transformers/all-MiniLM-L6-v2`; swap model: `all-mpnet-base-v2`.
 Task NFCorpus, anchor_fraction 0.4, cycles 12, seeds [42, 1337, 7].
 

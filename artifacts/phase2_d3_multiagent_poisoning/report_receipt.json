@@ -1,0 +1,15 @@
+{
+  "artifact_hashes": {
+    "ek5_wfs_rlvr_1000ep_audit.json": "692288e2da534c537840f15f343746933291ee18f5988ef5abea172230996f89",
+    "ek5_wfs_rlvr_oracle_audit_1000.json": "508008bd394cd9c88e778eac6988ecc680bc0faa948e06416be4e8676e740c9a",
+    "phase2_d3_episodes.jsonl": "643a71a7afb2b24c36596e73574c576da004d2c2fdf1ef92c4c4b1eb311b1526",
+    "phase2_d3_manifest.json": "fce71a605f641b08da9ad31ee58d68ce09af0e7cb66fac8c9599df2d9c0da9f7",
+    "phase2_d3_reader_calls.jsonl": "81b805e9e2d34370b622431bd037e93959a605fa356740863fc8c01aa1198e22",
+    "phase2_d3_tau_calibration.json": "004b457e4d673e17beb175f012b065f7c0e1124340c1aac9375fe31e772140aa"
+  },
+  "bundle_id": "phase2_d3_multiagent_poisoning",
+  "git_sha": "0b662d989aeee4c24e02e987051c7bf149f98252",
+  "manifest_file": "phase2_d3_manifest.json",
+  "manifest_sha256": "fce71a605f641b08da9ad31ee58d68ce09af0e7cb66fac8c9599df2d9c0da9f7",
+  "schema_version": "report_receipt_v4_0"
+}

@@ -1,0 +1,592 @@
+{
+  "chain_4096_to_384": [
+    {
+      "A2_unscaled_exp": 0.5092,
+      "A2_unscaled_lin": 0.5092,
+      "A2c_conformal_exp": 0.5358,
+      "A2c_conformal_lin": 0.5358,
+      "a2c_cond": 1.0,
+      "centered_affine_ridge_exp": 0.5255,
+      "centered_affine_ridge_lin": 0.5255,
+      "dataset": "SciFact",
+      "hop": 1,
+      "src": "D1024",
+      "uncentered_ridge_exp": 0.526,
+      "uncentered_ridge_lin": 0.526
+    },
+    {
+      "A2_unscaled_exp": 0.4533,
+      "A2_unscaled_lin": 0.4533,
+      "A2c_conformal_exp": 0.4768,
+      "A2c_conformal_lin": 0.4768,
+      "a2c_cond": 1.0,
+      "centered_affine_ridge_exp": 0.5023,
+      "centered_affine_ridge_lin": 0.5023,
+      "dataset": "SciFact",
+      "hop": 2,
+      "src": "D2560",
+      "uncentered_ridge_exp": 0.4427,
+      "uncentered_ridge_lin": 0.4427
+    },
+    {
+      "A2_unscaled_exp": 0.4591,
+      "A2_unscaled_lin": 0.4591,
+      "A2c_conformal_exp": 0.4597,
+      "A2c_conformal_lin": 0.4597,
+      "a2c_cond": 1.0,
+      "centered_affine_ridge_exp": 0.4531,
+      "centered_affine_ridge_lin": 0.4531,
+      "dataset": "SciFact",
+      "hop": 3,
+      "src": "D4096",
+      "uncentered_ridge_exp": 0.4529,
+      "uncentered_ridge_lin": 0.4529
+    },
+    {
+      "A2_unscaled_exp": 0.2106,
+      "A2_unscaled_lin": 0.2106,
+      "A2c_conformal_exp": 0.2223,
+      "A2c_conformal_lin": 0.2223,
+      "a2c_cond": 1.0,
+      "centered_affine_ridge_exp": 0.2008,
+      "centered_affine_ridge_lin": 0.2008,
+      "dataset": "CoSQA_Code",
+      "hop": 1,
+      "src": "D1024",
+      "uncentered_ridge_exp": 0.2007,
+      "uncentered_ridge_lin": 0.2007
+    },
+    {
+      "A2_unscaled_exp": 0.2113,
+      "A2_unscaled_lin": 0.2113,
+      "A2c_conformal_exp": 0.212,
+      "A2c_conformal_lin": 0.212,
+      "a2c_cond": 1.0,
+      "centered_affine_ridge_exp": 0.1709,
+      "centered_affine_ridge_lin": 0.1709,
+      "dataset": "CoSQA_Code",
+      "hop": 2,
+      "src": "D2560",
+      "uncentered_ridge_exp": 0.1715,
+      "uncentered_ridge_lin": 0.1715
+    },
+    {
+      "A2_unscaled_exp": 0.1865,
+      "A2_unscaled_lin": 0.1865,
+      "A2c_conformal_exp": 0.1911,
+      "A2c_conformal_lin": 0.1911,
+      "a2c_cond": 1.0,
+      "centered_affine_ridge_exp": 0.1688,
+      "centered_affine_ridge_lin": 0.1688,
+      "dataset": "CoSQA_Code",
+      "hop": 3,
+      "src": "D4096",
+      "uncentered_ridge_exp": 0.1637,
+      "uncentered_ridge_lin": 0.1637
+    }
+  ],
+  "geometry": {
+    "CoSQA_Code": {
+      "D1024": {
+        "centered_rad": 0.73,
+        "dim": 1024,
+        "mean_norm": 0.6825
+      },
+      "D2560": {
+        "centered_rad": 0.7897,
+        "dim": 2560,
+        "mean_norm": 0.6146
+      },
+      "D384": {
+        "centered_rad": 0.9018,
+        "dim": 384,
+        "mean_norm": 0.4304
+      },
+      "D4096": {
+        "centered_rad": 0.7866,
+        "dim": 4096,
+        "mean_norm": 0.6171
+      }
+    },
+    "Legal_Contracts": {
+      "D1024": {
+        "centered_rad": 0.6214,
+        "dim": 1024,
+        "mean_norm": 0.7819
+      },
+      "D2560": {
+        "centered_rad": 0.7398,
+        "dim": 2560,
+        "mean_norm": 0.6721
+      },
+      "D384": {
+        "centered_rad": 0.8053,
+        "dim": 384,
+        "mean_norm": 0.5884
+      },
+      "D4096": {
+        "centered_rad": 0.6951,
+        "dim": 4096,
+        "mean_norm": 0.7175
+      }
+    },
+    "Legal_QuAD": {
+      "D1024": {
+        "centered_rad": 0.4984,
+        "dim": 1024,
+        "mean_norm": 0.8653
+      },
+      "D2560": {
+        "centered_rad": 0.7539,
+        "dim": 2560,
+        "mean_norm": 0.6566
+      },
+      "D384": {
+        "centered_rad": 0.5951,
+        "dim": 384,
+        "mean_norm": 0.8015
+      },
+      "D4096": {
+        "centered_rad": 0.7318,
+        "dim": 4096,
+        "mean_norm": 0.6809
+      }
+    },
+    "SciFact": {
+      "D1024": {
+        "centered_rad": 0.643,
+        "dim": 1024,
+        "mean_norm": 0.7645
+      },
+      "D2560": {
+        "centered_rad": 0.8021,
+        "dim": 2560,
+        "mean_norm": 0.5979
+      },
+      "D384": {
+        "centered_rad": 0.9202,
+        "dim": 384,
+        "mean_norm": 0.3872
+      },
+      "D4096": {
+        "centered_rad": 0.8066,
+        "dim": 4096,
+        "mean_norm": 0.5914
+      }
+    }
+  },
+  "indomain_dim_jumps": [
+    {
+      "A2_unscaled_exp": 0.5666,
+      "A2_unscaled_lin": 0.5666,
+      "A2c_conformal_exp": 0.5952,
+      "A2c_conformal_lin": 0.5952,
+      "A3_full_coral_exp": 0.6453,
+      "A3_full_coral_lin": 0.6453,
+      "A3_subspace_coral_exp": 0.6453,
+      "A3_subspace_coral_lin": 0.6453,
+      "centered_affine_ridge_exp": 0.6198,
+      "centered_affine_ridge_lin": 0.6198,
+      "dataset": "SciFact",
+      "full_c2o_exp": 0.7073,
+      "full_c2o_lin": 0.7073,
+      "n_anchors": 2000,
+      "native_old_exp": 0.6866,
+      "native_old_lin": 0.6866,
+      "swap": "D384_to_D1024_up2.7x",
+      "uncentered_ridge_exp": 0.6025,
+      "uncentered_ridge_lin": 0.6025
+    },
+    {
+      "A2_unscaled_exp": 0.5892,
+      "A2_unscaled_lin": 0.5892,
+      "A2c_conformal_exp": 0.62,
+      "A2c_conformal_lin": 0.62,
+      "A3_full_coral_exp": 0.6531,
+      "A3_full_coral_lin": 0.6531,
+      "A3_subspace_coral_exp": 0.6531,
+      "A3_subspace_coral_lin": 0.6531,
+      "centered_affine_ridge_exp": 0.6198,
+      "centered_affine_ridge_lin": 0.6198,
+      "dataset": "SciFact",
+      "full_c2o_exp": 0.7045,
+      "full_c2o_lin": 0.7045,
+      "n_anchors": 2000,
+      "native_old_exp": 0.6866,
+      "native_old_lin": 0.6866,
+      "swap": "D384_to_D2560_up6.7x",
+      "uncentered_ridge_exp": 0.6222,
+      "uncentered_ridge_lin": 0.6222
+    },
+    {
+      "A2_unscaled_exp": 0.6021,
+      "A2_unscaled_lin": 0.6021,
+      "A2c_conformal_exp": 0.608,
+      "A2c_conformal_lin": 0.608,
+      "A3_full_coral_exp": 0.6599,
+      "A3_full_coral_lin": 0.6599,
+      "A3_subspace_coral_exp": 0.6599,
+      "A3_subspace_coral_lin": 0.6599,
+      "centered_affine_ridge_exp": 0.6193,
+      "centered_affine_ridge_lin": 0.6193,
+      "dataset": "SciFact",
+      "full_c2o_exp": 0.7266,
+      "full_c2o_lin": 0.7266,
+      "n_anchors": 2000,
+      "native_old_exp": 0.6866,
+      "native_old_lin": 0.6866,
+      "swap": "D384_to_D4096_up10.7x",
+      "uncentered_ridge_exp": 0.6316,
+      "uncentered_ridge_lin": 0.6316
+    },
+    {
+      "A2_unscaled_exp": 0.5859,
+      "A2_unscaled_lin": 0.5859,
+      "A2c_conformal_exp": 0.5815,
+      "A2c_conformal_lin": 0.5815,
+      "A3_full_coral_exp": 0.5423,
+      "A3_full_coral_lin": 0.5423,
+      "A3_subspace_coral_exp": 0.5583,
+      "A3_subspace_coral_lin": 0.5583,
+      "centered_affine_ridge_exp": 0.5416,
+      "centered_affine_ridge_lin": 0.5416,
+      "dataset": "SciFact",
+      "full_c2o_exp": 0.6866,
+      "full_c2o_lin": 0.6866,
+      "n_anchors": 2000,
+      "native_old_exp": 0.7266,
+      "native_old_lin": 0.7266,
+      "swap": "D4096_to_D384_dn10.7x",
+      "uncentered_ridge_exp": 0.5813,
+      "uncentered_ridge_lin": 0.5813
+    },
+    {
+      "A2_unscaled_exp": 0.221,
+      "A2_unscaled_lin": 0.221,
+      "A2c_conformal_exp": 0.2337,
+      "A2c_conformal_lin": 0.2337,
+      "A3_full_coral_exp": 0.2467,
+      "A3_full_coral_lin": 0.2467,
+      "A3_subspace_coral_exp": 0.2467,
+      "A3_subspace_coral_lin": 0.2467,
+      "centered_affine_ridge_exp": 0.2147,
+      "centered_affine_ridge_lin": 0.2147,
+      "dataset": "CoSQA_Code",
+      "full_c2o_exp": 0.2946,
+      "full_c2o_lin": 0.2946,
+      "n_anchors": 2000,
+      "native_old_exp": 0.2827,
+      "native_old_lin": 0.2827,
+      "swap": "D384_to_D1024_up2.7x",
+      "uncentered_ridge_exp": 0.2101,
+      "uncentered_ridge_lin": 0.2101
+    },
+    {
+      "A2_unscaled_exp": 0.2405,
+      "A2_unscaled_lin": 0.2405,
+      "A2c_conformal_exp": 0.2483,
+      "A2c_conformal_lin": 0.2483,
+      "A3_full_coral_exp": 0.2697,
+      "A3_full_coral_lin": 0.2697,
+      "A3_subspace_coral_exp": 0.2697,
+      "A3_subspace_coral_lin": 0.2697,
+      "centered_affine_ridge_exp": 0.2524,
+      "centered_affine_ridge_lin": 0.2524,
+      "dataset": "CoSQA_Code",
+      "full_c2o_exp": 0.3206,
+      "full_c2o_lin": 0.3206,
+      "n_anchors": 2000,
+      "native_old_exp": 0.2827,
+      "native_old_lin": 0.2827,
+      "swap": "D384_to_D2560_up6.7x",
+      "uncentered_ridge_exp": 0.2532,
+      "uncentered_ridge_lin": 0.2532
+    },
+    {
+      "A2_unscaled_exp": 0.2491,
+      "A2_unscaled_lin": 0.2491,
+      "A2c_conformal_exp": 0.2549,
+      "A2c_conformal_lin": 0.2549,
+      "A3_full_coral_exp": 0.2493,
+      "A3_full_coral_lin": 0.2493,
+      "A3_subspace_coral_exp": 0.2493,
+      "A3_subspace_coral_lin": 0.2493,
+      "centered_affine_ridge_exp": 0.2343,
+      "centered_affine_ridge_lin": 0.2343,
+      "dataset": "CoSQA_Code",
+      "full_c2o_exp": 0.3465,
+      "full_c2o_lin": 0.3465,
+      "n_anchors": 2000,
+      "native_old_exp": 0.2827,
+      "native_old_lin": 0.2827,
+      "swap": "D384_to_D4096_up10.7x",
+      "uncentered_ridge_exp": 0.2349,
+      "uncentered_ridge_lin": 0.2349
+    },
+    {
+      "A2_unscaled_exp": 0.2713,
+      "A2_unscaled_lin": 0.2713,
+      "A2c_conformal_exp": 0.2611,
+      "A2c_conformal_lin": 0.2611,
+      "A3_full_coral_exp": 0.2426,
+      "A3_full_coral_lin": 0.2426,
+      "A3_subspace_coral_exp": 0.2519,
+      "A3_subspace_coral_lin": 0.2519,
+      "centered_affine_ridge_exp": 0.2435,
+      "centered_affine_ridge_lin": 0.2435,
+      "dataset": "CoSQA_Code",
+      "full_c2o_exp": 0.2827,
+      "full_c2o_lin": 0.2827,
+      "n_anchors": 2000,
+      "native_old_exp": 0.3465,
+      "native_old_lin": 0.3465,
+      "swap": "D4096_to_D384_dn10.7x",
+      "uncentered_ridge_exp": 0.2491,
+      "uncentered_ridge_lin": 0.2491
+    }
+  ],
+  "job": "pristine_f1_4096_and_code_legal_ood",
+  "telemetry": {
+    "cuda_available": true,
+    "cuda_device": "NVIDIA GB10",
+    "peak_rss_mib": 8541.21,
+    "peak_vram_mib": 15140.62
+  },
+  "wall_seconds": 3479.66,
+  "zero_shot_ood": [
+    {
+      "A2_unscaled": 0.4151,
+      "A2c_conformal": 0.4312,
+      "A3_full_coral": 0.4489,
+      "A3_subspace_coral": 0.4489,
+      "centered_affine_ridge": 0.1704,
+      "eval_domain": "Legal_Contracts",
+      "fit_domain": "CoSQA_Code",
+      "full_c2o": 0.6729,
+      "native_old": 0.6458,
+      "swap": "D384_to_D1024",
+      "uncentered_ridge": 0.1894
+    },
+    {
+      "A2_unscaled": 0.3961,
+      "A2c_conformal": 0.4091,
+      "A3_full_coral": 0.4418,
+      "A3_subspace_coral": 0.4418,
+      "centered_affine_ridge": 0.1324,
+      "eval_domain": "Legal_Contracts",
+      "fit_domain": "CoSQA_Code",
+      "full_c2o": 0.7416,
+      "native_old": 0.6458,
+      "swap": "D384_to_D4096",
+      "uncentered_ridge": 0.237
+    },
+    {
+      "A2_unscaled": 0.3499,
+      "A2c_conformal": 0.331,
+      "A3_full_coral": 0.2295,
+      "A3_subspace_coral": 0.2629,
+      "centered_affine_ridge": 0.1036,
+      "eval_domain": "Legal_Contracts",
+      "fit_domain": "CoSQA_Code",
+      "full_c2o": 0.6458,
+      "native_old": 0.7416,
+      "swap": "D4096_to_D384",
+      "uncentered_ridge": 0.345
+    },
+    {
+      "A2_unscaled": 0.0569,
+      "A2c_conformal": 0.0576,
+      "A3_full_coral": 0.0467,
+      "A3_subspace_coral": 0.0467,
+      "centered_affine_ridge": 0.0439,
+      "eval_domain": "Legal_QuAD",
+      "fit_domain": "CoSQA_Code",
+      "full_c2o": 0.1307,
+      "native_old": 0.1387,
+      "swap": "D384_to_D1024",
+      "uncentered_ridge": 0.044
+    },
+    {
+      "A2_unscaled": 0.0328,
+      "A2c_conformal": 0.037,
+      "A3_full_coral": 0.0517,
+      "A3_subspace_coral": 0.0517,
+      "centered_affine_ridge": 0.0208,
+      "eval_domain": "Legal_QuAD",
+      "fit_domain": "CoSQA_Code",
+      "full_c2o": 0.4907,
+      "native_old": 0.1387,
+      "swap": "D384_to_D4096",
+      "uncentered_ridge": 0.0322
+    },
+    {
+      "A2_unscaled": 0.0377,
+      "A2c_conformal": 0.0371,
+      "A3_full_coral": 0.036,
+      "A3_subspace_coral": 0.0327,
+      "centered_affine_ridge": 0.0325,
+      "eval_domain": "Legal_QuAD",
+      "fit_domain": "CoSQA_Code",
+      "full_c2o": 0.1387,
+      "native_old": 0.4907,
+      "swap": "D4096_to_D384",
+      "uncentered_ridge": 0.049
+    },
+    {
+      "A2_unscaled": 0.0879,
+      "A2c_conformal": 0.0912,
+      "A3_full_coral": 0.0872,
+      "A3_subspace_coral": 0.0872,
+      "centered_affine_ridge": 0.0009,
+      "eval_domain": "SciFact",
+      "fit_domain": "CoSQA_Code",
+      "full_c2o": 0.7308,
+      "native_old": 0.6484,
+      "swap": "D384_to_D1024",
+      "uncentered_ridge": 0.0041
+    },
+    {
+      "A2_unscaled": 0.0777,
+      "A2c_conformal": 0.0809,
+      "A3_full_coral": 0.1126,
+      "A3_subspace_coral": 0.1126,
+      "centered_affine_ridge": 0.0037,
+      "eval_domain": "SciFact",
+      "fit_domain": "CoSQA_Code",
+      "full_c2o": 0.7645,
+      "native_old": 0.6484,
+      "swap": "D384_to_D4096",
+      "uncentered_ridge": 0.0184
+    },
+    {
+      "A2_unscaled": 0.0405,
+      "A2c_conformal": 0.0267,
+      "A3_full_coral": 0.0022,
+      "A3_subspace_coral": 0.0163,
+      "centered_affine_ridge": 0.0,
+      "eval_domain": "SciFact",
+      "fit_domain": "CoSQA_Code",
+      "full_c2o": 0.6484,
+      "native_old": 0.7645,
+      "swap": "D4096_to_D384",
+      "uncentered_ridge": 0.0691
+    },
+    {
+      "A2_unscaled": 0.0684,
+      "A2c_conformal": 0.0748,
+      "A3_full_coral": 0.074,
+      "A3_subspace_coral": 0.074,
+      "centered_affine_ridge": 0.004,
+      "eval_domain": "CoSQA_Code",
+      "fit_domain": "SciFact",
+      "full_c2o": 0.2991,
+      "native_old": 0.2831,
+      "swap": "D384_to_D1024",
+      "uncentered_ridge": 0.0085
+    },
+    {
+      "A2_unscaled": 0.0771,
+      "A2c_conformal": 0.0793,
+      "A3_full_coral": 0.0817,
+      "A3_subspace_coral": 0.0817,
+      "centered_affine_ridge": 0.003,
+      "eval_domain": "CoSQA_Code",
+      "fit_domain": "SciFact",
+      "full_c2o": 0.3461,
+      "native_old": 0.2831,
+      "swap": "D384_to_D4096",
+      "uncentered_ridge": 0.0092
+    },
+    {
+      "A2_unscaled": 0.0423,
+      "A2c_conformal": 0.0332,
+      "A3_full_coral": 0.0105,
+      "A3_subspace_coral": 0.0212,
+      "centered_affine_ridge": 0.0006,
+      "eval_domain": "CoSQA_Code",
+      "fit_domain": "SciFact",
+      "full_c2o": 0.2831,
+      "native_old": 0.3461,
+      "swap": "D4096_to_D384",
+      "uncentered_ridge": 0.0726
+    },
+    {
+      "A2_unscaled": 0.3394,
+      "A2c_conformal": 0.3408,
+      "A3_full_coral": 0.3246,
+      "A3_subspace_coral": 0.3246,
+      "centered_affine_ridge": 0.1404,
+      "eval_domain": "Legal_Contracts",
+      "fit_domain": "SciFact",
+      "full_c2o": 0.6729,
+      "native_old": 0.6458,
+      "swap": "D384_to_D1024",
+      "uncentered_ridge": 0.1597
+    },
+    {
+      "A2_unscaled": 0.3894,
+      "A2c_conformal": 0.396,
+      "A3_full_coral": 0.4038,
+      "A3_subspace_coral": 0.4038,
+      "centered_affine_ridge": 0.1362,
+      "eval_domain": "Legal_Contracts",
+      "fit_domain": "SciFact",
+      "full_c2o": 0.7416,
+      "native_old": 0.6458,
+      "swap": "D384_to_D4096",
+      "uncentered_ridge": 0.1702
+    },
+    {
+      "A2_unscaled": 0.2902,
+      "A2c_conformal": 0.2653,
+      "A3_full_coral": 0.1914,
+      "A3_subspace_coral": 0.2307,
+      "centered_affine_ridge": 0.0633,
+      "eval_domain": "Legal_Contracts",
+      "fit_domain": "SciFact",
+      "full_c2o": 0.6458,
+      "native_old": 0.7416,
+      "swap": "D4096_to_D384",
+      "uncentered_ridge": 0.3233
+    },
+    {
+      "A2_unscaled": 0.048,
+      "A2c_conformal": 0.0434,
+      "A3_full_coral": 0.0418,
+      "A3_subspace_coral": 0.0418,
+      "centered_affine_ridge": 0.0306,
+      "eval_domain": "Legal_QuAD",
+      "fit_domain": "SciFact",
+      "full_c2o": 0.1307,
+      "native_old": 0.1387,
+      "swap": "D384_to_D1024",
+      "uncentered_ridge": 0.0307
+    },
+    {
+      "A2_unscaled": 0.0268,
+      "A2c_conformal": 0.0265,
+      "A3_full_coral": 0.027,
+      "A3_subspace_coral": 0.027,
+      "centered_affine_ridge": 0.0295,
+      "eval_domain": "Legal_QuAD",
+      "fit_domain": "SciFact",
+      "full_c2o": 0.4907,
+      "native_old": 0.1387,
+      "swap": "D384_to_D4096",
+      "uncentered_ridge": 0.0353
+    },
+    {
+      "A2_unscaled": 0.0276,
+      "A2c_conformal": 0.0276,
+      "A3_full_coral": 0.0315,
+      "A3_subspace_coral": 0.0349,
+      "centered_affine_ridge": 0.0303,
+      "eval_domain": "Legal_QuAD",
+      "fit_domain": "SciFact",
+      "full_c2o": 0.1387,
+      "native_old": 0.4907,
+      "swap": "D4096_to_D384",
+      "uncentered_ridge": 0.0238
+    }
+  ]
+}

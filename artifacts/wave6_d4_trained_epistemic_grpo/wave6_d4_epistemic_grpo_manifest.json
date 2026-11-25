@@ -1,0 +1,1641 @@
+{
+  "base_model": "Qwen/Qwen2.5-7B-Instruct",
+  "compute_node": "DGX Spark #2 (mattmre@10.0.0.194)",
+  "csv_artifacts": {
+    "wave6_d4_d1_prose_transfer_n60_rows.csv": "3d68798d445576ab36bb0bfd3beaa7576d2e834ecfb0bef546d2650d81e86ab7",
+    "wave6_d4_wfs_eval_n120_rows.csv": "8144463d93b09df10335345fd3d56d18f60b2c31401219e36d1df80321b9714c"
+  },
+  "d1_zero_shot_enterprise_prose_transfer_n60": {
+    "corpus_sha256": "cb6bc0082b5850f4edfea668d1ecb2a73fe6f898b7476e34ed11036cb378765b",
+    "matched_evidence_k17_retrieval": {
+      "all_17_case_docs_recall": 0.9667,
+      "global_corpus_docs": 1020,
+      "key_authoritative_evidence_recall": 1.0,
+      "top_k": 17
+    },
+    "paired_bootstrap_wave6": {
+      "D1_k17_GRPO_3SeedMean_minus_Bare_Nemotron_30B_frozen_grader": {
+        "boot_std": 0.06482933430433009,
+        "lcb_95": 0.4722222222222222,
+        "lcb_975": 0.45,
+        "mean_delta": 0.5777777777777777,
+        "median_delta": 0.5777777777777777,
+        "n_queries": 60,
+        "p0125_bonf2": 0.43333333333333335,
+        "p9875_bonf2": 0.7166666666666667,
+        "p_value_two_sided": 5e-05,
+        "ucb_95_one_sided": 0.6833333333333333,
+        "ucb_975": 0.7
+      },
+      "D1_k17_GRPO_3SeedMean_minus_Bare_Nemotron_30B_strict": {
+        "boot_std": 0.06388049891710416,
+        "lcb_95": 0.5055555555555555,
+        "lcb_975": 0.48333333333333334,
+        "mean_delta": 0.611111111111111,
+        "median_delta": 0.611111111111111,
+        "n_queries": 60,
+        "p0125_bonf2": 0.4666666666666667,
+        "p9875_bonf2": 0.75,
+        "p_value_two_sided": 5e-05,
+        "ucb_95_one_sided": 0.7166666666666667,
+        "ucb_975": 0.7333333333333333
+      },
+      "D1_k17_GRPO_3SeedMean_minus_Base_7B_strict": {
+        "boot_std": 0.0357763032649915,
+        "lcb_95": 0.85,
+        "lcb_975": 0.8333333333333334,
+        "mean_delta": 0.9111111111111111,
+        "median_delta": 0.9111111111111112,
+        "n_queries": 60,
+        "p0125_bonf2": 0.8222222222222222,
+        "p9875_bonf2": 0.9833333333333333,
+        "p_value_two_sided": 5e-05,
+        "ucb_95_one_sided": 0.9666666666666667,
+        "ucb_975": 0.9777777777777777
+      },
+      "D1_k17_GRPO_3SeedMean_minus_SFT_7B_frozen_grader": {
+        "boot_std": 0.0055208580292948695,
+        "lcb_95": -0.016666666666666666,
+        "lcb_975": -0.016666666666666666,
+        "mean_delta": -0.005555555555555556,
+        "median_delta": -0.005555555555555556,
+        "n_queries": 60,
+        "p0125_bonf2": -0.022222222222222223,
+        "p9875_bonf2": 0.0,
+        "p_value_two_sided": 0.73365,
+        "ucb_95_one_sided": 0.0,
+        "ucb_975": 0.0
+      },
+      "D1_k17_GRPO_3SeedMean_minus_SFT_7B_strict": {
+        "boot_std": 0.005501395558076128,
+        "lcb_95": -0.016666666666666666,
+        "lcb_975": -0.016666666666666666,
+        "mean_delta": -0.005555555555555556,
+        "median_delta": -0.005555555555555556,
+        "n_queries": 60,
+        "p0125_bonf2": -0.022222222222222223,
+        "p9875_bonf2": 0.0,
+        "p_value_two_sided": 0.73305,
+        "ucb_95_one_sided": 0.0,
+        "ucb_975": 0.0
+      },
+      "D1_k17_GRPO_seed_137_minus_SFT_7B_strict": {
+        "boot_std": 0.0,
+        "clopper_pearson_lcb95": -0.0704305687985048,
+        "clopper_pearson_ucb95": 0.0704305687985048,
+        "lcb_95": 0.0,
+        "lcb_975": 0.0,
+        "mean_delta": 0.0,
+        "median_delta": 0.0,
+        "n01": 0.0,
+        "n10": 0.0,
+        "n_queries": 60,
+        "p0125_bonf2": 0.0,
+        "p9875_bonf2": 0.0,
+        "p_value_two_sided": 1.0,
+        "tango_score_lcb95": -0.06017185214208987,
+        "tango_score_lcb975_bonf2": -0.07726216444281014,
+        "tango_score_ucb95": 0.060171852142089866,
+        "tango_score_ucb975_bonf2": 0.07726216444281014,
+        "ucb_95_one_sided": 0.0,
+        "ucb_975": 0.0
+      },
+      "D1_k17_GRPO_seed_2026_minus_SFT_7B_strict": {
+        "boot_std": 0.0,
+        "clopper_pearson_lcb95": -0.0704305687985048,
+        "clopper_pearson_ucb95": 0.0704305687985048,
+        "lcb_95": 0.0,
+        "lcb_975": 0.0,
+        "mean_delta": 0.0,
+        "median_delta": 0.0,
+        "n01": 0.0,
+        "n10": 0.0,
+        "n_queries": 60,
+        "p0125_bonf2": 0.0,
+        "p9875_bonf2": 0.0,
+        "p_value_two_sided": 1.0,
+        "tango_score_lcb95": -0.06017185214208987,
+        "tango_score_lcb975_bonf2": -0.07726216444281014,
+        "tango_score_ucb95": 0.060171852142089866,
+        "tango_score_ucb975_bonf2": 0.07726216444281014,
+        "ucb_95_one_sided": 0.0,
+        "ucb_975": 0.0
+      },
+      "D1_k17_GRPO_seed_42_minus_SFT_7B_strict": {
+        "boot_std": 0.016587729714561104,
+        "clopper_pearson_lcb95": -0.10170278395470728,
+        "clopper_pearson_ucb95": 0.0702209444026551,
+        "lcb_95": -0.05,
+        "lcb_975": -0.05,
+        "mean_delta": -0.016666666666666666,
+        "median_delta": -0.016666666666666666,
+        "n01": 1.0,
+        "n10": 0.0,
+        "n_queries": 60,
+        "p0125_bonf2": -0.06666666666666667,
+        "p9875_bonf2": 0.0,
+        "p_value_two_sided": 0.73385,
+        "tango_score_lcb95": -0.08855129727590062,
+        "tango_score_lcb975_bonf2": -0.10559268876488236,
+        "tango_score_ucb95": 0.044508049677791366,
+        "tango_score_ucb975_bonf2": 0.06188320051685702,
+        "ucb_95_one_sided": 0.0,
+        "ucb_975": 0.0
+      },
+      "D1_k5_Starved_GRPO_3SeedMean_minus_Bare_Nemotron_30B_strict": {
+        "boot_std": 0.06424409107129744,
+        "lcb_95": 0.22777777777777777,
+        "lcb_975": 0.21111111111111108,
+        "mean_delta": 0.3333333333333333,
+        "median_delta": 0.3333333333333333,
+        "n_queries": 60,
+        "p0125_bonf2": 0.18888888888888886,
+        "p9875_bonf2": 0.4777777777777778,
+        "p_value_two_sided": 5e-05,
+        "ucb_95_one_sided": 0.4388888888888889,
+        "ucb_975": 0.4611111111111111
+      }
+    },
+    "primary_matched_evidence_k17": {
+      "Bare_Nemotron_30B": {
+        "abstain_rate": 0.4333,
+        "by_domain_strict": {
+          "cloud_sre": 0.4,
+          "cybersec_cve": 0.3,
+          "sec_financial": 0.45
+        },
+        "by_regime_frozen_d1": {
+          "multihop_version_lineage_drift": 0.4,
+          "mutual_peer_conflict_abstain": 0.2,
+          "rumor_laundering_and_audit_trap": 0.3333,
+          "supersession_under_echo_flood": 0.7333
+        },
+        "by_regime_strict": {
+          "multihop_version_lineage_drift": 0.4,
+          "mutual_peer_conflict_abstain": 0.2,
+          "rumor_laundering_and_audit_trap": 0.3333,
+          "supersession_under_echo_flood": 0.6
+        },
+        "eval_seconds": 19.44,
+        "false_abstain_rate_on_determinate": 0.5111,
+        "false_commit_rate_on_contested_u": 0.8,
+        "frozen_d1_accuracy": 0.4167,
+        "stale_leak_rate": 0.2,
+        "strict_accuracy": 0.3833,
+        "unclosed_think_rate": 0.0
+      },
+      "Base_Qwen2.5_7B": {
+        "abstain_rate": 0.8333,
+        "by_domain_strict": {
+          "cloud_sre": 0.05,
+          "cybersec_cve": 0.2,
+          "sec_financial": 0.0
+        },
+        "by_regime_frozen_d1": {
+          "multihop_version_lineage_drift": 0.0,
+          "mutual_peer_conflict_abstain": 1.0,
+          "rumor_laundering_and_audit_trap": 0.0,
+          "supersession_under_echo_flood": 0.0
+        },
+        "by_regime_strict": {
+          "multihop_version_lineage_drift": 0.0,
+          "mutual_peer_conflict_abstain": 0.3333,
+          "rumor_laundering_and_audit_trap": 0.0,
+          "supersession_under_echo_flood": 0.0
+        },
+        "eval_seconds": 47.95,
+        "false_abstain_rate_on_determinate": 1.0,
+        "false_commit_rate_on_contested_u": 0.6667,
+        "frozen_d1_accuracy": 0.25,
+        "stale_leak_rate": 0.0,
+        "strict_accuracy": 0.0833,
+        "unclosed_think_rate": 0.0
+      },
+      "SFT_Qwen2.5_7B": {
+        "abstain_rate": 0.25,
+        "by_domain_strict": {
+          "cloud_sre": 1.0,
+          "cybersec_cve": 1.0,
+          "sec_financial": 1.0
+        },
+        "by_regime_frozen_d1": {
+          "multihop_version_lineage_drift": 1.0,
+          "mutual_peer_conflict_abstain": 1.0,
+          "rumor_laundering_and_audit_trap": 1.0,
+          "supersession_under_echo_flood": 1.0
+        },
+        "by_regime_strict": {
+          "multihop_version_lineage_drift": 1.0,
+          "mutual_peer_conflict_abstain": 1.0,
+          "rumor_laundering_and_audit_trap": 1.0,
+          "supersession_under_echo_flood": 1.0
+        },
+        "eval_seconds": 60.54,
+        "false_abstain_rate_on_determinate": 0.0,
+        "false_commit_rate_on_contested_u": 0.0,
+        "frozen_d1_accuracy": 1.0,
+        "stale_leak_rate": 0.0,
+        "strict_accuracy": 1.0,
+        "unclosed_think_rate": 0.0
+      },
+      "SFT_plus_Epistemic_GRPO_7B_3SeedMean_primary": {
+        "abstain_rate_mean": 0.25,
+        "false_abstain_rate_on_determinate_mean": 0.0,
+        "false_commit_rate_on_contested_u_mean": 0.0,
+        "frozen_d1_accuracy": 0.9944,
+        "strict_accuracy": 0.9944,
+        "strict_accuracy_seed_std": 0.0079
+      },
+      "SFT_plus_Epistemic_GRPO_7B_per_seed_primary": {
+        "seed_137": {
+          "abstain_rate": 0.25,
+          "by_domain_strict": {
+            "cloud_sre": 1.0,
+            "cybersec_cve": 1.0,
+            "sec_financial": 1.0
+          },
+          "by_regime_frozen_d1": {
+            "multihop_version_lineage_drift": 1.0,
+            "mutual_peer_conflict_abstain": 1.0,
+            "rumor_laundering_and_audit_trap": 1.0,
+            "supersession_under_echo_flood": 1.0
+          },
+          "by_regime_strict": {
+            "multihop_version_lineage_drift": 1.0,
+            "mutual_peer_conflict_abstain": 1.0,
+            "rumor_laundering_and_audit_trap": 1.0,
+            "supersession_under_echo_flood": 1.0
+          },
+          "eval_seconds": 61.75,
+          "false_abstain_rate_on_determinate": 0.0,
+          "false_commit_rate_on_contested_u": 0.0,
+          "frozen_d1_accuracy": 1.0,
+          "stale_leak_rate": 0.0,
+          "strict_accuracy": 1.0,
+          "unclosed_think_rate": 0.0
+        },
+        "seed_2026": {
+          "abstain_rate": 0.25,
+          "by_domain_strict": {
+            "cloud_sre": 1.0,
+            "cybersec_cve": 1.0,
+            "sec_financial": 1.0
+          },
+          "by_regime_frozen_d1": {
+            "multihop_version_lineage_drift": 1.0,
+            "mutual_peer_conflict_abstain": 1.0,
+            "rumor_laundering_and_audit_trap": 1.0,
+            "supersession_under_echo_flood": 1.0
+          },
+          "by_regime_strict": {
+            "multihop_version_lineage_drift": 1.0,
+            "mutual_peer_conflict_abstain": 1.0,
+            "rumor_laundering_and_audit_trap": 1.0,
+            "supersession_under_echo_flood": 1.0
+          },
+          "eval_seconds": 64.49,
+          "false_abstain_rate_on_determinate": 0.0,
+          "false_commit_rate_on_contested_u": 0.0,
+          "frozen_d1_accuracy": 1.0,
+          "stale_leak_rate": 0.0,
+          "strict_accuracy": 1.0,
+          "unclosed_think_rate": 0.0
+        },
+        "seed_42": {
+          "abstain_rate": 0.25,
+          "by_domain_strict": {
+            "cloud_sre": 0.95,
+            "cybersec_cve": 1.0,
+            "sec_financial": 1.0
+          },
+          "by_regime_frozen_d1": {
+            "multihop_version_lineage_drift": 1.0,
+            "mutual_peer_conflict_abstain": 1.0,
+            "rumor_laundering_and_audit_trap": 0.9333,
+            "supersession_under_echo_flood": 1.0
+          },
+          "by_regime_strict": {
+            "multihop_version_lineage_drift": 1.0,
+            "mutual_peer_conflict_abstain": 1.0,
+            "rumor_laundering_and_audit_trap": 0.9333,
+            "supersession_under_echo_flood": 1.0
+          },
+          "eval_seconds": 64.79,
+          "false_abstain_rate_on_determinate": 0.0,
+          "false_commit_rate_on_contested_u": 0.0,
+          "frozen_d1_accuracy": 0.9833,
+          "stale_leak_rate": 0.0,
+          "strict_accuracy": 0.9833,
+          "unclosed_think_rate": 0.0167
+        }
+      },
+      "SFT_plus_Epistemic_GRPO_7B_secondary_best_dev": {
+        "seed_137": {
+          "abstain_rate": 0.25,
+          "by_domain_strict": {
+            "cloud_sre": 1.0,
+            "cybersec_cve": 1.0,
+            "sec_financial": 1.0
+          },
+          "by_regime_frozen_d1": {
+            "multihop_version_lineage_drift": 1.0,
+            "mutual_peer_conflict_abstain": 1.0,
+            "rumor_laundering_and_audit_trap": 1.0,
+            "supersession_under_echo_flood": 1.0
+          },
+          "by_regime_strict": {
+            "multihop_version_lineage_drift": 1.0,
+            "mutual_peer_conflict_abstain": 1.0,
+            "rumor_laundering_and_audit_trap": 1.0,
+            "supersession_under_echo_flood": 1.0
+          },
+          "eval_seconds": 61.29,
+          "false_abstain_rate_on_determinate": 0.0,
+          "false_commit_rate_on_contested_u": 0.0,
+          "frozen_d1_accuracy": 1.0,
+          "stale_leak_rate": 0.0,
+          "strict_accuracy": 1.0,
+          "unclosed_think_rate": 0.0
+        },
+        "seed_2026": {
+          "abstain_rate": 0.25,
+          "by_domain_strict": {
+            "cloud_sre": 1.0,
+            "cybersec_cve": 1.0,
+            "sec_financial": 1.0
+          },
+          "by_regime_frozen_d1": {
+            "multihop_version_lineage_drift": 1.0,
+            "mutual_peer_conflict_abstain": 1.0,
+            "rumor_laundering_and_audit_trap": 1.0,
+            "supersession_under_echo_flood": 1.0
+          },
+          "by_regime_strict": {
+            "multihop_version_lineage_drift": 1.0,
+            "mutual_peer_conflict_abstain": 1.0,
+            "rumor_laundering_and_audit_trap": 1.0,
+            "supersession_under_echo_flood": 1.0
+          },
+          "eval_seconds": 64.49,
+          "false_abstain_rate_on_determinate": 0.0,
+          "false_commit_rate_on_contested_u": 0.0,
+          "frozen_d1_accuracy": 1.0,
+          "stale_leak_rate": 0.0,
+          "strict_accuracy": 1.0,
+          "unclosed_think_rate": 0.0
+        },
+        "seed_42": {
+          "abstain_rate": 0.25,
+          "by_domain_strict": {
+            "cloud_sre": 1.0,
+            "cybersec_cve": 1.0,
+            "sec_financial": 1.0
+          },
+          "by_regime_frozen_d1": {
+            "multihop_version_lineage_drift": 1.0,
+            "mutual_peer_conflict_abstain": 1.0,
+            "rumor_laundering_and_audit_trap": 1.0,
+            "supersession_under_echo_flood": 1.0
+          },
+          "by_regime_strict": {
+            "multihop_version_lineage_drift": 1.0,
+            "mutual_peer_conflict_abstain": 1.0,
+            "rumor_laundering_and_audit_trap": 1.0,
+            "supersession_under_echo_flood": 1.0
+          },
+          "eval_seconds": 68.74,
+          "false_abstain_rate_on_determinate": 0.0,
+          "false_commit_rate_on_contested_u": 0.0,
+          "frozen_d1_accuracy": 1.0,
+          "stale_leak_rate": 0.0,
+          "strict_accuracy": 1.0,
+          "unclosed_think_rate": 0.0
+        }
+      }
+    },
+    "secondary_retrieval_starved_k5_bare_hybridrag": {
+      "Bare_Nemotron_30B": {
+        "abstain_rate": 0.4333,
+        "by_domain_strict": {
+          "cloud_sre": 0.45,
+          "cybersec_cve": 0.25,
+          "sec_financial": 0.45
+        },
+        "by_regime_frozen_d1": {
+          "multihop_version_lineage_drift": 0.4667,
+          "mutual_peer_conflict_abstain": 0.1333,
+          "rumor_laundering_and_audit_trap": 0.1333,
+          "supersession_under_echo_flood": 0.8
+        },
+        "by_regime_strict": {
+          "multihop_version_lineage_drift": 0.4667,
+          "mutual_peer_conflict_abstain": 0.1333,
+          "rumor_laundering_and_audit_trap": 0.1333,
+          "supersession_under_echo_flood": 0.8
+        },
+        "eval_seconds": 10.05,
+        "false_abstain_rate_on_determinate": 0.5333,
+        "false_commit_rate_on_contested_u": 0.8667,
+        "frozen_d1_accuracy": 0.3833,
+        "stale_leak_rate": 0.3167,
+        "strict_accuracy": 0.3833,
+        "unclosed_think_rate": 0.0
+      },
+      "Base_Qwen2.5_7B": {
+        "abstain_rate": 0.75,
+        "by_domain_strict": {
+          "cloud_sre": 0.0,
+          "cybersec_cve": 0.0,
+          "sec_financial": 0.0
+        },
+        "by_regime_frozen_d1": {
+          "multihop_version_lineage_drift": 0.0,
+          "mutual_peer_conflict_abstain": 0.2,
+          "rumor_laundering_and_audit_trap": 0.0,
+          "supersession_under_echo_flood": 0.0
+        },
+        "by_regime_strict": {
+          "multihop_version_lineage_drift": 0.0,
+          "mutual_peer_conflict_abstain": 0.0,
+          "rumor_laundering_and_audit_trap": 0.0,
+          "supersession_under_echo_flood": 0.0
+        },
+        "eval_seconds": 29.03,
+        "false_abstain_rate_on_determinate": 1.0,
+        "false_commit_rate_on_contested_u": 1.0,
+        "frozen_d1_accuracy": 0.05,
+        "stale_leak_rate": 0.3333,
+        "strict_accuracy": 0.0,
+        "unclosed_think_rate": 0.0
+      },
+      "SFT_Qwen2.5_7B": {
+        "abstain_rate": 0.1667,
+        "by_domain_strict": {
+          "cloud_sre": 0.65,
+          "cybersec_cve": 0.7,
+          "sec_financial": 0.8
+        },
+        "by_regime_frozen_d1": {
+          "multihop_version_lineage_drift": 0.9333,
+          "mutual_peer_conflict_abstain": 0.5333,
+          "rumor_laundering_and_audit_trap": 0.4,
+          "supersession_under_echo_flood": 1.0
+        },
+        "by_regime_strict": {
+          "multihop_version_lineage_drift": 0.9333,
+          "mutual_peer_conflict_abstain": 0.5333,
+          "rumor_laundering_and_audit_trap": 0.4,
+          "supersession_under_echo_flood": 1.0
+        },
+        "eval_seconds": 36.61,
+        "false_abstain_rate_on_determinate": 0.0444,
+        "false_commit_rate_on_contested_u": 0.4667,
+        "frozen_d1_accuracy": 0.7167,
+        "stale_leak_rate": 0.25,
+        "strict_accuracy": 0.7167,
+        "unclosed_think_rate": 0.0
+      },
+      "SFT_plus_Epistemic_GRPO_7B_3SeedMean_strict_accuracy": 0.7167
+    },
+    "starved_k5_retrieval": {
+      "all_17_case_docs_recall": 0.0,
+      "global_corpus_docs": 1020,
+      "key_authoritative_evidence_recall": 0.6,
+      "top_k": 5
+    }
+  },
+  "environment_versions": {
+    "cuda_device": "NVIDIA GB10",
+    "grpo_config_has_beta": true,
+    "grpo_trainer_accepts_peft_config": true,
+    "hf_home": "/home/mattmre/chelated-night1/hf_cache",
+    "peft": "0.22.0",
+    "python": "3.12.3",
+    "torch": "2.14.1+cu130",
+    "transformers": "5.24.0",
+    "trl": "1.18.2"
+  },
+  "git_sha": "5a9bd46f2eeae2522a4a8d81017edb3c2407f936",
+  "grpo_seed_runs": {
+    "seed_137": {
+      "active_grpo_adapter_vs_frozen_sft_max_abs_logit_shift": 1.4375,
+      "best_dev_adapter_sha256": {
+        "README.md": "cb3ff1420051049ba7a3da0d2d7c5d85fd9adb3fe09ac19c8b20c3295f395a5f",
+        "adapter_config.json": "6d880848476bcb4e665cf8f0d35841af5718fd26e758cb015d044563f0d08a7c",
+        "adapter_model.safetensors": "b1c7bdaa2305cbaa311b1f0ca1e687b23e015e70806642d01218d84a66263076"
+      },
+      "best_dev_step": 8,
+      "dev_trajectory": [
+        {
+          "dev_abstain_rate": 0.2125,
+          "dev_exact_match": 0.6,
+          "dev_false_abstain_rate": 0.0185,
+          "dev_mean_total_reward": 0.2406,
+          "step": 8
+        },
+        {
+          "dev_abstain_rate": 0.175,
+          "dev_exact_match": 0.55,
+          "dev_false_abstain_rate": 0.0185,
+          "dev_mean_total_reward": 0.1381,
+          "step": 16
+        }
+      ],
+      "final_adapter_sha256": {
+        "README.md": "cb3ff1420051049ba7a3da0d2d7c5d85fd9adb3fe09ac19c8b20c3295f395a5f",
+        "adapter_config.json": "6d880848476bcb4e665cf8f0d35841af5718fd26e758cb015d044563f0d08a7c",
+        "adapter_model.safetensors": "77eaba21404963d3d028a0ff27f80b6855005d56cc2ab6e420992188873150ca"
+      },
+      "final_kl": 0.000673,
+      "frac_reward_zero_std_max": 1.0,
+      "frac_reward_zero_std_mean": 0.1875,
+      "kl_ref_disabled_adapter_vs_frozen_sft_max_abs_logit_diff": 0.0,
+      "mean_entropy": 0.0943,
+      "mean_grad_norm": 0.4013,
+      "mean_kl": 0.001325,
+      "peak_cuda_allocated_gib": 25.375,
+      "preregistered_steps": 16,
+      "primary_final_step_d1_k17": {
+        "abstain_rate": 0.25,
+        "by_domain_strict": {
+          "cloud_sre": 1.0,
+          "cybersec_cve": 1.0,
+          "sec_financial": 1.0
+        },
+        "by_regime_frozen_d1": {
+          "multihop_version_lineage_drift": 1.0,
+          "mutual_peer_conflict_abstain": 1.0,
+          "rumor_laundering_and_audit_trap": 1.0,
+          "supersession_under_echo_flood": 1.0
+        },
+        "by_regime_strict": {
+          "multihop_version_lineage_drift": 1.0,
+          "mutual_peer_conflict_abstain": 1.0,
+          "rumor_laundering_and_audit_trap": 1.0,
+          "supersession_under_echo_flood": 1.0
+        },
+        "eval_seconds": 61.75,
+        "false_abstain_rate_on_determinate": 0.0,
+        "false_commit_rate_on_contested_u": 0.0,
+        "frozen_d1_accuracy": 1.0,
+        "stale_leak_rate": 0.0,
+        "strict_accuracy": 1.0,
+        "unclosed_think_rate": 0.0
+      },
+      "primary_final_step_d1_k5": {
+        "abstain_rate": 0.1333,
+        "by_domain_strict": {
+          "cloud_sre": 0.65,
+          "cybersec_cve": 0.7,
+          "sec_financial": 0.85
+        },
+        "by_regime_frozen_d1": {
+          "multihop_version_lineage_drift": 1.0,
+          "mutual_peer_conflict_abstain": 0.5333,
+          "rumor_laundering_and_audit_trap": 0.4,
+          "supersession_under_echo_flood": 1.0
+        },
+        "by_regime_strict": {
+          "multihop_version_lineage_drift": 1.0,
+          "mutual_peer_conflict_abstain": 0.5333,
+          "rumor_laundering_and_audit_trap": 0.4,
+          "supersession_under_echo_flood": 1.0
+        },
+        "eval_seconds": 40.49,
+        "false_abstain_rate_on_determinate": 0.0,
+        "false_commit_rate_on_contested_u": 0.4667,
+        "frozen_d1_accuracy": 0.7333,
+        "stale_leak_rate": 0.2667,
+        "strict_accuracy": 0.7333,
+        "unclosed_think_rate": 0.0
+      },
+      "primary_final_step_dev": {
+        "abstain_rate": 0.175,
+        "by_scenario_exact_match": {
+          "bitemporal_as_of": 0.5,
+          "cross_domain_rebuttal_trap": 0.6538,
+          "cross_domain_standoff": 0.4615,
+          "cyclic_derivation_void_fork": 0.5385
+        },
+        "determinate_exact_match": 0.5741,
+        "eval_seconds": 95.96,
+        "exact_match": 0.55,
+        "false_abstain_rate_on_determinate": 0.0185,
+        "false_commit_rate_on_u": 0.5,
+        "mean_core_reward": 0.1106,
+        "mean_total_reward": 0.1381,
+        "u_abstention_exact_match": 0.5,
+        "valid_format_rate": 1.0
+      },
+      "primary_final_step_eval": {
+        "abstain_rate": 0.0833,
+        "by_scenario_exact_match": {
+          "auditor_cites_poison": 0.925,
+          "contested_successor": 0.05,
+          "odd_refutation_cycle": 0.3,
+          "summarizer_laundering": 0.3
+        },
+        "determinate_exact_match": 0.6125,
+        "eval_seconds": 125.98,
+        "exact_match": 0.4667,
+        "false_abstain_rate_on_determinate": 0.0375,
+        "false_commit_rate_on_u": 0.825,
+        "mean_core_reward": -0.0454,
+        "mean_total_reward": -0.0221,
+        "u_abstention_exact_match": 0.175,
+        "valid_format_rate": 1.0
+      },
+      "reload_max_abs_logit_diff": 0.0,
+      "rollout_abstain_rate_mean": 0.0859,
+      "rollout_exact_match_first10": 0.1625,
+      "rollout_exact_match_last10": 0.275,
+      "rollout_false_abstain_rate_mean": 0.0312,
+      "secondary_best_dev_d1_k17": {
+        "abstain_rate": 0.25,
+        "by_domain_strict": {
+          "cloud_sre": 1.0,
+          "cybersec_cve": 1.0,
+          "sec_financial": 1.0
+        },
+        "by_regime_frozen_d1": {
+          "multihop_version_lineage_drift": 1.0,
+          "mutual_peer_conflict_abstain": 1.0,
+          "rumor_laundering_and_audit_trap": 1.0,
+          "supersession_under_echo_flood": 1.0
+        },
+        "by_regime_strict": {
+          "multihop_version_lineage_drift": 1.0,
+          "mutual_peer_conflict_abstain": 1.0,
+          "rumor_laundering_and_audit_trap": 1.0,
+          "supersession_under_echo_flood": 1.0
+        },
+        "eval_seconds": 61.29,
+        "false_abstain_rate_on_determinate": 0.0,
+        "false_commit_rate_on_contested_u": 0.0,
+        "frozen_d1_accuracy": 1.0,
+        "stale_leak_rate": 0.0,
+        "strict_accuracy": 1.0,
+        "unclosed_think_rate": 0.0
+      },
+      "secondary_best_dev_eval": {
+        "abstain_rate": 0.075,
+        "by_scenario_exact_match": {
+          "auditor_cites_poison": 0.95,
+          "contested_successor": 0.05,
+          "odd_refutation_cycle": 0.35,
+          "summarizer_laundering": 0.25
+        },
+        "determinate_exact_match": 0.6,
+        "eval_seconds": 120.24,
+        "exact_match": 0.4667,
+        "false_abstain_rate_on_determinate": 0.0125,
+        "false_commit_rate_on_u": 0.8,
+        "mean_core_reward": -0.0596,
+        "mean_total_reward": -0.0363,
+        "u_abstention_exact_match": 0.2,
+        "valid_format_rate": 1.0
+      },
+      "seed": 137,
+      "train_wall_seconds": 915.49,
+      "trained_grpo_checkpoint_present": true
+    },
+    "seed_2026": {
+      "active_grpo_adapter_vs_frozen_sft_max_abs_logit_shift": 3.109375,
+      "best_dev_adapter_sha256": {
+        "README.md": "cb3ff1420051049ba7a3da0d2d7c5d85fd9adb3fe09ac19c8b20c3295f395a5f",
+        "adapter_config.json": "6d880848476bcb4e665cf8f0d35841af5718fd26e758cb015d044563f0d08a7c",
+        "adapter_model.safetensors": "180ffc01579ea47c6c50fe274aa2d645ed6895ef1abed4f6f84a5f02fe6adcca"
+      },
+      "best_dev_step": 16,
+      "dev_trajectory": [
+        {
+          "dev_abstain_rate": 0.1875,
+          "dev_exact_match": 0.6125,
+          "dev_false_abstain_rate": 0.0,
+          "dev_mean_total_reward": 0.2775,
+          "step": 8
+        },
+        {
+          "dev_abstain_rate": 0.2,
+          "dev_exact_match": 0.65,
+          "dev_false_abstain_rate": 0.0,
+          "dev_mean_total_reward": 0.3544,
+          "step": 16
+        }
+      ],
+      "final_adapter_sha256": {
+        "README.md": "cb3ff1420051049ba7a3da0d2d7c5d85fd9adb3fe09ac19c8b20c3295f395a5f",
+        "adapter_config.json": "6d880848476bcb4e665cf8f0d35841af5718fd26e758cb015d044563f0d08a7c",
+        "adapter_model.safetensors": "180ffc01579ea47c6c50fe274aa2d645ed6895ef1abed4f6f84a5f02fe6adcca"
+      },
+      "final_kl": 0.001442,
+      "frac_reward_zero_std_max": 1.0,
+      "frac_reward_zero_std_mean": 0.0625,
+      "kl_ref_disabled_adapter_vs_frozen_sft_max_abs_logit_diff": 0.0,
+      "mean_entropy": 0.0821,
+      "mean_grad_norm": 0.5316,
+      "mean_kl": 0.0013,
+      "peak_cuda_allocated_gib": 25.375,
+      "preregistered_steps": 16,
+      "primary_final_step_d1_k17": {
+        "abstain_rate": 0.25,
+        "by_domain_strict": {
+          "cloud_sre": 1.0,
+          "cybersec_cve": 1.0,
+          "sec_financial": 1.0
+        },
+        "by_regime_frozen_d1": {
+          "multihop_version_lineage_drift": 1.0,
+          "mutual_peer_conflict_abstain": 1.0,
+          "rumor_laundering_and_audit_trap": 1.0,
+          "supersession_under_echo_flood": 1.0
+        },
+        "by_regime_strict": {
+          "multihop_version_lineage_drift": 1.0,
+          "mutual_peer_conflict_abstain": 1.0,
+          "rumor_laundering_and_audit_trap": 1.0,
+          "supersession_under_echo_flood": 1.0
+        },
+        "eval_seconds": 64.49,
+        "false_abstain_rate_on_determinate": 0.0,
+        "false_commit_rate_on_contested_u": 0.0,
+        "frozen_d1_accuracy": 1.0,
+        "stale_leak_rate": 0.0,
+        "strict_accuracy": 1.0,
+        "unclosed_think_rate": 0.0
+      },
+      "primary_final_step_d1_k5": {
+        "abstain_rate": 0.1,
+        "by_domain_strict": {
+          "cloud_sre": 0.65,
+          "cybersec_cve": 0.65,
+          "sec_financial": 0.8
+        },
+        "by_regime_frozen_d1": {
+          "multihop_version_lineage_drift": 1.0,
+          "mutual_peer_conflict_abstain": 0.4,
+          "rumor_laundering_and_audit_trap": 0.4,
+          "supersession_under_echo_flood": 1.0
+        },
+        "by_regime_strict": {
+          "multihop_version_lineage_drift": 1.0,
+          "mutual_peer_conflict_abstain": 0.4,
+          "rumor_laundering_and_audit_trap": 0.4,
+          "supersession_under_echo_flood": 1.0
+        },
+        "eval_seconds": 43.36,
+        "false_abstain_rate_on_determinate": 0.0,
+        "false_commit_rate_on_contested_u": 0.6,
+        "frozen_d1_accuracy": 0.7,
+        "stale_leak_rate": 0.3,
+        "strict_accuracy": 0.7,
+        "unclosed_think_rate": 0.0
+      },
+      "primary_final_step_dev": {
+        "abstain_rate": 0.2,
+        "by_scenario_exact_match": {
+          "bitemporal_as_of": 0.5357,
+          "cross_domain_rebuttal_trap": 0.6923,
+          "cross_domain_standoff": 0.6923,
+          "cyclic_derivation_void_fork": 0.4615
+        },
+        "determinate_exact_match": 0.6111,
+        "eval_seconds": 196.41,
+        "exact_match": 0.6,
+        "false_abstain_rate_on_determinate": 0.0185,
+        "false_commit_rate_on_u": 0.4231,
+        "mean_core_reward": 0.2325,
+        "mean_total_reward": 0.2625,
+        "u_abstention_exact_match": 0.5769,
+        "valid_format_rate": 1.0
+      },
+      "primary_final_step_eval": {
+        "abstain_rate": 0.0417,
+        "by_scenario_exact_match": {
+          "auditor_cites_poison": 0.925,
+          "contested_successor": 0.0,
+          "odd_refutation_cycle": 0.2,
+          "summarizer_laundering": 0.275
+        },
+        "determinate_exact_match": 0.6,
+        "eval_seconds": 138.38,
+        "exact_match": 0.4333,
+        "false_abstain_rate_on_determinate": 0.0125,
+        "false_commit_rate_on_u": 0.9,
+        "mean_core_reward": -0.1263,
+        "mean_total_reward": -0.1046,
+        "u_abstention_exact_match": 0.1,
+        "valid_format_rate": 1.0
+      },
+      "reload_max_abs_logit_diff": 0.0,
+      "rollout_abstain_rate_mean": 0.1094,
+      "rollout_exact_match_first10": 0.3,
+      "rollout_exact_match_last10": 0.3125,
+      "rollout_false_abstain_rate_mean": 0.0703,
+      "secondary_best_dev_d1_k17": {
+        "abstain_rate": 0.25,
+        "by_domain_strict": {
+          "cloud_sre": 1.0,
+          "cybersec_cve": 1.0,
+          "sec_financial": 1.0
+        },
+        "by_regime_frozen_d1": {
+          "multihop_version_lineage_drift": 1.0,
+          "mutual_peer_conflict_abstain": 1.0,
+          "rumor_laundering_and_audit_trap": 1.0,
+          "supersession_under_echo_flood": 1.0
+        },
+        "by_regime_strict": {
+          "multihop_version_lineage_drift": 1.0,
+          "mutual_peer_conflict_abstain": 1.0,
+          "rumor_laundering_and_audit_trap": 1.0,
+          "supersession_under_echo_flood": 1.0
+        },
+        "eval_seconds": 64.49,
+        "false_abstain_rate_on_determinate": 0.0,
+        "false_commit_rate_on_contested_u": 0.0,
+        "frozen_d1_accuracy": 1.0,
+        "stale_leak_rate": 0.0,
+        "strict_accuracy": 1.0,
+        "unclosed_think_rate": 0.0
+      },
+      "secondary_best_dev_eval": {
+        "abstain_rate": 0.0417,
+        "by_scenario_exact_match": {
+          "auditor_cites_poison": 0.925,
+          "contested_successor": 0.0,
+          "odd_refutation_cycle": 0.2,
+          "summarizer_laundering": 0.275
+        },
+        "determinate_exact_match": 0.6,
+        "eval_seconds": 138.38,
+        "exact_match": 0.4333,
+        "false_abstain_rate_on_determinate": 0.0125,
+        "false_commit_rate_on_u": 0.9,
+        "mean_core_reward": -0.1263,
+        "mean_total_reward": -0.1046,
+        "u_abstention_exact_match": 0.1,
+        "valid_format_rate": 1.0
+      },
+      "seed": 2026,
+      "train_wall_seconds": 1053.22,
+      "trained_grpo_checkpoint_present": true
+    },
+    "seed_42": {
+      "active_grpo_adapter_vs_frozen_sft_max_abs_logit_shift": 2.751953125,
+      "best_dev_adapter_sha256": {
+        "README.md": "cb3ff1420051049ba7a3da0d2d7c5d85fd9adb3fe09ac19c8b20c3295f395a5f",
+        "adapter_config.json": "6d880848476bcb4e665cf8f0d35841af5718fd26e758cb015d044563f0d08a7c",
+        "adapter_model.safetensors": "cd59678e107e2e71ad1dc052a2466c85ec617f9272829b9503ab98b1c957bef1"
+      },
+      "best_dev_step": 8,
+      "dev_trajectory": [
+        {
+          "dev_abstain_rate": 0.1375,
+          "dev_exact_match": 0.525,
+          "dev_false_abstain_rate": 0.037,
+          "dev_mean_total_reward": 0.0975,
+          "step": 8
+        },
+        {
+          "dev_abstain_rate": 0.125,
+          "dev_exact_match": 0.4875,
+          "dev_false_abstain_rate": 0.037,
+          "dev_mean_total_reward": 0.0425,
+          "step": 16
+        }
+      ],
+      "final_adapter_sha256": {
+        "README.md": "cb3ff1420051049ba7a3da0d2d7c5d85fd9adb3fe09ac19c8b20c3295f395a5f",
+        "adapter_config.json": "6d880848476bcb4e665cf8f0d35841af5718fd26e758cb015d044563f0d08a7c",
+        "adapter_model.safetensors": "d0a23dec680753a9623f5aee497db18bc36340d03fd76d4120a36783da0c16b9"
+      },
+      "final_kl": 0.013419,
+      "frac_reward_zero_std_max": 1.0,
+      "frac_reward_zero_std_mean": 0.25,
+      "kl_ref_disabled_adapter_vs_frozen_sft_max_abs_logit_diff": 0.0,
+      "mean_entropy": 0.0919,
+      "mean_grad_norm": 0.4219,
+      "mean_kl": 0.002122,
+      "peak_cuda_allocated_gib": 25.374,
+      "preregistered_steps": 16,
+      "primary_final_step_d1_k17": {
+        "abstain_rate": 0.25,
+        "by_domain_strict": {
+          "cloud_sre": 0.95,
+          "cybersec_cve": 1.0,
+          "sec_financial": 1.0
+        },
+        "by_regime_frozen_d1": {
+          "multihop_version_lineage_drift": 1.0,
+          "mutual_peer_conflict_abstain": 1.0,
+          "rumor_laundering_and_audit_trap": 0.9333,
+          "supersession_under_echo_flood": 1.0
+        },
+        "by_regime_strict": {
+          "multihop_version_lineage_drift": 1.0,
+          "mutual_peer_conflict_abstain": 1.0,
+          "rumor_laundering_and_audit_trap": 0.9333,
+          "supersession_under_echo_flood": 1.0
+        },
+        "eval_seconds": 64.79,
+        "false_abstain_rate_on_determinate": 0.0,
+        "false_commit_rate_on_contested_u": 0.0,
+        "frozen_d1_accuracy": 0.9833,
+        "stale_leak_rate": 0.0,
+        "strict_accuracy": 0.9833,
+        "unclosed_think_rate": 0.0167
+      },
+      "primary_final_step_d1_k5": {
+        "abstain_rate": 0.1167,
+        "by_domain_strict": {
+          "cloud_sre": 0.65,
+          "cybersec_cve": 0.7,
+          "sec_financial": 0.8
+        },
+        "by_regime_frozen_d1": {
+          "multihop_version_lineage_drift": 1.0,
+          "mutual_peer_conflict_abstain": 0.4667,
+          "rumor_laundering_and_audit_trap": 0.4,
+          "supersession_under_echo_flood": 1.0
+        },
+        "by_regime_strict": {
+          "multihop_version_lineage_drift": 1.0,
+          "mutual_peer_conflict_abstain": 0.4667,
+          "rumor_laundering_and_audit_trap": 0.4,
+          "supersession_under_echo_flood": 1.0
+        },
+        "eval_seconds": 39.79,
+        "false_abstain_rate_on_determinate": 0.0,
+        "false_commit_rate_on_contested_u": 0.5333,
+        "frozen_d1_accuracy": 0.7167,
+        "stale_leak_rate": 0.2833,
+        "strict_accuracy": 0.7167,
+        "unclosed_think_rate": 0.0
+      },
+      "primary_final_step_dev": {
+        "abstain_rate": 0.1125,
+        "by_scenario_exact_match": {
+          "bitemporal_as_of": 0.5357,
+          "cross_domain_rebuttal_trap": 0.6923,
+          "cross_domain_standoff": 0.3846,
+          "cyclic_derivation_void_fork": 0.2308
+        },
+        "determinate_exact_match": 0.6111,
+        "eval_seconds": 168.9,
+        "exact_match": 0.5125,
+        "false_abstain_rate_on_determinate": 0.0185,
+        "false_commit_rate_on_u": 0.6923,
+        "mean_core_reward": 0.0356,
+        "mean_total_reward": 0.0612,
+        "u_abstention_exact_match": 0.3077,
+        "valid_format_rate": 1.0
+      },
+      "primary_final_step_eval": {
+        "abstain_rate": 0.0333,
+        "by_scenario_exact_match": {
+          "auditor_cites_poison": 0.95,
+          "contested_successor": 0.0,
+          "odd_refutation_cycle": 0.2,
+          "summarizer_laundering": 0.275
+        },
+        "determinate_exact_match": 0.6125,
+        "eval_seconds": 138.74,
+        "exact_match": 0.4417,
+        "false_abstain_rate_on_determinate": 0.0,
+        "false_commit_rate_on_u": 0.9,
+        "mean_core_reward": -0.1167,
+        "mean_total_reward": -0.0946,
+        "u_abstention_exact_match": 0.1,
+        "valid_format_rate": 1.0
+      },
+      "reload_max_abs_logit_diff": 0.0,
+      "rollout_abstain_rate_mean": 0.0391,
+      "rollout_exact_match_first10": 0.4375,
+      "rollout_exact_match_last10": 0.225,
+      "rollout_false_abstain_rate_mean": 0.0312,
+      "secondary_best_dev_d1_k17": {
+        "abstain_rate": 0.25,
+        "by_domain_strict": {
+          "cloud_sre": 1.0,
+          "cybersec_cve": 1.0,
+          "sec_financial": 1.0
+        },
+        "by_regime_frozen_d1": {
+          "multihop_version_lineage_drift": 1.0,
+          "mutual_peer_conflict_abstain": 1.0,
+          "rumor_laundering_and_audit_trap": 1.0,
+          "supersession_under_echo_flood": 1.0
+        },
+        "by_regime_strict": {
+          "multihop_version_lineage_drift": 1.0,
+          "mutual_peer_conflict_abstain": 1.0,
+          "rumor_laundering_and_audit_trap": 1.0,
+          "supersession_under_echo_flood": 1.0
+        },
+        "eval_seconds": 68.74,
+        "false_abstain_rate_on_determinate": 0.0,
+        "false_commit_rate_on_contested_u": 0.0,
+        "frozen_d1_accuracy": 1.0,
+        "stale_leak_rate": 0.0,
+        "strict_accuracy": 1.0,
+        "unclosed_think_rate": 0.0
+      },
+      "secondary_best_dev_eval": {
+        "abstain_rate": 0.0333,
+        "by_scenario_exact_match": {
+          "auditor_cites_poison": 0.975,
+          "contested_successor": 0.0,
+          "odd_refutation_cycle": 0.2,
+          "summarizer_laundering": 0.25
+        },
+        "determinate_exact_match": 0.6125,
+        "eval_seconds": 120.18,
+        "exact_match": 0.4417,
+        "false_abstain_rate_on_determinate": 0.0,
+        "false_commit_rate_on_u": 0.9,
+        "mean_core_reward": -0.1167,
+        "mean_total_reward": -0.0946,
+        "u_abstention_exact_match": 0.1,
+        "valid_format_rate": 1.0
+      },
+      "seed": 42,
+      "train_wall_seconds": 1057.54,
+      "trained_grpo_checkpoint_present": true
+    }
+  },
+  "heldout_wfs_eval_n120": {
+    "Bare_Nemotron_30B": {
+      "abstain_rate": 0.1,
+      "by_scenario_exact_match": {
+        "auditor_cites_poison": 0.5,
+        "contested_successor": 0.1,
+        "odd_refutation_cycle": 0.05,
+        "summarizer_laundering": 0.325
+      },
+      "determinate_exact_match": 0.4125,
+      "eval_seconds": 22.29,
+      "exact_match": 0.3,
+      "false_abstain_rate_on_determinate": 0.05,
+      "false_commit_rate_on_u": 0.8,
+      "mean_core_reward": -0.255,
+      "mean_total_reward": -0.255,
+      "u_abstention_exact_match": 0.075,
+      "valid_format_rate": 0.0
+    },
+    "Base_Qwen2.5_7B": {
+      "abstain_rate": 0.4417,
+      "by_scenario_exact_match": {
+        "auditor_cites_poison": 0.0,
+        "contested_successor": 0.55,
+        "odd_refutation_cycle": 0.6,
+        "summarizer_laundering": 0.0
+      },
+      "determinate_exact_match": 0.0,
+      "eval_seconds": 85.85,
+      "exact_match": 0.1917,
+      "false_abstain_rate_on_determinate": 0.375,
+      "false_commit_rate_on_u": 0.0,
+      "mean_core_reward": -0.4042,
+      "mean_total_reward": -0.4008,
+      "u_abstention_exact_match": 0.575,
+      "valid_format_rate": 0.1417
+    },
+    "SFT_Qwen2.5_7B": {
+      "abstain_rate": 0.0417,
+      "by_scenario_exact_match": {
+        "auditor_cites_poison": 0.975,
+        "contested_successor": 0.0,
+        "odd_refutation_cycle": 0.25,
+        "summarizer_laundering": 0.175
+      },
+      "determinate_exact_match": 0.575,
+      "eval_seconds": 118.71,
+      "exact_match": 0.425,
+      "false_abstain_rate_on_determinate": 0.0,
+      "false_commit_rate_on_u": 0.875,
+      "mean_core_reward": -0.15,
+      "mean_total_reward": -0.1288,
+      "u_abstention_exact_match": 0.125,
+      "valid_format_rate": 0.9917
+    },
+    "SFT_plus_Epistemic_GRPO_7B_3SeedMean_primary": {
+      "abstain_rate_mean": 0.0528,
+      "exact_match": 0.4472,
+      "exact_match_seed_std": 0.0142,
+      "false_abstain_rate_on_determinate_mean": 0.0167,
+      "false_commit_rate_on_u_mean": 0.875,
+      "mean_total_reward": -0.0737
+    },
+    "SFT_plus_Epistemic_GRPO_7B_per_seed_primary": {
+      "seed_137": {
+        "abstain_rate": 0.0833,
+        "by_scenario_exact_match": {
+          "auditor_cites_poison": 0.925,
+          "contested_successor": 0.05,
+          "odd_refutation_cycle": 0.3,
+          "summarizer_laundering": 0.3
+        },
+        "determinate_exact_match": 0.6125,
+        "eval_seconds": 125.98,
+        "exact_match": 0.4667,
+        "false_abstain_rate_on_determinate": 0.0375,
+        "false_commit_rate_on_u": 0.825,
+        "mean_core_reward": -0.0454,
+        "mean_total_reward": -0.0221,
+        "u_abstention_exact_match": 0.175,
+        "valid_format_rate": 1.0
+      },
+      "seed_2026": {
+        "abstain_rate": 0.0417,
+        "by_scenario_exact_match": {
+          "auditor_cites_poison": 0.925,
+          "contested_successor": 0.0,
+          "odd_refutation_cycle": 0.2,
+          "summarizer_laundering": 0.275
+        },
+        "determinate_exact_match": 0.6,
+        "eval_seconds": 138.38,
+        "exact_match": 0.4333,
+        "false_abstain_rate_on_determinate": 0.0125,
+        "false_commit_rate_on_u": 0.9,
+        "mean_core_reward": -0.1263,
+        "mean_total_reward": -0.1046,
+        "u_abstention_exact_match": 0.1,
+        "valid_format_rate": 1.0
+      },
+      "seed_42": {
+        "abstain_rate": 0.0333,
+        "by_scenario_exact_match": {
+          "auditor_cites_poison": 0.95,
+          "contested_successor": 0.0,
+          "odd_refutation_cycle": 0.2,
+          "summarizer_laundering": 0.275
+        },
+        "determinate_exact_match": 0.6125,
+        "eval_seconds": 138.74,
+        "exact_match": 0.4417,
+        "false_abstain_rate_on_determinate": 0.0,
+        "false_commit_rate_on_u": 0.9,
+        "mean_core_reward": -0.1167,
+        "mean_total_reward": -0.0946,
+        "u_abstention_exact_match": 0.1,
+        "valid_format_rate": 1.0
+      }
+    },
+    "SFT_plus_Epistemic_GRPO_7B_secondary_best_dev": {
+      "seed_137": {
+        "abstain_rate": 0.075,
+        "by_scenario_exact_match": {
+          "auditor_cites_poison": 0.95,
+          "contested_successor": 0.05,
+          "odd_refutation_cycle": 0.35,
+          "summarizer_laundering": 0.25
+        },
+        "determinate_exact_match": 0.6,
+        "eval_seconds": 120.24,
+        "exact_match": 0.4667,
+        "false_abstain_rate_on_determinate": 0.0125,
+        "false_commit_rate_on_u": 0.8,
+        "mean_core_reward": -0.0596,
+        "mean_total_reward": -0.0363,
+        "u_abstention_exact_match": 0.2,
+        "valid_format_rate": 1.0
+      },
+      "seed_2026": {
+        "abstain_rate": 0.0417,
+        "by_scenario_exact_match": {
+          "auditor_cites_poison": 0.925,
+          "contested_successor": 0.0,
+          "odd_refutation_cycle": 0.2,
+          "summarizer_laundering": 0.275
+        },
+        "determinate_exact_match": 0.6,
+        "eval_seconds": 138.38,
+        "exact_match": 0.4333,
+        "false_abstain_rate_on_determinate": 0.0125,
+        "false_commit_rate_on_u": 0.9,
+        "mean_core_reward": -0.1263,
+        "mean_total_reward": -0.1046,
+        "u_abstention_exact_match": 0.1,
+        "valid_format_rate": 1.0
+      },
+      "seed_42": {
+        "abstain_rate": 0.0333,
+        "by_scenario_exact_match": {
+          "auditor_cites_poison": 0.975,
+          "contested_successor": 0.0,
+          "odd_refutation_cycle": 0.2,
+          "summarizer_laundering": 0.25
+        },
+        "determinate_exact_match": 0.6125,
+        "eval_seconds": 120.18,
+        "exact_match": 0.4417,
+        "false_abstain_rate_on_determinate": 0.0,
+        "false_commit_rate_on_u": 0.9,
+        "mean_core_reward": -0.1167,
+        "mean_total_reward": -0.0946,
+        "u_abstention_exact_match": 0.1,
+        "valid_format_rate": 1.0
+      }
+    },
+    "paired_bootstrap_wave6": {
+      "GRPO_3SeedMean_minus_Bare_Nemotron_30B_exact": {
+        "boot_std": 0.053832750733395746,
+        "lcb_95": 0.05833333333333333,
+        "lcb_975": 0.04166666666666666,
+        "mean_delta": 0.1472222222222222,
+        "median_delta": 0.1472222222222222,
+        "n_queries": 120,
+        "p0125_bonf2": 0.02777777777777776,
+        "p9875_bonf2": 0.26944444444444443,
+        "p_value_two_sided": 0.0072499999999999995,
+        "ucb_95_one_sided": 0.2361111111111111,
+        "ucb_975": 0.25277777777777777
+      },
+      "GRPO_3SeedMean_minus_Base_7B_exact": {
+        "boot_std": 0.0639403343445722,
+        "lcb_95": 0.14999999999999997,
+        "lcb_975": 0.13055555555555554,
+        "mean_delta": 0.2555555555555556,
+        "median_delta": 0.25555555555555554,
+        "n_queries": 120,
+        "p0125_bonf2": 0.1111111111111111,
+        "p9875_bonf2": 0.3972222222222222,
+        "p_value_two_sided": 0.00035,
+        "ucb_95_one_sided": 0.35833333333333334,
+        "ucb_975": 0.3777777777777778
+      },
+      "GRPO_3SeedMean_minus_SFT_7B_exact": {
+        "boot_std": 0.01748815145132308,
+        "lcb_95": -0.00555555555555556,
+        "lcb_975": -0.011111111111111117,
+        "mean_delta": 0.022222222222222216,
+        "median_delta": 0.022222222222222216,
+        "n_queries": 120,
+        "p0125_bonf2": -0.013888888888888899,
+        "p9875_bonf2": 0.06388888888888888,
+        "p_value_two_sided": 0.22475,
+        "ucb_95_one_sided": 0.05277777777777777,
+        "ucb_975": 0.05833333333333333
+      },
+      "GRPO_3SeedMean_minus_SFT_7B_reward": {
+        "boot_std": 0.03514250945682222,
+        "lcb_95": -0.0009722222222222187,
+        "lcb_975": -0.010972222222222223,
+        "mean_delta": 0.055,
+        "median_delta": 0.05402777777777777,
+        "n_queries": 120,
+        "p0125_bonf2": -0.02,
+        "p9875_bonf2": 0.13902777777777775,
+        "p_value_two_sided": 0.10375,
+        "ucb_95_one_sided": 0.11430555555555558,
+        "ucb_975": 0.12666666666666665
+      },
+      "GRPO_seed_137_minus_SFT_7B_exact": {
+        "boot_std": 0.02730235347697968,
+        "clopper_pearson_lcb95": -0.05325544514617661,
+        "clopper_pearson_ucb95": 0.1325272230855624,
+        "lcb_95": 0.0,
+        "lcb_975": -0.008333333333333333,
+        "mean_delta": 0.041666666666666664,
+        "median_delta": 0.041666666666666664,
+        "n01": 3.0,
+        "n10": 8.0,
+        "n_queries": 120,
+        "p0125_bonf2": -0.016666666666666666,
+        "p9875_bonf2": 0.10833333333333334,
+        "p_value_two_sided": 0.16294999999999998,
+        "tango_score_lcb95": -0.014612122581240023,
+        "tango_score_lcb975_bonf2": -0.024625501230123612,
+        "tango_score_ucb95": 0.10525195276171792,
+        "tango_score_ucb975_bonf2": 0.11647832595645574,
+        "ucb_95_one_sided": 0.08333333333333333,
+        "ucb_975": 0.1
+      },
+      "GRPO_seed_2026_minus_SFT_7B_exact": {
+        "boot_std": 0.024835359645378155,
+        "clopper_pearson_lcb95": -0.07977089220772592,
+        "clopper_pearson_ucb95": 0.09557568770514957,
+        "lcb_95": -0.03333333333333333,
+        "lcb_975": -0.041666666666666664,
+        "mean_delta": 0.008333333333333333,
+        "median_delta": 0.008333333333333333,
+        "n01": 4.0,
+        "n10": 5.0,
+        "n_queries": 120,
+        "p0125_bonf2": -0.05,
+        "p9875_bonf2": 0.06666666666666667,
+        "p_value_two_sided": 0.87115,
+        "tango_score_lcb95": -0.047467774697270176,
+        "tango_score_lcb975_bonf2": -0.05775092212438726,
+        "tango_score_ucb95": 0.06585678198901207,
+        "tango_score_ucb975_bonf2": 0.076404054639328,
+        "ucb_95_one_sided": 0.05,
+        "ucb_975": 0.058333333333333334
+      },
+      "GRPO_seed_42_minus_SFT_7B_exact": {
+        "boot_std": 0.020516012678278343,
+        "clopper_pearson_lcb95": -0.058581451226326624,
+        "clopper_pearson_ucb95": 0.08978017754002758,
+        "lcb_95": -0.016666666666666666,
+        "lcb_975": -0.025,
+        "mean_delta": 0.016666666666666666,
+        "median_delta": 0.016666666666666666,
+        "n01": 2.0,
+        "n10": 4.0,
+        "n_queries": 120,
+        "p0125_bonf2": -0.025,
+        "p9875_bonf2": 0.06666666666666667,
+        "p_value_two_sided": 0.55445,
+        "tango_score_lcb95": -0.03008215625683943,
+        "tango_score_lcb975_bonf2": -0.0396003643808854,
+        "tango_score_ucb95": 0.06848291164257712,
+        "tango_score_ucb975_bonf2": 0.07864000457033125,
+        "ucb_95_one_sided": 0.05,
+        "ucb_975": 0.058333333333333334
+      }
+    }
+  },
+  "holm_bonferroni_multiplicity_family": {
+    "D1_Prose_GRPO_3SeedMean_vs_Bare_Nemotron_30B": {
+      "family_size": 6,
+      "holm_adjusted_p": 0.00030000000000000003,
+      "rank": 1,
+      "raw_p": 5e-05,
+      "reject_null_at_alpha": true,
+      "step_alpha_threshold": 0.008333333333333333
+    },
+    "D1_Prose_GRPO_3SeedMean_vs_Base_7B": {
+      "family_size": 6,
+      "holm_adjusted_p": 0.00030000000000000003,
+      "rank": 2,
+      "raw_p": 5e-05,
+      "reject_null_at_alpha": true,
+      "step_alpha_threshold": 0.01
+    },
+    "D1_Prose_GRPO_3SeedMean_vs_SFT_7B": {
+      "family_size": 6,
+      "holm_adjusted_p": 0.73305,
+      "rank": 6,
+      "raw_p": 0.73305,
+      "reject_null_at_alpha": false,
+      "step_alpha_threshold": 0.05
+    },
+    "EVAL_GRPO_3SeedMean_vs_Bare_Nemotron_30B": {
+      "family_size": 6,
+      "holm_adjusted_p": 0.02175,
+      "rank": 4,
+      "raw_p": 0.0072499999999999995,
+      "reject_null_at_alpha": true,
+      "step_alpha_threshold": 0.016666666666666666
+    },
+    "EVAL_GRPO_3SeedMean_vs_Base_7B": {
+      "family_size": 6,
+      "holm_adjusted_p": 0.0014,
+      "rank": 3,
+      "raw_p": 0.00035,
+      "reject_null_at_alpha": true,
+      "step_alpha_threshold": 0.0125
+    },
+    "EVAL_GRPO_3SeedMean_vs_SFT_7B": {
+      "family_size": 6,
+      "holm_adjusted_p": 0.4495,
+      "rank": 5,
+      "raw_p": 0.22475,
+      "reject_null_at_alpha": false,
+      "step_alpha_threshold": 0.025
+    }
+  },
+  "k4_guardrail_audit": {
+    "calibrated_3valued_reward_spec": {
+      "exact_canonical_match_core": 1.0,
+      "false_abstention_on_determinate_any_verdict": -0.15,
+      "gated_format_bonus_only_when_core_1": 0.05,
+      "keyword_only_signature_enforced": true,
+      "plus_025_verdict_abstain_loophole_closed": true,
+      "wrong_negated_mixed_or_unclosed_think": -1.0
+    },
+    "four_way_pairwise_disjoint_splits": {
+      "d1_entity_overlap": 0,
+      "d1_value_overlap": 0,
+      "noise_retractor_included_in_hash": true,
+      "pairwise_checked_pairs": [
+        "DEV__vs__EVAL",
+        "DEV__vs__GRPO_RL",
+        "DEV__vs__SFT_WARMUP",
+        "EVAL__vs__GRPO_RL",
+        "EVAL__vs__SFT_WARMUP",
+        "GRPO_RL__vs__SFT_WARMUP"
+      ],
+      "splits": {
+        "DEV": {
+          "families": [
+            "bitemporal_as_of:F",
+            "bitemporal_as_of:T",
+            "cross_domain_rebuttal_trap:F",
+            "cross_domain_rebuttal_trap:T",
+            "cross_domain_standoff:U",
+            "cyclic_derivation_void_fork:U"
+          ],
+          "label_counts": {
+            "F": 27,
+            "T": 27,
+            "U": 26
+          },
+          "n_entities": 5,
+          "n_episodes": 80,
+          "n_slots": 5,
+          "n_values": 25,
+          "retractor_entities": [
+            "noise-retractor-dev"
+          ],
+          "scenarios": [
+            "bitemporal_as_of",
+            "cross_domain_rebuttal_trap",
+            "cross_domain_standoff",
+            "cyclic_derivation_void_fork"
+          ],
+          "split_prompt_bundle_sha256": "6de48c6816e1681c5cbd094572ecca0dbfd38a7b5f8f0e4a75dba18bd39531c8"
+        },
+        "EVAL": {
+          "families": [
+            "auditor_cites_poison:F",
+            "auditor_cites_poison:T",
+            "contested_successor:U",
+            "odd_refutation_cycle:U",
+            "summarizer_laundering:F",
+            "summarizer_laundering:T"
+          ],
+          "label_counts": {
+            "F": 40,
+            "T": 40,
+            "U": 40
+          },
+          "n_entities": 5,
+          "n_episodes": 120,
+          "n_slots": 5,
+          "n_values": 25,
+          "retractor_entities": [
+            "noise-retractor-eval"
+          ],
+          "scenarios": [
+            "auditor_cites_poison",
+            "contested_successor",
+            "odd_refutation_cycle",
+            "summarizer_laundering"
+          ],
+          "split_prompt_bundle_sha256": "6b08233ce70b69fdd3ec5e1fabfbda8b0934e37acc48b4db96ccb89df078a4a3"
+        },
+        "GRPO_RL": {
+          "families": [
+            "asof_postcutoff_reversal:F",
+            "asof_postcutoff_reversal:T",
+            "audit_cite_chain_override:F",
+            "audit_cite_chain_override:T",
+            "dual_branch_unlinked_fork:U",
+            "laundered_peer_standoff:U",
+            "laundered_supersede_takeover:F",
+            "laundered_supersede_takeover:T",
+            "sybil_corroboration:F",
+            "sybil_corroboration:T"
+          ],
+          "label_counts": {
+            "F": 64,
+            "T": 64,
+            "U": 64
+          },
+          "n_entities": 7,
+          "n_episodes": 192,
+          "n_slots": 7,
+          "n_values": 43,
+          "retractor_entities": [
+            "noise-retractor-grpo"
+          ],
+          "scenarios": [
+            "asof_postcutoff_reversal",
+            "audit_cite_chain_override",
+            "dual_branch_unlinked_fork",
+            "laundered_peer_standoff",
+            "laundered_supersede_takeover",
+            "sybil_corroboration"
+          ],
+          "split_prompt_bundle_sha256": "2a5f6df6738b9c3e4784028e6c46f08cb8c3b5518995663c62433f68c796e2d6"
+        },
+        "SFT_WARMUP": {
+          "families": [
+            "conflict_refute:F",
+            "conflict_refute:T",
+            "peer_deadlock:U",
+            "silent_multi_current:U",
+            "supersede_chain:F",
+            "supersede_chain:T"
+          ],
+          "label_counts": {
+            "F": 32,
+            "T": 32,
+            "U": 32
+          },
+          "n_entities": 5,
+          "n_episodes": 96,
+          "n_slots": 5,
+          "n_values": 25,
+          "retractor_entities": [
+            "noise-retractor-sft"
+          ],
+          "scenarios": [
+            "conflict_refute",
+            "peer_deadlock",
+            "silent_multi_current",
+            "supersede_chain"
+          ],
+          "split_prompt_bundle_sha256": "ab8642f84a69cb93a0c18f3f5a7259d8e1ca3ef3050e928f4c7911ec7bc2803e"
+        }
+      }
+    },
+    "max_completion_length_matched": 272,
+    "max_peak_cuda_memory_gib": 25.375,
+    "max_prompt_length_cap": 1664,
+    "peak_cuda_memory_gib_by_stage": {
+      "base_7b_eval": 23.078,
+      "grpo_train_seed_137": 25.375,
+      "grpo_train_seed_2026": 25.375,
+      "grpo_train_seed_42": 25.374,
+      "sft_reload_and_eval": 23.109,
+      "sft_train_and_merge": 24.779
+    },
+    "peak_memory_within_34gb_cap": true,
+    "prompt_max_tokens_by_split": {
+      "DEV": 1037,
+      "EVAL": 1017,
+      "GRPO_RL": 1225,
+      "SFT_WARMUP": 1102
+    },
+    "sft_calibration_on_grpo_rl_split": {
+      "abstain_rate": 0.0521,
+      "by_scenario_exact_match": {
+        "asof_postcutoff_reversal": 0.5625,
+        "audit_cite_chain_override": 0.4375,
+        "dual_branch_unlinked_fork": 0.0312,
+        "laundered_peer_standoff": 0.125,
+        "laundered_supersede_takeover": 0.1562,
+        "sybil_corroboration": 0.0938
+      },
+      "determinate_exact_match": 0.3125,
+      "eval_seconds": 235.82,
+      "exact_match": 0.2344,
+      "false_abstain_rate_on_determinate": 0.0391,
+      "false_commit_rate_on_u": 0.9219,
+      "mean_core_reward": -0.5091,
+      "mean_total_reward": -0.4974,
+      "u_abstention_exact_match": 0.0781,
+      "valid_format_rate": 0.9427
+    },
+    "sft_completion_only_and_zero_oracle_leak": {
+      "completion_tokens_max": 272,
+      "completion_tokens_min": 100,
+      "cot_oracle_exact_matches": 96,
+      "cot_uses_prompt_text_only": true,
+      "dataloader_batch_supervised_token_fraction": 0.1685,
+      "n_sft_examples": 96,
+      "prompt_tokens_max": 1102,
+      "prompt_tokens_min": 472,
+      "store_slot_status_leaked": false,
+      "unmasked_prompt_token_count": 0
+    },
+    "sft_merge_and_unload_before_grpo": {
+      "grpo_fresh_lora_alpha": 64,
+      "grpo_fresh_lora_dropout": 0.0,
+      "grpo_fresh_lora_rank": 32,
+      "grpo_kl_beta": 0.04,
+      "max_kl_ref_vs_frozen_sft_logit_diff": 0.0,
+      "sft_disk_reload_max_abs_logit_diff": 0.0,
+      "sft_epochs": 3,
+      "sft_lora_rank": 16,
+      "sft_lr": 8e-05,
+      "sft_train_loss": 0.39774,
+      "sft_train_seconds": 489.96,
+      "sft_vs_base_logit_shift": 31.05078125
+    },
+    "three_seed_training_telemetry": {
+      "frac_reward_zero_std_below_080": true,
+      "max_frac_reward_zero_std": 1.0,
+      "max_reload_logit_diff_across_seeds": 0.0,
+      "mean_frac_reward_zero_std": 0.1667,
+      "mean_kl_3seed": 0.001582,
+      "mean_rollout_abstain_rate_3seed": 0.0781,
+      "preregistered_seeds": [
+        42,
+        137,
+        2026
+      ],
+      "reload_logit_parity_below_1e4": true
+    }
+  },
+  "nemotron_baseline_endpoint": "http://127.0.0.1:8890/v1 (nemotron-lightning, enable_thinking=False)",
+  "pipeline_wall_seconds": 6889.78,
+  "schema_version": "wave6_d4_trained_epistemic_grpo_k4_v1",
+  "timestamp_utc": "2026-11-23T14:16:09.759807+00:00",
+  "track": "Wave 6 Track D \u2014 Demo D4 (Guardrail K4)",
+  "trained_grpo_checkpoint_present": true
+}

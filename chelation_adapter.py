@@ -362,12 +362,13 @@ class BoundedAdapter(nn.Module):
         max_correction: Maximum L2 norm for correction delta (default 0.5,
             prevents divergence)
     """
-    def __init__(self, base_adapter, min_correction=0.01, max_correction=0.5):
+    def __init__(self, base_adapter, min_correction=0.01, max_correction=0.5, enforce_min_floor=True):
         super().__init__()
         self.base_adapter = base_adapter
         self.input_dim = base_adapter.input_dim
         self.min_correction = min_correction
         self.max_correction = max_correction
+        self.enforce_min_floor = bool(enforce_min_floor) and (min_correction > 0.0)
         # Per-dimension learned scaling (initialized to 1.0)
         self.dim_scale = nn.Parameter(torch.ones(self.input_dim))
 
@@ -395,20 +396,20 @@ class BoundedAdapter(nn.Module):
         # Compute correction magnitude per vector
         correction_norm = torch.norm(delta, dim=1, keepdim=True)
 
-        # Scale corrections to be within [min_correction, max_correction]
-        # If correction is too small, scale UP (above INT8 noise floor)
-        # If correction is too large, scale DOWN (prevent divergence)
+        # Cap large corrections at max_correction. Enforce the min_correction floor
+        # only when enforce_min_floor=True and min_correction > 0 so callers needing
+        # exact near-identity / null preservation can opt out cleanly.
         scale = torch.ones_like(correction_norm)
         too_small = correction_norm < self.min_correction
         too_large = correction_norm > self.max_correction
-        # Only rescale non-zero corrections
         nonzero = correction_norm > 1e-10
 
-        scale = torch.where(
-            too_small & nonzero,
-            self.min_correction / correction_norm.clamp(min=1e-10),
-            scale
-        )
+        if self.enforce_min_floor:
+            scale = torch.where(
+                too_small & nonzero,
+                self.min_correction / correction_norm.clamp(min=1e-10),
+                scale
+            )
         scale = torch.where(
             too_large,
             self.max_correction / correction_norm.clamp(min=1e-10),

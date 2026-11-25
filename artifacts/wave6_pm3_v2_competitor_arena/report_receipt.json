@@ -1,0 +1,12 @@
+{
+  "artifact_sha256": {
+    "wave6_pm3_v2_arena_manifest.json": "05442a849c199ad32955ce2145c1540b7bf0f78c3e56bb6392a69100894c5773",
+    "wave6_pm3_v2_arena_rows.csv": "605c03d513d018941249db95bfbc190a695d732415faae44c6e3d8bc57f6c0b5"
+  },
+  "bundle_dir": "wave6_pm3_v2_competitor_arena",
+  "generated_at_utc": "2026-11-23T12:12:28.275869+00:00",
+  "git_sha": "5a9bd46f2eeae2522a4a8d81017edb3c2407f936",
+  "manifest": "wave6_pm3_v2_arena_manifest.json",
+  "manifest_sha256": "05442a849c199ad32955ce2145c1540b7bf0f78c3e56bb6392a69100894c5773",
+  "schema_version": "wave6_receipt_v1"
+}

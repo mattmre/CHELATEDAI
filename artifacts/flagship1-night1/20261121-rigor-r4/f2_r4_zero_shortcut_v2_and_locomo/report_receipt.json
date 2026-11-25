@@ -1,0 +1,12 @@
+{
+  "artifact_hashes": {
+    "f2_r4_locomo_300_rows.csv": "74a3db92c747dc24993cd7e5ced369e2f6a10423caa51d8ae31a6be4f678d165",
+    "f2_r4_suites_manifest.json": "2a3f4368366b6cd55e9f56408634754f42ff2c51fbbb034ff529a845fadb03c4",
+    "f2_r4_zero_shortcut_v2_rows.csv": "c7258d87745985dd2b22f637d95268ebd772584e7ff816cb328d3fd64671b481"
+  },
+  "git_sha": "18973789615ecab1268a77ebd3c69a283607241c",
+  "manifest_path": "f2_r4_suites_manifest.json",
+  "manifest_sha256": "2a3f4368366b6cd55e9f56408634754f42ff2c51fbbb034ff529a845fadb03c4",
+  "schema_version": "r4_report_receipt_v1",
+  "wall_seconds": 264.03
+}

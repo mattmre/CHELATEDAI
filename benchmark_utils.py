@@ -17,12 +17,17 @@ Functions:
     - load_mteb_data: Load corpus, queries, and qrels from MTEB tasks
 """
 
+from collections.abc import Mapping as MappingABC, Sequence as SequenceABC, Set as SetABC
 from contextlib import contextmanager
+import hashlib
+import math
 from pathlib import Path
 import shutil
 import numpy as np
-from typing import Dict, Tuple, Optional, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 from uuid import UUID, uuid4
+
+METRIC_CONTRACT_VERSION = "mlr-v1"
 
 try:
     import mteb
@@ -138,61 +143,153 @@ def isolated_adapter_state(adapter_path: Optional[Union[str, Path]] = None):
 
 
 # =============================================================================
-# Metric Calculation (NDCG@k)
+# Metric Calculation (Canonical Complete-Qrels Contract: mlr-v1)
 # =============================================================================
+
+def _validate_k(k: Any) -> int:
+    if isinstance(k, bool) or not isinstance(k, int) or k < 1:
+        raise ValueError("k must be a positive integer")
+    return k
+
+
+def validate_ranked_ids(ranked_ids: Iterable[Any], k: Optional[int] = None) -> List[str]:
+    """Canonicalize ranked document IDs and fail closed on duplicates."""
+    if isinstance(ranked_ids, (str, bytes)):
+        raise TypeError("ranked_ids must be a sequence of document IDs, not a string/bytes")
+    if k is not None:
+        k = _validate_k(k)
+        raw_items = list(ranked_ids)[:k]
+    else:
+        raw_items = list(ranked_ids)
+    ranked = [canonicalize_id(doc_id) for doc_id in raw_items]
+    if len(set(ranked)) != len(ranked):
+        raise ValueError("ranked_ids must not contain duplicate document IDs")
+    return ranked
+
+
+def _normalize_qrels_gains(qrels: Any, *, binary: bool = False) -> Dict[str, float]:
+    """Normalize complete qrels (mapping or positive-ID set/sequence) to positive gains."""
+    if isinstance(qrels, (int, float, bool)) or qrels is None:
+        raise TypeError(
+            "ndcg_at_k requires (ranked_ids, complete_qrels, k=...); "
+            "legacy retrieved-only gain-vector signature ndcg_at_k(r, k) is forbidden"
+        )
+    if isinstance(qrels, (str, bytes)):
+        raise TypeError("qrels must be a mapping or collection of document IDs, not a string")
+
+    pos_gains: Dict[str, float] = {}
+    if isinstance(qrels, MappingABC):
+        for doc_id, score in qrels.items():
+            if isinstance(score, bool) or not isinstance(score, (int, float)):
+                raise TypeError(f"qrel score for {doc_id!r} must be numeric")
+            val = float(score)
+            if not math.isfinite(val):
+                raise ValueError(f"qrel score for {doc_id!r} must be finite")
+            if val > 0.0:
+                pos_gains[canonicalize_id(doc_id)] = 1.0 if binary else val
+        return pos_gains
+
+    if isinstance(qrels, (SetABC, SequenceABC, Iterable)):
+        for doc_id in qrels:
+            pos_gains[canonicalize_id(doc_id)] = 1.0
+        return pos_gains
+
+    raise TypeError("qrels must be a mapping of doc_id -> relevance or an iterable of relevant doc_ids")
+
+
+def build_metric_contract_manifest(
+    *,
+    metric_name: str = "ndcg_at_k",
+    k: int = 10,
+    gain_rule: str = "binary",
+    qrels_sha256: str,
+    query_inclusion_rule: str = "positive_qrels_only",
+    tie_break: str = "score_desc_doc_id_asc",
+) -> Dict[str, Any]:
+    """Return content-addressed metadata binding metric implementation and qrels."""
+    k_val = _validate_k(k)
+    impl_bytes = Path(__file__).read_bytes()
+    impl_sha256 = hashlib.sha256(impl_bytes).hexdigest()
+    return {
+        "contract_version": METRIC_CONTRACT_VERSION,
+        "metric_name": str(metric_name),
+        "k": k_val,
+        "gain_rule": str(gain_rule),
+        "ideal_ranking_population": "all_positive_qrels",
+        "query_inclusion_rule": str(query_inclusion_rule),
+        "qrels_sha256": str(qrels_sha256),
+        "implementation_file": Path(__file__).name,
+        "implementation_sha256": impl_sha256,
+        "tie_break": str(tie_break),
+        "duplicate_doc_id_policy": "fail_closed_value_error",
+    }
+
 
 def dcg_at_k(r, k):
     """
     Discounted Cumulative Gain at rank k.
-    
+
     Args:
         r: Array-like of relevance scores (binary or graded)
         k: Rank cutoff
-        
+
     Returns:
         float: DCG score
     """
+    k = _validate_k(k)
     r = np.asarray(r, dtype=float)[:k]
     if r.size:
-        return np.sum(r / np.log2(np.arange(2, r.size + 2)))
-    return 0.
+        return float(np.sum(r / np.log2(np.arange(2, r.size + 2))))
+    return 0.0
 
 
-def ndcg_at_k(r, k):
+def ndcg_at_k(ranked_ids, qrels, k=10, *, binary: bool = False) -> float:
     """
-    Normalized Discounted Cumulative Gain at rank k.
+    Normalized Discounted Cumulative Gain at rank k using ALL positive qrels for IDCG.
+
+    Fails closed on legacy retrieved-only gain-vector calls (ndcg_at_k(gains, k)),
+    duplicate ranked document IDs, and invalid cutoffs.
 
     Args:
-        r: Array-like of relevance scores (binary or graded)
-        k: Rank cutoff
+        ranked_ids: Ordered sequence of retrieved document IDs.
+        qrels: Complete positive-qrel set/iterable (binary) or mapping {doc_id: score}
+            (graded unless binary=True).
+        k: Rank cutoff (>= 1).
+        binary: If True, binarize all positive mapping scores (> 0) to 1.0.
 
     Returns:
-        float: NDCG score in [0, 1]
+        float: NDCG@k in [0.0, 1.0].
     """
-    dcg_max = dcg_at_k(sorted(r, reverse=True), k)
-    if not dcg_max:
-        return 0.
-    return dcg_at_k(r, k) / dcg_max
+    k = _validate_k(k)
+    pos_gains = _normalize_qrels_gains(qrels, binary=binary)
+    ranked = validate_ranked_ids(ranked_ids, k=k)
+    if not pos_gains:
+        return 0.0
+
+    dcg = sum(
+        pos_gains[doc_id] / math.log2(rank + 2.0)
+        for rank, doc_id in enumerate(ranked)
+        if doc_id in pos_gains
+    )
+    ideal_gains = sorted(pos_gains.values(), reverse=True)[:k]
+    idcg = sum(gain / math.log2(rank + 2.0) for rank, gain in enumerate(ideal_gains))
+    if idcg <= 0.0:
+        return 0.0
+    return float(dcg / idcg)
 
 
 # =============================================================================
 # Extended Metrics (Phase 6)
 # =============================================================================
 
-def mean_average_precision_at_k(retrieved_ids, relevant_ids, k=10):
+def mean_average_precision_at_k(retrieved_ids, relevant_ids, k=10) -> float:
     """
     Average Precision at rank k for a single query.
-
-    Args:
-        retrieved_ids: List of retrieved document IDs (ordered by rank)
-        relevant_ids: Set/list of relevant document IDs
-        k: Rank cutoff
-
-    Returns:
-        float: AP@k score
+    Fails closed on duplicate document IDs so AP@k is strictly bounded in [0.0, 1.0].
     """
-    retrieved = list(retrieved_ids)[:k]
-    relevant_set = set(relevant_ids)
+    k = _validate_k(k)
+    retrieved = validate_ranked_ids(retrieved_ids, k=k)
+    relevant_set = set(_normalize_qrels_gains(relevant_ids, binary=True).keys())
 
     if not relevant_set:
         return 0.0
@@ -208,48 +305,40 @@ def mean_average_precision_at_k(retrieved_ids, relevant_ids, k=10):
     if num_relevant == 0:
         return 0.0
 
-    return sum_precision / min(len(relevant_set), k)
+    return float(sum_precision / min(len(relevant_set), k))
 
 
-def mean_reciprocal_rank(retrieved_ids, relevant_ids):
+def mean_reciprocal_rank(retrieved_ids, relevant_ids) -> float:
     """
     Reciprocal Rank for a single query.
-
-    Args:
-        retrieved_ids: List of retrieved document IDs (ordered by rank)
-        relevant_ids: Set/list of relevant document IDs
-
-    Returns:
-        float: RR score (1/rank of first relevant result, or 0)
+    Fails closed on duplicate document IDs.
     """
-    relevant_set = set(relevant_ids)
-
-    for i, doc_id in enumerate(retrieved_ids):
-        if doc_id in relevant_set:
-            return 1.0 / (i + 1)
-
-    return 0.0
-
-
-def recall_at_k(retrieved_ids, relevant_ids, k=10):
-    """
-    Recall at rank k for a single query.
-
-    Args:
-        retrieved_ids: List of retrieved document IDs (ordered by rank)
-        relevant_ids: Set/list of relevant document IDs
-        k: Rank cutoff
-
-    Returns:
-        float: Recall@k score
-    """
-    retrieved_set = set(list(retrieved_ids)[:k])
-    relevant_set = set(relevant_ids)
+    retrieved = validate_ranked_ids(retrieved_ids, k=None)
+    relevant_set = set(_normalize_qrels_gains(relevant_ids, binary=True).keys())
 
     if not relevant_set:
         return 0.0
 
-    return len(retrieved_set & relevant_set) / len(relevant_set)
+    for i, doc_id in enumerate(retrieved):
+        if doc_id in relevant_set:
+            return float(1.0 / (i + 1))
+
+    return 0.0
+
+
+def recall_at_k(retrieved_ids, relevant_ids, k=10) -> float:
+    """
+    Recall at rank k for a single query.
+    Fails closed on duplicate document IDs.
+    """
+    k = _validate_k(k)
+    retrieved_set = set(validate_ranked_ids(retrieved_ids, k=k))
+    relevant_set = set(_normalize_qrels_gains(relevant_ids, binary=True).keys())
+
+    if not relevant_set:
+        return 0.0
+
+    return float(len(retrieved_set & relevant_set) / len(relevant_set))
 
 
 # =============================================================================

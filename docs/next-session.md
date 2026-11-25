@@ -17,7 +17,16 @@
   BLOCKED automatically.
 -->
 
-## Active EGV campaign handoff — 2026-08-24
+## Active Multi-Wave Campaign Handoff — 2026-11-25 (`Waves 1–21` / `Bundles #1–#64`)
+
+- **Master Evidence & PR Index:** Full wave-by-wave and bundle-by-bundle (`#1–#64`) cryptographic ledger is tracked in `docs/research/WAVES_1_TO_21_MASTER_EVIDENCE_AND_PR_INDEX.md` across the three stacked branches:
+  1. `fix/stage0-metric-lineage-and-m1-ladder` (`Waves 1–13 / v6.0`, Bundles `#1–#45`: `40/40` verified in `docs/research/verified_registry.json` `6e6e9a156f38` + `D6` `0578d56b715d` + `D7` `d6a12534fa7c` + `D8` `3fea611fe16a` sealed; `D9` Stage-3 + `D10 Part B` `70B` reader sweep actively finishing on `DGX Spark #2` `10.0.0.194`, `PID 2818225`).
+  2. `feat/v7-formal-pm6` (`Waves 14–15 / v7.0`, commit `60ffc1f7`, tag `wave14b-pm6-live-sealed-20261125`: `/formal` Lean 4 `Theorems 1a, 1b, 2, 3, 4` + `nanoda_bin 0.4.32` external kernel + `7,722`-checkpoint conformance + live `Demo D11 / PM-6` `7248d05a02ba` `status=COMPLETED`, `all_gates_pass=true`).
+  3. `pv7/w16-core` (`Waves 16–21 / Post-v7.0`, commit `25ae2067`: all `18/18` additive bundles `#47–#64` passing offline verifiers `47_verifier.py`..`64_verifier.py` `rc=0`, plus live hardware receipts on `#47` A/A calibration, `#48` `12/12` live Qdrant 1.20.2 + OpenSearch 3.9.0 + pgvector 0.8.7 HNSW pushdown, `#49` `36/36` clean-venv wheel cold starts, `#53` `100/100` PM-6 benign shadow, `#57` Spark #3 `cgroup v2` `.cspg` cartridges, `#61` `D12 /fabric` `16/16` live encoders, and `#62` `D13` `1,120`-cell Stage-1 replay + Spark #3 `7,834`-call live vLLM workers).
+- **Release Honesty Gate (`PRE-RELEASE` Retained):** Public production release remains gated on **`PM-4b`** (`100`-item independent human grading of `pm4_human_audit_100_blind_sheet.csv` — never self-graded by LLMs) and **`PM-1b`** (`assignment_gates_pass = false`). Non-NDA surfaces pass `56/56` forbidden-term IP scans (`0` hits).
+- **Immediate Resume / Finalization Order:** Pull `D9` (`wave11_d9_extractor_grpo_manifest.json` + `report_receipt.json`) and `D10 Part B` (`part_b_70b_sweep_summary.json` -> `D10 --mode assemble-manifest`) from `Spark #2` (`/tmp/sp2_v6rc5_final.log`), seal `v6.0` (`45/45` in `verified_registry.json`), fast-merge `feat/v7-formal-pm6` (`46/46` `v7.0` with `--full-formal`), and rebase `pv7/w16-core` (`64/64` total).
+
+## Historical EGV campaign handoff — 2026-08-24
 
 - PR #305 merged under the recorded owner override as merge commit
   `88b4858471a59553d073cc6fac87a216c6e86260`. Its final exact head
@@ -70,7 +79,11 @@ the existing block-flag calculation.
 ## Block flag
 
 **Current**: `CLEAR` — CD-305-01, CD-A2-01, and CD-H1-01 are closed in the
-table below. `scripts/check_block_flag.py` sees zero OPEN rows. This is not an
+table below. `CD-MLR-01` is opened in its first cycle for complete-qrels
+supersession of the quarantined legacy drift-recovery lineage (`113/113 affected tracked artifacts`
+locked in `artifacts/legacy-ndcg-quarantine-index-v2.json` with fail-closed validator
+`scripts/validate_metric_lineage_quarantine.py`, deferred scope tracked as `DS-MLR-01`).
+Per §6.3, first-cycle items keep the block flag `CLEAR`. This is not an
 extension of the PR #305/#306 operator override.
 
 When the flag is `BLOCKED`, no new feature work may merge until Carried Debt is
@@ -112,6 +125,7 @@ still mentions `BLOCKED`. That word is not the current state.
 | CD-TTS-001 | TTS-2 audit: grep of all 17 `run_*.py` runners for `enable_tts` or `--enable-tts` returns zero matches. TTSPipeline is library-callable only; no campaign runner can populate the dashboard TTS panel without external glue code. Visible-without-evidence pattern: panel + API exist, but no operationally-reachable activation path. L4 + L5. | BHS Scope B audit 2026-05-16 | 1 cycle | NO — short fix; dashboard already shows honest "not enabled" empty state | **CLOSED**: PR #252 — `--enable-tts`, `--no-tts-translation`, and `--no-tts-transport` flags wired into `run_road_course_campaign.py`; CLI wiring tested through real `main()` in `TestRunRoadCourseCampaignCLIWiring` |
 | CD-TTS-002 | TTS-1 audit: REM-C2 (per-inference signal clearing in `tts_pipeline.py:213-218`) and REM-H2 (`FeatureDirectionBank` Gaussian unit vectors) are fixed in code but no test would fail if either were reverted. Two of the four bug classes that triggered the post-merge remediation wave can silently regress. L5. | BHS Scope B audit 2026-05-16 | 1 cycle | NO — code is fixed; regression coverage is the gap | **CLOSED**: PR #252 — regression tests added for REM-C2 (cross-inference signal-accumulation guard) and REM-H2 (Gaussian direction-bank distribution test); both tests would fail if the corresponding fixes were reverted |
 | CD-H1-01 | The committed swap-campaign result docs (`docs/drift-recovery-swap-results-2026-06.md`, `docs/drift-recovery-swap-nfcorpus-results-2026-06.md`) carry C3a baseline AND final NDCG (+ the C3a budget sweep) generated before the H1 fix (commit `5b2379b`), which removed a build-time bounded adapter that contaminated C3a's ingested vectors / pre-correction baseline. C3a's ingest, baseline, and trained-adapter snapshot all shift after the fix; C0/C2/C2O/C4a are unaffected. The stale C3a numbers are disclosed inline in both docs. L13 (stale-docs). | H1 (PR pending) | expired | NO — cleared from committed manifests on this branch; not a live block | **CLOSED** — read from the committed JSON, not the PR body; the GPU campaign was not re-executed in this session. SciFact seed 42 `baseline_ndcg` for C0/C2/C2O/C3a/C4a is `0.7934593935363062` in `experiment_runs/drift-recovery/swap/swap-campaign-manifest-2026-06.json`. NFCorpus seed 42 for those five conditions is `0.5550044219616403` in `experiment_runs/drift-recovery/swap-nfcorpus/swap-campaign-manifest-2026-06.json` (seeds 1337 and 7 also match across conditions: `0.5936171482249235` and `0.6443047069474342`). On origin/main before this branch, NFCorpus seed-42 C3a baseline was `0.5563402674063337` and did not match; SciFact seed-42 baselines already matched. |
+| CD-MLR-01 | Legacy drift-recovery nDCG artifacts (113/113 affected tracked artifacts indexed in `artifacts/legacy-ndcg-quarantine-index-v2.json` and gated by fail-closed validator `scripts/validate_metric_lineage_quarantine.py`) were computed under truncated top-k IDCG (`MLR-NDCG-001`) and await complete-qrels (`mlr-v1`) regeneration and hash-linked supersession. | Stage 0 metric-lineage remediation (2026-11-21) | 1 cycle | NO — quarantined and code-fixed (`mlr-v1`); awaits Night-1 regeneration | OPEN — canonical `benchmark_utils.ndcg_at_k` (`mlr-v1`) and fail-closed quarantine validator landed on `fix/stage0-metric-lineage-and-m1-ladder`; full regeneration tracked as `DS-MLR-01`. |
 
 **Schema**:
 - `ID`: stable identifier, prefix `CD-` + sequential number (CD-001, CD-002, ...).
@@ -132,7 +146,7 @@ not-in-scope items. They appear here so the next planner sees them.
 
 | ID | Item | Source PR | Why deferred |
 |----|------|-----------|--------------|
-| _none yet_ | _—_ | _—_ | _—_ |
+| DS-MLR-01 | Complete-qrels (`mlr-v1`) empirical regeneration superseding the 113 quarantined legacy drift-recovery artifacts (`artifacts/legacy-ndcg-quarantine-index-v2.json`). | Stage 0 metric-lineage remediation (2026-11-21) | Requires GPU BEIR benchmark regeneration after Stage 0 code & quarantine gate land. |
 
 ## Disposition — living / annealed post-bank corrector (H5)
 
@@ -203,6 +217,18 @@ entry; this log is the audit trail.
 - Diff: main advanced through 6 merge commits to `3d1d620`; branches (local+remote) deleted; checkout back on `main`
 - OPEN debt: 0 new rows added. Pre-existing BLOCKED flag rows (CD-305-01, CD-A2-01-needs-Spark, CD-H1-01) untouched — Spark window + operator decision still required
 - Historical as of 2026-09-03: Leftovers: lattice #292–#295 (dry-run clean, await merge orders), #278 (1 fail: §4 body), 4 DRAFTs (expected gate fails), docs-loss incident filed in `docs/aep-remediation/closeout-addendum-20260903.md` + `RECOVERY-LOG-20260903.md` (126 files restored). #292, #293, and #294 later merged and #295 did not.
+
+## Session Evidence (2026-11-25; Waves 1–21 Multi-Node Fleet Execution, Formal Lean 4, PM-6, & Post-v7.0 Additive Spine)
+- **Commands & Exit Codes:**
+  - `python scripts/verify_all_offline.py --fast` (`D:\GITHUB\CHELATEDAI-STAGE0-NIGHT1`) -> `PASS` (`exit 0`, `10.2s`, `40/40` spec bundles + standalone `D6/D7/D8` + Ed25519 D8 replay + `0/56` Non-NDA scan + `PRE-RELEASE` honesty gate).
+  - `python scripts/check_block_flag.py` -> `PASS` (`exit 0`, block flag `CLEAR`, `1` first-cycle OPEN row `CD-MLR-01`).
+  - `python scripts/validate_metric_lineage_quarantine.py` -> `PASS` (`exit 0`, `113/113` legacy nDCG artifacts quarantined).
+  - `python -m pytest -q tests/test_wave11_d7_zep_graphiti.py tests/test_wave11_d9_extractor_and_grpo.py tests/test_wave11_d10_scale_proof.py` -> `PASS` (`exit 0`, `54 passed`).
+  - `PV7` (`D:\GITHUB\CHELATEDAI-PV7-SPINE`): `scripts/verifiers.d/47_verifier.py`..`64_verifier.py` (`18/18` `exit 0` with `CUDA_VISIBLE_DEVICES=""`) + Spark #1 live `run_pv7_w17_6a_engine_closure.py --mode run-live` -> `PASS` (`exit 0`, `12/12` cells across Qdrant `1.20.2`, OpenSearch `3.9.0`, pgvector `0.8.7/PG17`, `68,000` EK5 nodes).
+- **Changed / Added Key Artifacts:** `artifacts/wave11_d7_live_zep_graphiti_arena/` (`d6a12534fa7c`), `scripts/run_wave11_d7_live_zep_graphiti_arena.py`, `scripts/run_wave11_d9_fast_extractor_and_u_grpo.py`, `scripts/run_wave11_d10_5m_real_cutover_and_70b_scale.py`, `docs/research/WAVES_1_TO_21_MASTER_EVIDENCE_AND_PR_INDEX.md`; on `feat/v7-formal-pm6`: `formal/*`, `artifacts/wave14_d11_pm6_takedown_carryforward/` (`7248d05a02ba`); on `pv7/w16-core`: `chelated_pv7_spine/*`, `packages/chelated_kernel/*`, `artifacts/pv7_*` (`#47–#64`).
+- **Limitations & Honest Disclosures:** `PRE-RELEASE` retained (`PM-4b` human sheet ungraded; `PM-1b` `assignment_gates_pass=false`); `D9` Part A extractor mean `~2,104 ms > 1,500 ms` target (`latency_gate_not_met`); `D10` Part A `Quora` `-0.06919` nDCG@10 loss vs `RRF_k60` disclosed in 24-contrast Holm family; `PV7 #63/#64` remain `protocol-ready` pending external buyer-signed runs; `0` GPU hours spent on retracted `MemT-1.0` weights.
+- **OPEN Carried Debt:** `1` (`CD-MLR-01`, non-blocking, first cycle; block flag `CLEAR`).
+- **First Resume Action:** Inspect `/tmp/sp2_v6rc5_final.log` on `mattmre@10.0.0.194`, pull `wave11_d9_extractor_grpo_manifest.json` + `part_b_70b_sweep_summary.json`, run `D10 --mode assemble-manifest`, update `verified_registry.json` (`45/45` `v6.0` -> merge `feat/v7-formal-pm6` `46/46` `v7.0` -> rebase `pv7/w16-core` `64/64`), and promote the stacked PRs from Draft.
 
 ## Rebase note (2026-09-22, PR #292)
 

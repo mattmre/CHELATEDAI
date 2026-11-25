@@ -1,0 +1,11 @@
+{
+  "artifact_hashes": {
+    "r6_pm4_conversational_kappa_manifest.json": "5c699f4e4b6eee54f26b54eca7957d7c9e964f197f8cc63465392678a5e742cc",
+    "r6_pm4_conversational_kappa_n200_rows.csv": "d5bc67e605992c22d997adf687ce18a2623fd486253116c2f4f7fed5f264d9c4"
+  },
+  "bundle_id": "r6_pm4_conversational_kappa_n200",
+  "git_sha": "4dbc98bf92359f386f4b6dc523da6f63db659ebc",
+  "manifest_file": "r6_pm4_conversational_kappa_manifest.json",
+  "manifest_sha256": "5c699f4e4b6eee54f26b54eca7957d7c9e964f197f8cc63465392678a5e742cc",
+  "schema_version": "report_receipt_v4_0"
+}

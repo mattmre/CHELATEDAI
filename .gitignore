@@ -77,3 +77,18 @@ adapter_weights.benchmark-backup-*.pt
 
 # Experiment run output directories
 experiment_runs/
+
+# Raw per-query/per-row CSV/JSONL dumps & scratch directories across all artifact bundles
+artifacts/flagship1-night1/**/*.csv
+artifacts/flagship1-night1/**/*.jsonl
+artifacts/**/*.csv
+artifacts/**/*.jsonl
+artifacts/**/_work/
+artifacts/**/scratch/
+# Local backup vaults (keep only canonical tracked pristine mirror in git)
+archive/*
+!archive/pristine-b37e6a55-exact/
+!archive/pristine-b37e6a55-exact/**
+# Keep sealed human-audit answer keys off public git commits (preserve SHA-256 commitments in receipts/manifests only)
+artifacts/flagship1-night1/**/pm4_human_audit_100_sealed_key*.json
+artifacts/**/pm4_human_audit_100_sealed_key*.json

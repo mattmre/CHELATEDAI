@@ -1,0 +1,11 @@
+{
+  "artifact_hashes": {
+    "phase2_d1_v2_rows.csv": "3fcbab523376d14e806c9d65e9abddd02ff9e2dd700138809e1fc846937e769c",
+    "phase2_wave2_d1v2_and_d2_1m_manifest.json": "908434685ea69446b1d83491b4aa87293e48a59b12efe96f9a82ea28c34559ef"
+  },
+  "bundle_id": "phase2_wave2_d1v2_and_d2_1m",
+  "git_sha": "f1ecb05264667195cba3ea5c8c83448248351c0c",
+  "manifest_file": "phase2_wave2_d1v2_and_d2_1m_manifest.json",
+  "manifest_sha256": "908434685ea69446b1d83491b4aa87293e48a59b12efe96f9a82ea28c34559ef",
+  "schema_version": "report_receipt_v4_0"
+}

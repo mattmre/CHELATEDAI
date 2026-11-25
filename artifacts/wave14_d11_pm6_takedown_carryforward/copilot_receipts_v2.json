@@ -1,0 +1,378 @@
+{
+  "all_entries_valid": true,
+  "chain_detail": {
+    "head_hash": "b214649ccadd14bf8ea680a5efbef7d40478bd8f46c94c4084a94812645cc263",
+    "intact": true,
+    "length": 12
+  },
+  "chain_verified": true,
+  "count": 12,
+  "entries": [
+    {
+      "algorithm": "Ed25519 over the ASCII hex of SHA-256(prev_hash || canonical_json(payload))",
+      "entry_hash": "a2dd9ad341eac770b4876610236403d6faec17fa562cd1e6ca110d74ea0ccc10",
+      "payload": {
+        "action": "Inference-Time Takedown Suppression",
+        "auditable_suppression_not_erasure": true,
+        "disclaimer": "Not legal advice. This receipt records inference-time takedown suppression of synthetic records.",
+        "issued_at_us": 1795605191131934,
+        "key_id": "758775f49d14c8a0",
+        "latency_us": 3707,
+        "matched_work_id": "restricted_work_001",
+        "mode": "non_nda",
+        "notice_id": "pm6_notice_001",
+        "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "receipt_kind": "takedown_suppression_receipt",
+        "records_after": {
+          "audit_ref_001": "Current",
+          "restricted_work_001": "Withdrawn"
+        },
+        "released_bytes": 0,
+        "schema": "copilot_receipt_v2",
+        "score_ppm": 726508,
+        "seq": 1,
+        "suppressed_bytes": 393,
+        "threshold_ppm": 462784
+      },
+      "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "public_key_b64": "E1Q0s1WAc+n6p4JspcGei8dJLjsy3uclg6OwnpacOcw=",
+      "signature_b64": "nTMKpTIHCNdOSOrVCDWb44fThT8hMoHAMTD/Y+2SPSnSfS7ao6VO7aeB6GawMvScAukJDRWlsfJoqVxj25qYCQ=="
+    },
+    {
+      "algorithm": "Ed25519 over the ASCII hex of SHA-256(prev_hash || canonical_json(payload))",
+      "entry_hash": "8d7c3fd946f1718ee516d675684292d783ff9ba62a1c645be70d56f8c4058032",
+      "payload": {
+        "action": "Inference-Time Takedown Suppression",
+        "auditable_suppression_not_erasure": true,
+        "disclaimer": "Not legal advice. This receipt records inference-time takedown suppression of synthetic records.",
+        "issued_at_us": 1795605191138447,
+        "key_id": "758775f49d14c8a0",
+        "latency_us": 4321,
+        "matched_work_id": "restricted_work_002",
+        "mode": "non_nda",
+        "notice_id": "pm6_notice_002",
+        "prev_hash": "a2dd9ad341eac770b4876610236403d6faec17fa562cd1e6ca110d74ea0ccc10",
+        "receipt_kind": "takedown_suppression_receipt",
+        "records_after": {
+          "audit_ref_002": "Current",
+          "restricted_work_002": "Withdrawn"
+        },
+        "released_bytes": 0,
+        "schema": "copilot_receipt_v2",
+        "score_ppm": 648643,
+        "seq": 2,
+        "suppressed_bytes": 397,
+        "threshold_ppm": 462784
+      },
+      "prev_hash": "a2dd9ad341eac770b4876610236403d6faec17fa562cd1e6ca110d74ea0ccc10",
+      "public_key_b64": "E1Q0s1WAc+n6p4JspcGei8dJLjsy3uclg6OwnpacOcw=",
+      "signature_b64": "hKeWMH+Eu4uE0KpaTOOHuqbf5oquwaDnPr0ycJ0WdmdwIqzzr6l2F7E+Dhh3zu71ZP6CamUruCtJ7O5iW9tkAg=="
+    },
+    {
+      "algorithm": "Ed25519 over the ASCII hex of SHA-256(prev_hash || canonical_json(payload))",
+      "entry_hash": "a743cbb1601f73c32c87ebe3bd395fcd5659117f5b754456738526276dd773d5",
+      "payload": {
+        "action": "Inference-Time Takedown Suppression",
+        "auditable_suppression_not_erasure": true,
+        "disclaimer": "Not legal advice. This receipt records inference-time takedown suppression of synthetic records.",
+        "issued_at_us": 1795605191140447,
+        "key_id": "758775f49d14c8a0",
+        "latency_us": 3539,
+        "matched_work_id": "restricted_work_003",
+        "mode": "non_nda",
+        "notice_id": "pm6_notice_003",
+        "prev_hash": "8d7c3fd946f1718ee516d675684292d783ff9ba62a1c645be70d56f8c4058032",
+        "receipt_kind": "takedown_suppression_receipt",
+        "records_after": {
+          "audit_ref_003": "Current",
+          "restricted_work_003": "Withdrawn"
+        },
+        "released_bytes": 208,
+        "schema": "copilot_receipt_v2",
+        "score_ppm": 543344,
+        "seq": 3,
+        "suppressed_bytes": 380,
+        "threshold_ppm": 462784
+      },
+      "prev_hash": "8d7c3fd946f1718ee516d675684292d783ff9ba62a1c645be70d56f8c4058032",
+      "public_key_b64": "E1Q0s1WAc+n6p4JspcGei8dJLjsy3uclg6OwnpacOcw=",
+      "signature_b64": "1ZGdnOsiAh3tJ6vsfDu1Kiohf/21Mjch6KyvBuat4LY8JrpCEmV2iK8oiSliFSuIqys7pJriEPbWCBRcD8GABA=="
+    },
+    {
+      "algorithm": "Ed25519 over the ASCII hex of SHA-256(prev_hash || canonical_json(payload))",
+      "entry_hash": "04fd0b7da42c5a58e7178f0c88534495aa6f0ebb75670bde32d9e215a775848e",
+      "payload": {
+        "action": "Inference-Time Takedown Allow",
+        "auditable_suppression_not_erasure": true,
+        "disclaimer": "Not legal advice. This receipt records inference-time takedown suppression of synthetic records.",
+        "issued_at_us": 1795605191142959,
+        "key_id": "758775f49d14c8a0",
+        "latency_us": 3679,
+        "matched_work_id": "",
+        "mode": "non_nda",
+        "notice_id": "pm6_notice_004",
+        "prev_hash": "a743cbb1601f73c32c87ebe3bd395fcd5659117f5b754456738526276dd773d5",
+        "receipt_kind": "takedown_suppression_receipt",
+        "records_after": {
+          "audit_ref_004": "Current",
+          "restricted_work_004": "Current"
+        },
+        "released_bytes": 782,
+        "schema": "copilot_receipt_v2",
+        "score_ppm": 397352,
+        "seq": 4,
+        "suppressed_bytes": 0,
+        "threshold_ppm": 462784
+      },
+      "prev_hash": "a743cbb1601f73c32c87ebe3bd395fcd5659117f5b754456738526276dd773d5",
+      "public_key_b64": "E1Q0s1WAc+n6p4JspcGei8dJLjsy3uclg6OwnpacOcw=",
+      "signature_b64": "cZ0AGCs/uoT9h7NUB9EN195ie2Hzeruyh41UuxJ5nyGsSmJwYrNWlz+abAZzB8pyN0uhXand8v81JNWvo9E2CA=="
+    },
+    {
+      "algorithm": "Ed25519 over the ASCII hex of SHA-256(prev_hash || canonical_json(payload))",
+      "entry_hash": "99e85565cbafd9d8d7f224133eadd22e97e06c570510a85356602aeaae987209",
+      "payload": {
+        "action": "Inference-Time Takedown Suppression",
+        "auditable_suppression_not_erasure": true,
+        "disclaimer": "Not legal advice. This receipt records inference-time takedown suppression of synthetic records.",
+        "issued_at_us": 1795605191144959,
+        "key_id": "758775f49d14c8a0",
+        "latency_us": 2901,
+        "matched_work_id": "restricted_work_005",
+        "mode": "non_nda",
+        "notice_id": "pm6_notice_005",
+        "prev_hash": "04fd0b7da42c5a58e7178f0c88534495aa6f0ebb75670bde32d9e215a775848e",
+        "receipt_kind": "takedown_suppression_receipt",
+        "records_after": {
+          "audit_ref_005": "Current",
+          "restricted_work_005": "Withdrawn"
+        },
+        "released_bytes": 293,
+        "schema": "copilot_receipt_v2",
+        "score_ppm": 496813,
+        "seq": 5,
+        "suppressed_bytes": 401,
+        "threshold_ppm": 462784
+      },
+      "prev_hash": "04fd0b7da42c5a58e7178f0c88534495aa6f0ebb75670bde32d9e215a775848e",
+      "public_key_b64": "E1Q0s1WAc+n6p4JspcGei8dJLjsy3uclg6OwnpacOcw=",
+      "signature_b64": "HR+haaQqKTd/ij9Q3GdYuIXhQ85KBzUWEIK7ElTAicyHR7Ij9af0VHS6n+BpqDYx3P77eb3Bq2daAC6ASU5HBQ=="
+    },
+    {
+      "algorithm": "Ed25519 over the ASCII hex of SHA-256(prev_hash || canonical_json(payload))",
+      "entry_hash": "5bd689365cb6aa09d0e21d5914326dc1942ec797b7cd802a59c9b03890028782",
+      "payload": {
+        "action": "Inference-Time Takedown Suppression",
+        "auditable_suppression_not_erasure": true,
+        "disclaimer": "Not legal advice. This receipt records inference-time takedown suppression of synthetic records.",
+        "issued_at_us": 1795605191146959,
+        "key_id": "758775f49d14c8a0",
+        "latency_us": 3575,
+        "matched_work_id": "restricted_work_006",
+        "mode": "non_nda",
+        "notice_id": "pm6_notice_006",
+        "prev_hash": "99e85565cbafd9d8d7f224133eadd22e97e06c570510a85356602aeaae987209",
+        "receipt_kind": "takedown_suppression_receipt",
+        "records_after": {
+          "audit_ref_006": "Current",
+          "restricted_work_006": "Withdrawn"
+        },
+        "released_bytes": 0,
+        "schema": "copilot_receipt_v2",
+        "score_ppm": 906475,
+        "seq": 6,
+        "suppressed_bytes": 427,
+        "threshold_ppm": 462784
+      },
+      "prev_hash": "99e85565cbafd9d8d7f224133eadd22e97e06c570510a85356602aeaae987209",
+      "public_key_b64": "E1Q0s1WAc+n6p4JspcGei8dJLjsy3uclg6OwnpacOcw=",
+      "signature_b64": "0kNVKvP5HD2qdDhL2g+dZq4Npx3NchAH1hjXur8fwu89WVuBfIxfw+zk0VZrd1/817fzU8cuDnkRNMHl56ewDg=="
+    },
+    {
+      "algorithm": "Ed25519 over the ASCII hex of SHA-256(prev_hash || canonical_json(payload))",
+      "entry_hash": "b807d31a9312bacb8e079a11eb0001fecc3ce2884894de09a0be865f32233e05",
+      "payload": {
+        "action": "Inference-Time Takedown Suppression",
+        "auditable_suppression_not_erasure": true,
+        "disclaimer": "Not legal advice. This receipt records inference-time takedown suppression of synthetic records.",
+        "issued_at_us": 1795605191148959,
+        "key_id": "758775f49d14c8a0",
+        "latency_us": 3775,
+        "matched_work_id": "restricted_work_007",
+        "mode": "non_nda",
+        "notice_id": "pm6_notice_007",
+        "prev_hash": "5bd689365cb6aa09d0e21d5914326dc1942ec797b7cd802a59c9b03890028782",
+        "receipt_kind": "takedown_suppression_receipt",
+        "records_after": {
+          "audit_ref_007": "Current",
+          "restricted_work_007": "Withdrawn"
+        },
+        "released_bytes": 0,
+        "schema": "copilot_receipt_v2",
+        "score_ppm": 921696,
+        "seq": 7,
+        "suppressed_bytes": 405,
+        "threshold_ppm": 462784
+      },
+      "prev_hash": "5bd689365cb6aa09d0e21d5914326dc1942ec797b7cd802a59c9b03890028782",
+      "public_key_b64": "E1Q0s1WAc+n6p4JspcGei8dJLjsy3uclg6OwnpacOcw=",
+      "signature_b64": "U6mDMpMhodtf3/Kc6SpJxVjUTbiFiaqJSjIkCO/XNYjpx/yjiJrjQTaVZmz4XdXjOJPHBPkkciibHAqRJalQAQ=="
+    },
+    {
+      "algorithm": "Ed25519 over the ASCII hex of SHA-256(prev_hash || canonical_json(payload))",
+      "entry_hash": "3335a763961036de049ccc20137b09632412dcc5be0dfaccb3b2706e930d1e64",
+      "payload": {
+        "action": "Inference-Time Takedown Suppression",
+        "auditable_suppression_not_erasure": true,
+        "disclaimer": "Not legal advice. This receipt records inference-time takedown suppression of synthetic records.",
+        "issued_at_us": 1795605191151960,
+        "key_id": "758775f49d14c8a0",
+        "latency_us": 3692,
+        "matched_work_id": "restricted_work_008",
+        "mode": "non_nda",
+        "notice_id": "pm6_notice_008",
+        "prev_hash": "b807d31a9312bacb8e079a11eb0001fecc3ce2884894de09a0be865f32233e05",
+        "receipt_kind": "takedown_suppression_receipt",
+        "records_after": {
+          "audit_ref_008": "Current",
+          "restricted_work_008": "Withdrawn"
+        },
+        "released_bytes": 0,
+        "schema": "copilot_receipt_v2",
+        "score_ppm": 815596,
+        "seq": 8,
+        "suppressed_bytes": 474,
+        "threshold_ppm": 462784
+      },
+      "prev_hash": "b807d31a9312bacb8e079a11eb0001fecc3ce2884894de09a0be865f32233e05",
+      "public_key_b64": "E1Q0s1WAc+n6p4JspcGei8dJLjsy3uclg6OwnpacOcw=",
+      "signature_b64": "7iXJUyddytT6NE0du4sxbUxcqBztm7XRKFEigMP8qsfpjvXO4DZW12X5gk9lS+Q2KLdC2/3WhmQydRt59dfzAw=="
+    },
+    {
+      "algorithm": "Ed25519 over the ASCII hex of SHA-256(prev_hash || canonical_json(payload))",
+      "entry_hash": "d2a0a4f297c13937c34106de5264300d7d06d6ffc87143d7513e9448cce51633",
+      "payload": {
+        "action": "Inference-Time Takedown Suppression",
+        "auditable_suppression_not_erasure": true,
+        "disclaimer": "Not legal advice. This receipt records inference-time takedown suppression of synthetic records.",
+        "issued_at_us": 1795605191153960,
+        "key_id": "758775f49d14c8a0",
+        "latency_us": 3925,
+        "matched_work_id": "restricted_work_009",
+        "mode": "non_nda",
+        "notice_id": "pm6_notice_009",
+        "prev_hash": "3335a763961036de049ccc20137b09632412dcc5be0dfaccb3b2706e930d1e64",
+        "receipt_kind": "takedown_suppression_receipt",
+        "records_after": {
+          "audit_ref_009": "Current",
+          "restricted_work_009": "Withdrawn"
+        },
+        "released_bytes": 0,
+        "schema": "copilot_receipt_v2",
+        "score_ppm": 788621,
+        "seq": 9,
+        "suppressed_bytes": 409,
+        "threshold_ppm": 462784
+      },
+      "prev_hash": "3335a763961036de049ccc20137b09632412dcc5be0dfaccb3b2706e930d1e64",
+      "public_key_b64": "E1Q0s1WAc+n6p4JspcGei8dJLjsy3uclg6OwnpacOcw=",
+      "signature_b64": "PVhUmWQ8tCSGjf+tsMCE22iIDVSSGdfj9BsIbMWVckRbQaM3B99jqRHM3CGzgqzgVncxyLL+pDzO5fEGmpk+CA=="
+    },
+    {
+      "algorithm": "Ed25519 over the ASCII hex of SHA-256(prev_hash || canonical_json(payload))",
+      "entry_hash": "a84896d2623e73314a4c3640af5e346610a54f5394883c560c13a5a934d3a5e5",
+      "payload": {
+        "action": "Inference-Time Takedown Suppression",
+        "auditable_suppression_not_erasure": true,
+        "disclaimer": "Not legal advice. This receipt records inference-time takedown suppression of synthetic records.",
+        "issued_at_us": 1795605191156054,
+        "key_id": "758775f49d14c8a0",
+        "latency_us": 3830,
+        "matched_work_id": "restricted_work_010",
+        "mode": "non_nda",
+        "notice_id": "pm6_notice_010",
+        "prev_hash": "d2a0a4f297c13937c34106de5264300d7d06d6ffc87143d7513e9448cce51633",
+        "receipt_kind": "takedown_suppression_receipt",
+        "records_after": {
+          "audit_ref_010": "Current",
+          "restricted_work_010": "Withdrawn"
+        },
+        "released_bytes": 0,
+        "schema": "copilot_receipt_v2",
+        "score_ppm": 768409,
+        "seq": 10,
+        "suppressed_bytes": 420,
+        "threshold_ppm": 462784
+      },
+      "prev_hash": "d2a0a4f297c13937c34106de5264300d7d06d6ffc87143d7513e9448cce51633",
+      "public_key_b64": "E1Q0s1WAc+n6p4JspcGei8dJLjsy3uclg6OwnpacOcw=",
+      "signature_b64": "L93PT/uMAQw7CcB6J52makohdwPAdbNnle8NpcfKkOElv3ZSl0iBDLBzWcK9veDs9Ak5+n2hGXULBbcetSQwDQ=="
+    },
+    {
+      "algorithm": "Ed25519 over the ASCII hex of SHA-256(prev_hash || canonical_json(payload))",
+      "entry_hash": "db991cac56f452fbf96fd1d9c73ec599223880872f0361660491f4f657410707",
+      "payload": {
+        "action": "Inference-Time Takedown Suppression",
+        "auditable_suppression_not_erasure": true,
+        "disclaimer": "Not legal advice. This receipt records inference-time takedown suppression of synthetic records.",
+        "issued_at_us": 1795605191158061,
+        "key_id": "758775f49d14c8a0",
+        "latency_us": 3823,
+        "matched_work_id": "restricted_work_011",
+        "mode": "non_nda",
+        "notice_id": "pm6_notice_011",
+        "prev_hash": "a84896d2623e73314a4c3640af5e346610a54f5394883c560c13a5a934d3a5e5",
+        "receipt_kind": "takedown_suppression_receipt",
+        "records_after": {
+          "audit_ref_011": "Current",
+          "restricted_work_011": "Withdrawn"
+        },
+        "released_bytes": 0,
+        "schema": "copilot_receipt_v2",
+        "score_ppm": 817299,
+        "seq": 11,
+        "suppressed_bytes": 422,
+        "threshold_ppm": 462784
+      },
+      "prev_hash": "a84896d2623e73314a4c3640af5e346610a54f5394883c560c13a5a934d3a5e5",
+      "public_key_b64": "E1Q0s1WAc+n6p4JspcGei8dJLjsy3uclg6OwnpacOcw=",
+      "signature_b64": "X/FFrezJ34IkrKOMqQ2lK683UgiXhqREByYP+BzoZoomKi/dpjBL6/WfWKsye+H9oRcb9O2TZvd96zsLlHIJBw=="
+    },
+    {
+      "algorithm": "Ed25519 over the ASCII hex of SHA-256(prev_hash || canonical_json(payload))",
+      "entry_hash": "b214649ccadd14bf8ea680a5efbef7d40478bd8f46c94c4084a94812645cc263",
+      "payload": {
+        "action": "Inference-Time Takedown Suppression",
+        "auditable_suppression_not_erasure": true,
+        "disclaimer": "Not legal advice. This receipt records inference-time takedown suppression of synthetic records.",
+        "issued_at_us": 1795605191160061,
+        "key_id": "758775f49d14c8a0",
+        "latency_us": 4673,
+        "matched_work_id": "restricted_work_012",
+        "mode": "non_nda",
+        "notice_id": "pm6_notice_012",
+        "prev_hash": "db991cac56f452fbf96fd1d9c73ec599223880872f0361660491f4f657410707",
+        "receipt_kind": "takedown_suppression_receipt",
+        "records_after": {
+          "audit_ref_012": "Current",
+          "restricted_work_012": "Withdrawn"
+        },
+        "released_bytes": 0,
+        "schema": "copilot_receipt_v2",
+        "score_ppm": 676144,
+        "seq": 12,
+        "suppressed_bytes": 377,
+        "threshold_ppm": 462784
+      },
+      "prev_hash": "db991cac56f452fbf96fd1d9c73ec599223880872f0361660491f4f657410707",
+      "public_key_b64": "E1Q0s1WAc+n6p4JspcGei8dJLjsy3uclg6OwnpacOcw=",
+      "signature_b64": "ke4iBqpQT/FEM6yM6D9OstddDtIAGMa0lCBWm51TzzIdTIQtSP4WlZl/MoMO9bN86N+5TUKEH5K4hNHGeLbcDQ=="
+    }
+  ],
+  "key_id": "758775f49d14c8a0",
+  "mode": "non_nda",
+  "non_nda_leak_hits": 0,
+  "public_key_b64": "E1Q0s1WAc+n6p4JspcGei8dJLjsy3uclg6OwnpacOcw=",
+  "schema_version": "copilot_receipt_v2",
+  "zero_floats_verified": true
+}

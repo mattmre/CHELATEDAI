@@ -3,6 +3,7 @@
 **Effective:** 2026-06-06 (Phase II lattice program added)  
 **North-star:** [VISION_LIQUIFIED_LATTICE.md](VISION_LIQUIFIED_LATTICE.md) — self-annealing RAG/DAG with steerable shims and disk-scale pools  
 **Policy:** SHIM substrate rows (SHIM-CD-01, 02, 06, 08, 09) are **on hold / last** during Phase I. Core engine and research-validity work runs **one track at a time** until each step meets its exit criteria.
+**Legacy nDCG Metric-Lineage Quarantine (`MLR-NDCG-001`):** All 113 affected tracked drift-recovery artifacts are quarantined as `LEGACY_METRIC_LINEAGE_BLOCKED` in `artifacts/legacy-ndcg-quarantine-index-v2.json` (enforced by `scripts/validate_metric_lineage_quarantine.py`); no accepted fail/win/rejection claim exists from that legacy lineage before complete-qrels regeneration (`mlr-v1`).
 
 ## Block flag
 

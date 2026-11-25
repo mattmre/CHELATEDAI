@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+# Preserve exact receipt-hashed bytes across Windows/Linux/macOS checkouts
+artifacts/**/*.json -text
+archive/pristine-b37e6a55-exact/** -text

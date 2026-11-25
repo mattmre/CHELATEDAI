@@ -1,0 +1,55 @@
+{
+  "all_passed_fail_closed": true,
+  "cases": [
+    {
+      "case": "dim_mismatch_768_vs_384",
+      "mode": "abstain",
+      "passed_fail_closed": true,
+      "reason": "no_representation_bridge"
+    },
+    {
+      "case": "same_dim_unbridged_encoder_swap",
+      "mode": "abstain",
+      "passed_fail_closed": true,
+      "reason": "no_representation_bridge"
+    },
+    {
+      "case": "domain_mismatch_nfcorpus_on_scifact",
+      "mode": "abstain",
+      "passed_fail_closed": true,
+      "reason": "no_representation_bridge"
+    },
+    {
+      "case": "dtype_mismatch_int8_vs_fp32",
+      "mode": "abstain",
+      "passed_fail_closed": true,
+      "reason": "no_representation_bridge"
+    },
+    {
+      "case": "normalization_mismatch_none_vs_l2",
+      "mode": "abstain",
+      "passed_fail_closed": true,
+      "reason": "no_representation_bridge"
+    },
+    {
+      "case": "metric_mismatch_euclidean_vs_cosine",
+      "mode": "abstain",
+      "passed_fail_closed": true,
+      "reason": "no_representation_bridge"
+    },
+    {
+      "case": "expired_bridge_rejected",
+      "mode": "abstain",
+      "passed_fail_closed": true,
+      "reason": "no_validated_bridge"
+    },
+    {
+      "case": "counterfeit_low_conf_fit1_bridge_rejected_d08",
+      "mode": "abstain",
+      "passed_fail_closed": true,
+      "reason": "no_validated_bridge"
+    }
+  ],
+  "total_hostile_cases": 8,
+  "wrong_space_executions": 0
+}

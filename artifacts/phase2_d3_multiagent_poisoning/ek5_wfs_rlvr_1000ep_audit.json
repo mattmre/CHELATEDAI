@@ -1,0 +1,163 @@
+{
+  "analytic_separation": {
+    "binary_exact_gain_of_abstention_collapse_over_oracle": 0.292,
+    "p_U": 0.292,
+    "three_valued_gain_of_oracle_over_abstention_collapse": 0.584
+  },
+  "as_of_episodes": 118,
+  "episodes_sha256": "5479ed7f0314edaac1573b6204abf5e44cb1fb2a4715b9cb05d18c3061d87427",
+  "family_label_counts": {
+    "auditor_cites_poison:F": {
+      "F": 59
+    },
+    "auditor_cites_poison:T": {
+      "T": 59
+    },
+    "bitemporal_as_of:F": {
+      "F": 59
+    },
+    "bitemporal_as_of:T": {
+      "T": 59
+    },
+    "conflict_refute:F": {
+      "F": 59
+    },
+    "conflict_refute:T": {
+      "T": 59
+    },
+    "contested_successor:U": {
+      "U": 58
+    },
+    "cross_domain_standoff:U": {
+      "U": 58
+    },
+    "odd_refutation_cycle:U": {
+      "U": 59
+    },
+    "peer_deadlock:U": {
+      "U": 59
+    },
+    "silent_multi_current:U": {
+      "U": 58
+    },
+    "summarizer_laundering:F": {
+      "F": 59
+    },
+    "summarizer_laundering:T": {
+      "T": 59
+    },
+    "supersede_chain:F": {
+      "F": 59
+    },
+    "supersede_chain:T": {
+      "T": 59
+    },
+    "sybil_corroboration:F": {
+      "F": 59
+    },
+    "sybil_corroboration:T": {
+      "T": 59
+    }
+  },
+  "git_sha": "0b662d989aeee4c24e02e987051c7bf149f98252",
+  "incremental_multi_batch_episodes": 777,
+  "label_counts": {
+    "F": 354,
+    "T": 354,
+    "U": 292
+  },
+  "mean_attestations_per_episode": 11.182,
+  "mean_events_per_episode": 10.146,
+  "mismatches": {
+    "gold_value_mismatch_vs_independent": 0,
+    "independent_eff_auth_mismatches": 0,
+    "independent_eligibility_mismatches": 0,
+    "independent_val_mismatches": 0,
+    "label_mismatch_vs_independent": 0,
+    "label_mismatch_vs_intent": 0,
+    "nodes_checked": 10827,
+    "wfs_oracle_val_mismatches": 0
+  },
+  "n_episodes": 1000,
+  "policy_mean_rewards": {
+    "abstention_collapse": {
+      "binary_exact_match": 1.0,
+      "binary_verdict": 0.708,
+      "three_valued_wfs": 0.416,
+      "three_valued_wfs_on_U": -1.0
+    },
+    "always_abstain": {
+      "binary_exact_match": 0.0,
+      "binary_verdict": 0.0,
+      "three_valued_wfs": 0.292,
+      "three_valued_wfs_on_U": 1.0
+    },
+    "highest_raw_tier": {
+      "binary_exact_match": 0.947,
+      "binary_verdict": 0.354,
+      "three_valued_wfs": 0.3275,
+      "three_valued_wfs_on_U": -1.0
+    },
+    "last_writer_wins": {
+      "binary_exact_match": 0.751,
+      "binary_verdict": 0.354,
+      "three_valued_wfs": -0.1395,
+      "three_valued_wfs_on_U": -1.0
+    },
+    "majority_vote": {
+      "binary_exact_match": 0.618,
+      "binary_verdict": 0.354,
+      "three_valued_wfs": -0.36075,
+      "three_valued_wfs_on_U": -1.0
+    },
+    "oracle_3valued": {
+      "binary_exact_match": 0.708,
+      "binary_verdict": 0.708,
+      "three_valued_wfs": 1.0,
+      "three_valued_wfs_on_U": 1.0
+    },
+    "proposal_acceptor": {
+      "binary_exact_match": 0.478,
+      "binary_verdict": 0.354,
+      "three_valued_wfs": -0.292,
+      "three_valued_wfs_on_U": -1.0
+    }
+  },
+  "reward_separation": {
+    "binary_exact_match": {
+      "abstention_strictly_dominated_on_U": 292,
+      "min_margin_oracle_vs_best_other": -1.0,
+      "oracle_is_argmax": 708,
+      "oracle_unique_argmax": 0
+    },
+    "binary_verdict": {
+      "abstention_strictly_dominated_on_U": 0,
+      "min_margin_oracle_vs_best_other": -1.0,
+      "oracle_is_argmax": 708,
+      "oracle_unique_argmax": 0
+    },
+    "three_valued_wfs": {
+      "abstention_strictly_dominated_on_U": 0,
+      "min_margin_oracle_vs_best_other": 0.25,
+      "oracle_is_argmax": 1000,
+      "oracle_unique_argmax": 1000
+    }
+  },
+  "scenario_counts": {
+    "auditor_cites_poison": 118,
+    "bitemporal_as_of": 118,
+    "conflict_refute": 118,
+    "contested_successor": 58,
+    "cross_domain_standoff": 58,
+    "odd_refutation_cycle": 59,
+    "peer_deadlock": 59,
+    "silent_multi_current": 58,
+    "summarizer_laundering": 118,
+    "supersede_chain": 118,
+    "sybil_corroboration": 118
+  },
+  "seed": 20261122,
+  "total_mismatches": 0,
+  "wall_s": 0.7626,
+  "withdrawal_episodes": 247
+}

@@ -1,0 +1,20 @@
+{
+  "artifact_hashes": {
+    "calibration_freeze_manifest.json": "70131a74faa63e68bc0491a11b08ce71559b3eacaa110bd068728eb179a5f492",
+    "copilot_receipts_v2.json": "569d3bd3d3309875191ed5156268dd48632b9914895d2e60214f9c4b923e17f5",
+    "wave14_d11_pm6_manifest.json": "7248d05a02ba4901aace9fd960c2a4d04d0046f83bcd1846426159e5cab9ffc8"
+  },
+  "bundle_id": "wave14_d11_pm6_takedown_carryforward",
+  "execution_mode": "run-live",
+  "generated_at_utc": "2026-11-25T11:14:32.557968+00:00",
+  "git_sha": "f357e4ba5780f8bffddd1655f4107172d2a78d56",
+  "manifest_file": "wave14_d11_pm6_manifest.json",
+  "manifest_sha256": "7248d05a02ba4901aace9fd960c2a4d04d0046f83bcd1846426159e5cab9ffc8",
+  "non_nda_leak_hits": 0,
+  "non_nda_pattern_count": 56,
+  "receipts_entries_verified": 12,
+  "receipts_head_hash": "b214649ccadd14bf8ea680a5efbef7d40478bd8f46c94c4084a94812645cc263",
+  "schema_version": "report_receipt_v4_1",
+  "seal_eligible": true,
+  "status": "COMPLETED"
+}

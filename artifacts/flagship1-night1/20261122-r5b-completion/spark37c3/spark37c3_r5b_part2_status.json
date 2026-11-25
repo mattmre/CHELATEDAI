@@ -1,0 +1,20 @@
+{
+  "stages": {
+    "part1_hybrid_coupled_pm2": {
+      "status": "COMPLETED",
+      "wall_seconds": 83.81
+    },
+    "part2_pm3_mem0_v1": {
+      "status": "COMPLETED",
+      "wall_seconds": 560.14
+    }
+  },
+  "started_at": "2026-11-22T09:45:32.079811",
+  "telemetry": {
+    "cuda_available": true,
+    "cuda_device": "NVIDIA GB10",
+    "peak_rss_mib": 2769.63,
+    "peak_vram_mib": 4482.51
+  },
+  "total_wall_seconds": 643.96
+}

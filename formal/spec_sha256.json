@@ -1,0 +1,6 @@
+{
+  "spec_relpath": "formal/ChelatedFormal/Spec.lean",
+  "spec_sha256": "63fe3e644bdef93160c5d612bfc7d7086af03c3d15cf34417402a89a86cdc6eb",
+  "lean_toolchain": "leanprover/lean4:v4.36.0-rc1",
+  "locked_before_proofs": true
+}

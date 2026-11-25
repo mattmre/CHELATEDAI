@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CHELATEDAI Solution Workbench v2 — Bidirectional gRPC Control Plane, EK5 v3 WFS &amp; Investor TCO</title>
+  <style>
+    :root {
+      --bg: #080c14;
+      --panel: #101726;
+      --panel-2: #162033;
+      --border: #25344f;
+      --text: #e6eef8;
+      --muted: #93a5c2;
+      --cyan: #38bdf8;
+      --green: #22c55e;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --purple: #a855f7;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      --sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      line-height: 1.5;
+    }
+    header {
+      background: linear-gradient(180deg, #0f172a 0%, #080c14 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 18px 28px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+    }
+    .title-wrap h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+    .title-wrap p {
+      margin: 3px 0 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .pills {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .pill {
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--cyan);
+      text-decoration: none;
+    }
+    .pill-cta {
+      background: rgba(34, 197, 94, 0.14);
+      border-color: rgba(34, 197, 94, 0.45);
+      color: #86efac;
+      font-weight: 600;
+    }
+    .pill-warn {
+      background: rgba(245, 158, 11, 0.14);
+      border-color: rgba(245, 158, 11, 0.45);
+      color: #fcd34d;
+    }
+    nav.tabs {
+      display: flex;
+      gap: 6px;
+      padding: 12px 28px 0;
+      border-bottom: 1px solid var(--border);
+      background: #0b111d;
+      overflow-x: auto;
+    }
+    .tab-btn {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid transparent;
+      border-bottom: none;
+      padding: 10px 15px;
+      font-size: 12.5px;
+      font-weight: 600;
+      border-radius: 8px 8px 0 0;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .tab-btn.active {
+      background: var(--panel);
+      color: var(--text);
+      border-color: var(--border);
+    }
+    main {
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 22px 28px 54px;
+    }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1.08fr 0.92fr;
+      gap: 18px;
+    }
+    .grid-equal {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+    @media (max-width: 1060px) {
+      .grid-2, .grid-equal { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+    .card h2 {
+      margin: 0 0 10px;
+      font-size: 15px;
+      font-weight: 700;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .sub {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+    select, input[type="text"], input[type="number"] {
+      background: var(--panel-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 7px 10px;
+      font-size: 13px;
+      font-family: var(--sans);
+    }
+    button.btn {
+      background: #0284c7;
+      color: #fff;
+      border: 1px solid #38bdf8;
+      border-radius: 7px;
+      padding: 7px 13px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button.btn-sec {
+      background: var(--panel-2);
+      border-color: var(--border);
+      color: var(--text);
+    }
+    .controls-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+    .verdict-banner {
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      margin-bottom: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-family: var(--mono);
+      font-size: 13px;
+    }
+    .verdict-ADMIT { background: rgba(34, 197, 94, 0.12); border-color: rgba(34, 197, 94, 0.45); color: #86efac; }
+    .verdict-CONTESTED { background: rgba(245, 158, 11, 0.14); border-color: rgba(245, 158, 11, 0.5); color: #fcd34d; }
+    .verdict-EMPTY { background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.45); color: #fca5a5; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    th, td {
+      text-align: left;
+      padding: 8px 9px;
+      border-bottom: 1px solid rgba(37, 52, 79, 0.7);
+      vertical-align: top;
+    }
+    th {
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .tag {
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 5px;
+      display: inline-block;
+      font-weight: 700;
+    }
+    .tag-ADMIT, .tag-T { background: rgba(34, 197, 94, 0.16); color: #4ade80; }
+    .tag-MASK, .tag-F { background: rgba(239, 68, 68, 0.16); color: #f87171; }
+    .tag-CONTESTED, .tag-U { background: rgba(245, 158, 11, 0.18); color: #fbbf24; }
+    .tag-INFO { background: rgba(56, 189, 248, 0.16); color: #7dd3fc; }
+    svg.graph-canvas {
+      width: 100%;
+      height: 310px;
+      background: #0a101c;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+    }
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 860px) {
+      .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    }
+    .kpi {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+    .kpi .val {
+      font-family: var(--mono);
+      font-size: 21px;
+      font-weight: 700;
+      color: var(--cyan);
+    }
+    .kpi .lbl {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .bar-track {
+      height: 10px;
+      background: #0b1220;
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.2s ease;
+    }
+    .formula-box {
+      font-family: var(--mono);
+      font-size: 12px;
+      background: #0a101c;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: #bae6fd;
+      margin-top: 10px;
+    }
+    .guardrail-box {
+      font-size: 12px;
+      background: rgba(245, 158, 11, 0.09);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      border-radius: 8px;
+      padding: 10px 13px;
+      color: #fde68a;
+      margin-bottom: 14px;
+    }
+    .form-inline {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+    .param-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    @media (max-width: 860px) {
+      .param-grid { grid-template-columns: 1fr; }
+    }
+    .param-item label {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .param-item input {
+      width: 100%;
+    }
+    pre.json-out {
+      font-family: var(--mono);
+      font-size: 11px;
+      background: #070b12;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      max-height: 240px;
+      overflow: auto;
+      color: #cbd5e1;
+      margin: 10px 0 0;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="title-wrap">
+      <h1>CHELATEDAI Solution Workbench v2 — Bidirectional gRPC Control Plane, EK5 v3 WFS &amp; Investor TCO</h1>
+      <p>Workable live solution verifier (<code>demo_workbench/server.py</code> + offline fallback) for OpenSearch/Qdrant gRPC interception, Dual-Mode ZeroMu + CSLS migration, and Council-audited 100M-event unit economics</p>
+    </div>
+    <div class="pills">
+      <span id="backendStatusPill" class="pill pill-warn">Backend: Checking / Offline JS Mode</span>
+      <span class="pill">EK5 v3: Authority &rarr; 3-Valued WFS &rarr; Currency</span>
+      <span class="pill">Zero-Vector Egress: 8 B/doc (4B Norm + 4B CSLS r_d)</span>
+      <a class="pill pill-cta" href="/copilot">Open Regulated Compliance Copilot (Demo D8) &rarr;</a>
+      <a class="pill pill-cta" href="pm4_human_grader.html">Open PM-4 Blind Human Audit Grader &rarr;</a>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab-btn active" onclick="switchTab('ek5', this)">1. EK5 v3 Graph &amp; Live WFS Oracle</button>
+    <button class="tab-btn" onclick="switchTab('zeromu', this)">2. Dual-Mode ZeroMu &amp; Certified CSLS Stop</button>
+    <button class="tab-btn" onclick="switchTab('grpc', this)">3. OpenSearch / Qdrant gRPC Control Plane</button>
+    <button class="tab-btn" onclick="switchTab('arena', this)">4. 4-Way Competitor Arena (Mem0 / Hindsight / AWS)</button>
+    <button class="tab-btn" onclick="switchTab('tco', this)">5. Parameterized 100M-Event Investor TCO</button>
+    <button class="tab-btn" onclick="switchTab('fleet', this)">6. 4-Node Fleet &amp; SHA-256 Registry Monitor</button>
+  </nav>
+
+  <main>
+    <!-- TAB 1: EK5 v3 -->
+    <section id="tab-ek5" class="tab-pane active">
+      <div class="controls-row">
+        <label for="scenarioSelect" style="font-size:13px;font-weight:600;">Preset Scenario:</label>
+        <select id="scenarioSelect" onchange="loadScenario(this.value)">
+          <option value="cve_retraction">S1: CVE-2026-24061 Retraction + Unverified Forum Rumor (D1 v2)</option>
+          <option value="peer_deadlock">S2: Symmetric Tier-3 Peer Conflict &rarr; CONTESTED ABSTAIN</option>
+          <option value="odd_cycle">S3: 3-Way Odd Refutation Cycle &rarr; Well-Founded UNKNOWN (U)</option>
+          <option value="auditor_taint">S4: Forensic Auditor CITES_AUDIT vs. Strict IFC Taint Trap (Demo D3 F4)</option>
+          <option value="laundered_copy">S5: Tier-2 Summarizer Provenance Laundering (DERIVES_CURRENT Ceiling)</option>
+        </select>
+        <label for="asOfSlider" style="font-size:13px;font-weight:600;margin-left:10px;">Bitemporal tx_time cutoff:</label>
+        <input type="range" id="asOfSlider" min="1" max="6" value="6" oninput="updateAsOf(this.value)" />
+        <span id="asOfLabel" class="tag tag-ADMIT">tx &le; 6 (Latest)</span>
+        <button class="btn btn-sec" onclick="loadScenario(document.getElementById('scenarioSelect').value)">Reset Graph</button>
+        <button class="btn" onclick="verifyScenarioOnBackend()">Verify Live on Python Server (POST /api/v1/epistemic/evaluate)</button>
+      </div>
+
+      <div id="slotBanner" class="verdict-banner verdict-ADMIT"></div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h2>
+            <span>Live Epistemic Graph (Stratum 1 &rarr; Stratum 2 WFS &rarr; Stratum 3 Currency)</span>
+            <span id="blockedBadge" class="tag tag-U"></span>
+          </h2>
+          <div class="sub">Solid red = qualified REFUTE; dashed gray = authority-blocked edge; blue = SUPERSEDE; purple = COPY_OF / DERIVES_CURRENT (D_V); cyan = CITES_AUDIT (&notin; D_V).</div>
+          <svg id="graphSvg" class="graph-canvas" viewBox="0 0 680 300"></svg>
+
+          <div class="form-inline">
+            <input type="text" id="newId" placeholder="id (e.g. e6)" style="width:78px;" />
+            <input type="text" id="newVal" placeholder="claim_value (e.g. TLS1.3)" style="width:155px;" />
+            <select id="newTier">
+              <option value="1">Tier 1 (Scraper)</option>
+              <option value="2">Tier 2 (Triage)</option>
+              <option value="3" selected>Tier 3 (Operator)</option>
+              <option value="4">Tier 4 (Auditor)</option>
+            </select>
+            <button class="btn" onclick="addNodeUI()">+ Add Event</button>
+          </div>
+          <div class="form-inline">
+            <input type="text" id="edgeSrc" placeholder="src id" style="width:78px;" />
+            <select id="edgeType">
+              <option value="SUPERSEDE">SUPERSEDE</option>
+              <option value="REFUTE">REFUTE</option>
+              <option value="COPY_OF">COPY_OF (in D_V)</option>
+              <option value="DERIVES_CURRENT">DERIVES_CURRENT (in D_V)</option>
+              <option value="CITES_AUDIT">CITES_AUDIT (forensic, not in D_V)</option>
+            </select>
+            <input type="text" id="edgeDst" placeholder="dst id" style="width:78px;" />
+            <button class="btn btn-sec" onclick="addEdgeUI()">+ Add Edge</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2><span>Per-Record Stratified Evaluation</span><span id="ifcCompare" class="tag tag-F"></span></h2>
+          <div class="sub">Stratum 1 computes effective authority ceiling over D_V; Stratum 2 computes alternating Van Gelder WFS fixpoint; Stratum 3 masks superseded claims &amp; lineage dependents.</div>
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>tx</th>
+                <th>Claim Value</th>
+                <th>Raw &rarr; Eff Tier</th>
+                <th>WFS Val</th>
+                <th>Gate</th>
+                <th>Reason</th>
+              </tr>
+            </thead>
+            <tbody id="nodeTableBody"></tbody>
+          </table>
+          <div class="formula-box" id="rlvrBox"></div>
+          <pre id="epistemicServerOut" class="json-out" style="display:none;"></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: ZeroMu & CSLS -->
+    <section id="tab-zeromu" class="tab-pane">
+      <div class="kpi-row">
+        <div class="kpi">
+          <div class="val">8 B/doc + 16 KB</div>
+          <div class="lbl">Zero-Vector Egress Sidecar (4B ||d&minus;&mu;_d||_2 + 4B CSLS r_d + Shared &mu;_d)</div>
+        </div>
+        <div class="kpi">
+          <div class="val">n=500 (0.87&ndash;13.8%)</div>
+          <div class="lbl">Mode B (4096&rarr;384) Anchors: 0.87% FiQA / 9.65% SciFact / 13.76% NFCorpus</div>
+        </div>
+        <div class="kpi">
+          <div class="val">0.3779 vs 0.3510</div>
+          <div class="lbl">Wave-6 3-BEIR Mode B @ 20%: CSLS Beats DEV z-score (+2.69 pp, FiQA-carried)</div>
+        </div>
+        <div class="kpi">
+          <div class="val">0.00%</div>
+          <div class="lbl">Observed Fenced Stale Leak @ 0/10/50/90% (50% Recall 99.42%; 90% Exact Fallback)</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h2><span>Interactive Partial Backfill Curve &amp; Synthetic NumPy Mode B Simulator</span></h2>
+          <div class="sub">Inspect mixed-shard calibration (Wave-3 SciFact curve + Wave-6 3-BEIR <code>dcb84026a15c</code> Mode B <code>0.3779</code> vs <code>0.3510</code> @ 20%; disable CSLS at 100%), or run the synthetic NumPy legacy-shard exact-prefix shortlist stop simulator via <code>POST /api/v1/migration/evaluate</code>.</div>
+          <div class="controls-row">
+            <label for="bfSlider" style="font-weight:600;font-size:13px;">Backfill Step:</label>
+            <input type="range" id="bfSlider" min="0" max="5" step="1" value="3" oninput="renderBackfill(this.value)" />
+            <span id="bfLabel" class="tag tag-ADMIT">20% Backfilled</span>
+          </div>
+          <div id="bfBars" style="display:flex;flex-direction:column;gap:14px;margin-top:14px;"></div>
+          <div class="formula-box">
+            Ingress Query Transform (No +&mu;_Y): q&#770; = norm((q &minus; &mu;_q) W) &nbsp;&rarr;&nbsp; preserves Procrustes ranking over raw DOT (avoids QueryAffine 0.38 collapse)<br/>
+            Egress Zero-Vector Rescore: z_j = (&lang;q&#770;, d_j&rang; &minus; &lang;q&#770;, &mu;_d&rang;) / ||d_j &minus; &mu;_d||_2, &nbsp; CSLS(q, d_j) = 2 z_j &minus; r_d &minus; r_q
+          </div>
+          <div class="form-inline">
+            <label style="font-size:12px;">Live Mode B Sim: n_docs</label>
+            <input type="number" id="simDocs" value="2000" style="width:82px;" />
+            <label style="font-size:12px;">n_anchors</label>
+            <input type="number" id="simAnchors" value="128" style="width:74px;" />
+            <label style="font-size:12px;">backfill</label>
+            <input type="number" id="simBf" value="0.20" step="0.05" style="width:70px;" />
+            <label style="font-size:12px;">k_os</label>
+            <input type="number" id="simKos" value="64" style="width:68px;" />
+            <button class="btn" onclick="runLiveMigrationSim()">Run Live Shortlist Certifier</button>
+          </div>
+          <pre id="migrationServerOut" class="json-out" style="display:none;"></pre>
+        </div>
+
+        <div class="card">
+          <h2><span>Live Qdrant gRPC HNSW Oversampling &amp; Dual-Mode Positioning</span></h2>
+          <div class="sub"><strong>Primary Enterprise Pitch — Mode B (<code>4096 &rarr; 384</code>):</strong> Keep <code>(1 &minus; p)</code> legacy docs untouched in existing 384-d HNSW while backfilling hot <code>p</code> docs into 4096-d HNSW using only <code>n = 500</code> qrels-blind anchors (<code>0.87%</code> of FiQA2018). <strong>Secondary — Mode A (<code>384 &rarr; 4096</code>):</strong> Edge-device 384-d query up-bridge into existing cloud 4096-d index.</div>
+          <table>
+            <thead>
+              <tr>
+                <th>efSearch = K_os</th>
+                <th>Mean / Min Top-10 Recall vs Exact ZeroMu</th>
+                <th>Meets &ge;99.5% Target</th>
+                <th>Max |DOT_Qdrant &minus; Numpy|</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>10 (Naive Request-Only)</td><td>D5: 88.72% (Wave-3: 86.40% mean / 60.0% min)</td><td><span class="tag tag-MASK">NO</span></td><td>2.68 &times; 10<sup>&minus;7</sup></td></tr>
+              <tr><td><strong>32 (Default Oversample)</strong></td><td><strong>D5: 99.88% (Wave-3: 99.77%) mean / 90.0% min</strong></td><td><span class="tag tag-ADMIT">YES</span></td><td>2.68 &times; 10<sup>&minus;7</sup></td></tr>
+              <tr><td><strong>64 (Certified Stop Tier)</strong></td><td><strong>100.00% mean / 100.0% min (@ 0% retr; 50% retr: 99.42%)</strong></td><td><span class="tag tag-ADMIT">YES (@ 0%)</span></td><td>2.68 &times; 10<sup>&minus;7</sup></td></tr>
+            </tbody>
+          </table>
+          <div class="formula-box" style="margin-top:14px;">
+            <strong>Certified Shortlist Stopping Rule (Council K1):</strong> Given monotonic raw DOT stream s_(1) &ge; &hellip; &ge; s_(m), upper bound z_ub = (s_(m) &minus; &lang;q&#770;, &mu;_d&rang;) / ||d &minus; &mu;_d||_min (when numerator &ge; 0, else ||d &minus; &mu;_d||_max). Whenever 2 z_ub &minus; r_d,min &minus; r_q &lt; CSLS_(k), top-k ranking is mathematically certified exact without vector payload egress!
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: Bidirectional gRPC Control Plane -->
+    <section id="tab-grpc" class="tab-pane">
+      <div class="guardrail-box">
+        <strong>Council K1 &amp; Wave-8 M2 Scope &amp; Latency Disclosure:</strong> (1) <code>live_opensearch_java_cluster_claimed = false</code>: <code>Demo D5</code> compiles project-defined <code>SearchService.KnnQuery</code> Protobuf over live containerized <code>Qdrant :16334</code> (<code>qdrant/qdrant@sha256:d277592721d2...</code>; native Java OpenSearch 3.9 cluster unverified). (2) In Demo D1 v2, <code>Native_1024d</code> (<code>2,281.9 ms</code>) vs <code>Hetero_ZeroMu</code> (<code>2,290.8 ms</code>) differed by <strong>+8.9 ms</strong> (30B reader decode dominated). (3) At <code>250 Hz</code> LAN open-loop dispatch, <code>Chelated_Gateway (:16335)</code> service RTT is <code>7.90/21.19/115.82 ms</code> p50/p95/p99 while scheduled <code>open_loop_e2e</code> is <code>153.75/251.86 ms</code> p95/p99; direct <code>4096-d</code> Qdrant saturated at <code>218.79 Hz</code>, so honest matched-dimension worst-case gateway overhead is <strong>+18.00 ms service p95 (&le; 25 ms gate)</strong>.
+      </div>
+
+      <div class="grid-equal">
+        <div class="card">
+          <h2><span>Drop-In Bidirectional gRPC Interceptor Architecture</span><span class="tag tag-INFO">OpenSearch SearchService.KnnQuery + Qdrant :6334</span></h2>
+          <div class="sub">Why naive request-only proxy rewrites fail—and how Chelated's bidirectional ingress + 8-byte egress interceptor preserves 100% ZeroMu + CSLS + EK5 v3 guarantees in front of unmodified vector DBs.</div>
+          <svg class="graph-canvas" style="height:265px;" viewBox="0 0 680 250">
+            <rect x="16" y="72" width="130" height="106" rx="9" fill="#162033" stroke="#38bdf8" stroke-width="2"/>
+            <text x="81" y="105" fill="#fff" font-size="12" font-weight="bold" text-anchor="middle">Agent / App</text>
+            <text x="81" y="125" fill="#93a5c2" font-size="10" text-anchor="middle">KnnQuery Protobuf</text>
+            <text x="81" y="143" fill="#7dd3fc" font-size="10" font-family="monospace" text-anchor="middle">q (384d or 4096d)</text>
+            <text x="81" y="160" fill="#86efac" font-size="10" font-family="monospace" text-anchor="middle">as_of / tenant</text>
+
+            <rect x="195" y="26" width="275" height="198" rx="11" fill="#0f1b2d" stroke="#22c55e" stroke-width="2.2"/>
+            <text x="332" y="50" fill="#86efac" font-size="12.5" font-weight="bold" text-anchor="middle">CHELATED BIDIRECTIONAL gRPC GATEWAY</text>
+            <text x="332" y="74" fill="#e6eef8" font-size="10.5" font-family="monospace" text-anchor="middle">1. Ingress: TRA-1 Subspace Guard</text>
+            <text x="332" y="94" fill="#e6eef8" font-size="10.5" font-family="monospace" text-anchor="middle">2. Ingress: Causal EMA q&#770; = norm((q-&mu;_q)W)</text>
+            <text x="332" y="114" fill="#fcd34d" font-size="10.5" font-family="monospace" text-anchor="middle">3. Adaptive ef_eff = ceil(k_os/(1-&rho;))</text>
+            <text x="332" y="142" fill="#7dd3fc" font-size="10.5" font-family="monospace" text-anchor="middle">4. Egress: 8 B/doc RAM Sidecar Rescore</text>
+            <text x="332" y="162" fill="#7dd3fc" font-size="10.5" font-family="monospace" text-anchor="middle">   (Zero Vector Payload Egress + Stop Rule)</text>
+            <text x="332" y="186" fill="#4ade80" font-size="10.5" font-family="monospace" text-anchor="middle">5. Egress: Epoch-Pinned EK5 v3 Fence</text>
+            <text x="332" y="206" fill="#fbbf24" font-size="10" font-family="monospace" text-anchor="middle">   (0.00% Stale Resurrection / CONTESTED)</text>
+
+            <rect x="520" y="38" width="144" height="78" rx="9" fill="#162033" stroke="#a855f7" stroke-width="2"/>
+            <text x="592" y="66" fill="#fff" font-size="11.5" font-weight="bold" text-anchor="middle">Legacy Shard (384d)</text>
+            <text x="592" y="85" fill="#cbd5e1" font-size="10" text-anchor="middle">Qdrant :6334 / OS gRPC</text>
+            <text x="592" y="102" fill="#d8b4fe" font-size="9.5" font-family="monospace" text-anchor="middle">(1-p) Unmigrated Docs</text>
+
+            <rect x="520" y="134" width="144" height="78" rx="9" fill="#162033" stroke="#38bdf8" stroke-width="2"/>
+            <text x="592" y="162" fill="#fff" font-size="11.5" font-weight="bold" text-anchor="middle">Upgraded Shard (4096d)</text>
+            <text x="592" y="181" fill="#cbd5e1" font-size="10" text-anchor="middle">Qdrant :6334 / OS gRPC</text>
+            <text x="592" y="198" fill="#7dd3fc" font-size="9.5" font-family="monospace" text-anchor="middle">p Backfilled Docs</text>
+
+            <line x1="146" y1="112" x2="195" y2="112" stroke="#38bdf8" stroke-width="2"/>
+            <line x1="195" y1="142" x2="146" y2="142" stroke="#22c55e" stroke-width="2"/>
+            <line x1="470" y1="78" x2="520" y2="78" stroke="#a855f7" stroke-width="2"/>
+            <line x1="470" y1="172" x2="520" y2="172" stroke="#38bdf8" stroke-width="2"/>
+          </svg>
+        </div>
+
+        <div class="card">
+          <h2><span>Transport vs. Epistemic &amp; Geometric Correctness Matrix</span><span id="d5LiveTag" class="tag tag-U">Wave-6 Track E Live</span></h2>
+          <div class="sub">Side-by-side failure modes across wire-only gRPC upgrades vs. Chelated bidirectional interception.</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Capability / Failure Mode</th>
+                <th>Raw OpenSearch / Qdrant gRPC</th>
+                <th>Naive Request-Only Proxy</th>
+                <th>Chelated Bidirectional gRPC</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Wire Float Overhead (4096-d)</strong></td>
+                <td>Binary Protobuf <code>repeated float</code></td>
+                <td>Binary Protobuf</td>
+                <td><strong>Binary Ingress + 0-Vector Egress (8 B/doc)</strong></td>
+              </tr>
+              <tr>
+                <td><strong>1M Anisotropic Cone Recall@10</strong></td>
+                <td>Requires 100% GPU Re-Index</td>
+                <td>0.540 (Procrustes) or 0.380 (if +&mu;_Y)</td>
+                <td><strong>0.5500 Exact ZeroMu (Certified Stop)</strong></td>
+              </tr>
+              <tr>
+                <td><strong>20% Partial Backfill Merge</strong></td>
+                <td>Incompatible Vector Widths</td>
+                <td>Uncalibrated Hubness Dip (&minus;26.9 pp)</td>
+                <td><strong>Monotonic Causal DEV CSLS Fusion</strong></td>
+              </tr>
+              <tr>
+                <td><strong>Retraction Starvation (@ 90% Masked)</strong></td>
+                <td>49.5%&ndash;76.5% Stale Resurrection</td>
+                <td>Post-filter Starvation (&lt;k hits)</td>
+                <td><strong>Adaptive ef_eff + Epoch-Pinned 0.00% SRR</strong></td>
+              </tr>
+              <tr>
+                <td><strong>Symmetric Peer Conflict</strong></td>
+                <td>Silent Last-Writer/Top-Cosine Hallucination</td>
+                <td>No Epistemic State</td>
+                <td><strong>Deterministic Stratum-2 WFS CONTESTED</strong></td>
+              </tr>
+            </tbody>
+          </table>
+          <div id="d5DynamicSummary" class="formula-box">
+            <strong>Verified Wave-6 Track E Receipt (<code>cba30b931812</code>, 43,040 Open-Loop Queries over Qdrant :16334):</strong> N=10,000 LAN 250 Hz dispatch: <code>Chelated_Gateway (:16335)</code> service RTT <code>p50 = 7.90 ms</code>, <code>p95 = 21.19 ms</code>, <code>p99 = 115.82 ms</code>; scheduled <code>open_loop_e2e p95 = 153.75 ms</code>, <code>p99 = 251.86 ms</code>; unsaturated same-dim overhead <code>+18.00 ms &le; 25 ms</code>; <code>8.71&times;</code> smaller ingress (<code>1,888 B</code> vs <code>16,435 B</code>); <code>0.00%</code> fenced leak across <code>0/10/50/90%</code> (<code>50%</code> Recall@10 <code>99.42% &lt; 99.5%</code> K1 floor; <code>90%</code> uses <code>100%</code> exact fallback; Track B live 20% uncalibrated loss <code>&minus;22.14/&minus;25.93 pp</code>).
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: 4-Way Competitor Arena -->
+    <section id="tab-arena" class="tab-pane">
+      <div class="guardrail-box">
+        <strong>Council K5 Zero-Strawman Provenance &amp; Fair Clock Rules:</strong> Every comparator is labeled by exact execution provenance: <code>Chelated v4</code> (native GPU BGE-M3 + EK5 v3), <code>mem0ai 2.2.1</code> (live upstream Python package, <code>infer=True/False</code>), <code>Hindsight 4-Net</code> (<strong>emulation (ours)</strong> of Retain &rarr; Recall &rarr; Reflect), and <code>OpenSearch Memory</code> (<strong>emulation (ours)</strong> of immediate hybrid events + async <code>SEMANTIC+SUMMARY</code>). Clocks are split into 4 unpooled stages and graded by a cross-family blind semantic judge (<code>Qwen2.5-7B</code> grading <code>Nemotron-30B</code>).
+      </div>
+
+      <div class="card">
+        <h2>
+          <span>4-Way Agentic Memory Architecture &amp; Freshness Horizon Comparison</span>
+          <button class="btn btn-sec" onclick="refreshWave6Summary()">Refresh Live Wave-6 Receipts</button>
+        </h2>
+        <div class="sub">Highlighting the fundamental architectural distinction between asynchronous LLM-consolidation memory stores and Chelated's synchronous zero-LLM-write epistemic graph.</div>
+        <table>
+          <thead>
+            <tr>
+              <th>System &amp; Provenance Label</th>
+              <th>Write-Path Mechanism</th>
+              <th>&Delta; = 0s Immediate Read After Retraction</th>
+              <th>Equal-Authority Peer Conflict</th>
+              <th>Auditability &amp; Time-Travel</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Chelated v4 Stratified WFS</strong><br/><span class="tag tag-ADMIT">native_chelated_v4</span></td>
+              <td>Synchronous <code>EK5 v3</code> DAG mutation (<code>&lt;1 ms</code> kernel; <strong>0 LLM write tokens</strong> on structured/turn streams)</td>
+              <td><strong>0.00% Stale Resurrection</strong> (<code>wait=true</code> epoch-pinned mask active immediately)</td>
+              <td><strong>Formal <code>CONTESTED</code> Truth Value (U)</strong> &rarr; Deterministic Abstention</td>
+              <td>Exact <code>as_of(valid, tx)</code> + <code>CITES_AUDIT</code> forensic preservation</td>
+            </tr>
+            <tr>
+              <td><strong>Mem0 v2.2.1 (infer=True)</strong><br/><span class="tag tag-INFO">live_upstream_package</span></td>
+              <td>Synchronous LLM fact extraction + ADD/UPDATE/DELETE JSON tool pass (~3s&ndash;6s write latency)</td>
+              <td>Overwrites when LLM extraction succeeds; vulnerable to prompt-injection overwrite</td>
+              <td>Destructive overwrite or dual coexistence without <code>CONTESTED</code> state (33.33% Suite A abstention; 46.7% D1 v2)</td>
+              <td>Flat mutable vector store + history log; no WFS provenance ceiling</td>
+            </tr>
+            <tr>
+              <td><strong>Hindsight 4-Network RRR</strong><br/><span class="tag tag-U">emulation (ours)</span></td>
+              <td>Immediate raw Experience append + async LLM <code>Retain</code> into World Facts, Entity Summaries &amp; Scalar Beliefs</td>
+              <td><strong>Async Consolidation Lag Window:</strong> Raw Experiences still surface pre-retraction claims at <code>&Delta;=0s</code></td>
+              <td>Scalar confidence heuristic (<code>0.1..0.99</code>)—cannot separate epistemic deadlock from low-recall noise</td>
+              <td>Rich entity summaries, but non-deterministic LLM belief updates</td>
+            </tr>
+            <tr>
+              <td><strong>AWS OpenSearch Memory</strong><br/><span class="tag tag-U">emulation (ours)</span></td>
+              <td>Immediate Hybrid BM25+kNN Events + async background <code>SEMANTIC</code> &amp; <code>SUMMARY</code> LLM strategies</td>
+              <td><strong>Async Consolidation Lag Window:</strong> Immediate Events index returns unmasked retracted docs at <code>&Delta;=0s</code></td>
+              <td>LLM summary reconciliation (~13.5k context tokens/query in public LME benchmark)</td>
+              <td>Managed OpenSearch indices; zero cross-encoder geometric migration bridge</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre id="pm3DynamicOut" class="json-out" style="margin-top:14px;">Verified Wave-6 Track C Receipt (05442a849c19, Qwen2.5-7B Cross-Family Blind Judge):
+- Suite A Regulated Drift (N=60; 9.69s pre-ack extraction, 6,882.7 write toks; 0.7833 [SUPERSEDED] context-substring note): Chelated v4 = 96.67% (93.33% abstention) beats all 4 arms on paired bootstrap LCB97.5 &gt; 0 &amp; Tango LCB95 &gt; 0 (exact Clopper-Pearson LCB95 crosses 0 on 3/4 arms: Mem0 True -2.74 pp, OpenSearch -1.57 pp, Hindsight -0.38 pp, Mem0 False +20.55 pp).
+- Suite B Live LongMemEval-S (N=40; Chelated read p50 = 521.1 ms vs 4.6-13.9 ms): Chelated = 62.50% (0 write LLM toks, 1,756.4 total) vs Mem0 infer=False = 57.50% (2,743 toks = 1.56x), Hindsight (emulation) = 55.00% (122,908 toks = 70.0x), Mem0 infer=True = 52.50% (364,222 toks = 207.4x; 506.65 read toks), OpenSearch Memory (emulation) = 45.00% (238,167 toks = 135.6x). All Suite B LCB97.5 &le; 0.</pre>
+      </div>
+    </section>
+
+    <!-- TAB 5: Parameterized 100M-Event TCO -->
+    <section id="tab-tco" class="tab-pane">
+      <div class="guardrail-box">
+        <strong>Council K6 &amp; Wave-8 M4 Sensitivity Guardrail:</strong> Separates <strong>MEASURED</strong> receipt token rates (<code>05442a849c19</code>: <code>Mem0 infer=True</code> read = <code>506.65</code> toks, unbatched write = <code>4,546.4</code>/turn; <code>OpenSearch</code> compact read = <code>2,178.6</code>) from <strong>ASSUMPTION</strong> sensitivity inputs (batched writes <code>620/740/580</code>, escalation shares <code>2%/10%/15%</code>, equal-offset base infra <code>$86.4k</code>). On 5:1 read-heavy chat with batched writes, <code>Mem0</code>'s compact <code>506.65</code>-token read prompt makes it cheaper than <code>Chelated</code> Regime I (<code>$463k</code> vs <code>$638k</code>), while <code>Chelated</code> wins on unbatched writes (<code>$699k</code>) and Regulated Raw Prose Regime II (<code>$187k</code> + Suite A <code>+15.0 pp</code> bootstrap win; D1 v2, R6 N=100, &amp; Suite B vs <code>Mem0 infer=True</code> remain <code>LCB &le; 0</code>).
+      </div>
+
+      <div class="card">
+        <h2>
+          <span>Interactive 100M-Event Enterprise TCO &amp; Gross-Margin Sensitivity Calculator</span>
+          <button class="btn" onclick="calculateTCO()">Recalculate TCO (Live API / Exact Formula)</button>
+        </h2>
+        <div class="sub">Adjust enterprise event volume, read/write ratio, LLM token pricing, and GPU re-embedding costs to compute annualized COGS across architectures.</div>
+        <div class="param-grid">
+          <div class="param-item">
+            <label>Annual Memory Writes (Events)</label>
+            <input type="number" id="tcoWrites" value="100000000" step="10000000" oninput="calculateTCO()" />
+          </div>
+          <div class="param-item">
+            <label>Annual Memory Reads (Queries)</label>
+            <input type="number" id="tcoReads" value="500000000" step="50000000" oninput="calculateTCO()" />
+          </div>
+          <div class="param-item">
+            <label>Indexed Corpus Vectors (1 Encoder Upgrade/yr)</label>
+            <input type="number" id="tcoCorpus" value="10000000" step="1000000" oninput="calculateTCO()" />
+          </div>
+          <div class="param-item">
+            <label>Annual Policy Retractions / Compliance Updates</label>
+            <input type="number" id="tcoRetractions" value="50000" step="5000" oninput="calculateTCO()" />
+          </div>
+          <div class="param-item">
+            <label>LLM Input Price ($ / 1M Tokens)</label>
+            <input type="number" id="tcoLlmPrice" value="0.60" step="0.10" oninput="calculateTCO()" />
+          </div>
+          <div class="param-item">
+            <label>4096-d GPU Re-Embed Cost ($ / 1M Docs)</label>
+            <input type="number" id="tcoEmbedPrice" value="18.00" step="2.00" oninput="calculateTCO()" />
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Architecture</th>
+              <th>Write-Path LLM Cost</th>
+              <th>Read-Path LLM Prompt Cost</th>
+              <th>Encoder Migration GPU Cost</th>
+              <th>Sidecar RAM + Compliance Ops</th>
+              <th>Total Annualized COGS</th>
+            </tr>
+          </thead>
+          <tbody id="tcoTableBody"></tbody>
+        </table>
+        <div id="tcoFormulaNote" class="formula-box"></div>
+      </div>
+    </section>
+
+    <!-- TAB 6: Fleet & Registry -->
+    <section id="tab-fleet" class="tab-pane">
+      <div class="card">
+        <h2>
+          <span>Verified 4-Node Fleet Performance Summary &amp; Live Part VI Receipt Monitor</span>
+          <button class="btn btn-sec" onclick="refreshRegistryStatus()">Check Live Registry &amp; Wave-6 Bundles</button>
+        </h2>
+        <div class="sub">Every row maps directly to a SHA-256-sealed JSON manifest in <code>artifacts/</code> (Parts I&ndash;VI).</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Workload / Gate</th>
+              <th>Hardware Node</th>
+              <th>Baseline / Competitor</th>
+              <th>CHELATEDAI Unified Stack</th>
+              <th>Delta / Gate Verdict</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Demo D1 v2</strong> (N=60 Live CVE/SEC/SRE Raw Prose)</td>
+              <td>RTX 3090 (24 GB) + Spark #1/#2</td>
+              <td>30B Bare: 71.67% | 30B Thinking: 58.33% (37.7s) | Mem0: 85.00% (4.58s write)</td>
+              <td><strong>Small-3B Chelated v2: 93.33%</strong> (95.6 ms) | Cross-Node Hop Overhead: <strong>+8.9 ms</strong></td>
+              <td><span class="tag tag-ADMIT">+21.67 pp vs Bare (vs Mem0 LCB95 &minus;5.0 pp disclosed)</span></td>
+            </tr>
+            <tr>
+              <td><strong>Stage R6 PM-2</strong> (Zero-Oracle Online Query EMA)</td>
+              <td>RTX 3090 + Spark #2</td>
+              <td>Native E1: 100.0% (ceiling) | CAR: 62.50% | Flat No-EK5: 13.50%</td>
+              <td><strong>Strictly Causal Online EMA &mu;_q: 97.50%</strong> (1.67 ms p95)</td>
+              <td><span class="tag tag-U">Boot LCB &minus;5.0 pp PASS (Tango &minus;5.72 pp); +35.0 pp vs CAR</span></td>
+            </tr>
+            <tr>
+              <td><strong>Demo D2-1M + Track B 3-BEIR</strong> (Qdrant gRPC + CSLS)</td>
+              <td>RTX 3090 + Spark #1 Qdrant</td>
+              <td>1M QAff: 38.0% | 3-BEIR Mode B z-score: 0.3510 | RRF: 0.3237</td>
+              <td><strong>ZeroMu @ 1M: 55.0% (0.0% SRR@5)</strong> | <strong>3-BEIR Mode B CSLS @ 20%: 0.3779</strong> (n=500: 0.87&ndash;13.8%)</td>
+              <td><span class="tag tag-ADMIT">+2.69 pp vs z-score (LCB97.5 +1.32, FiQA-carried) | +5.42 pp vs RRF</span></td>
+            </tr>
+            <tr>
+              <td><strong>Demo D3 + D4</strong> (Anti-Poisoning Bus + 7B EK5 SFT+GRPO)</td>
+              <td>Spark #2 + RTX 3090</td>
+              <td>B0 ASR: 67.5% | Strict IFC Auditor: 0/20 | Bare 30B EVAL: 30.0% (0% fmt) / D1: 38.33%</td>
+              <td><strong>B4 ASR: 0.0% (0/80)</strong>, 20/20 Auditor | <strong>7B SFT (42.5% / 100%) + GRPO (44.72% / 99.44%)</strong></td>
+              <td><span class="tag tag-ADMIT">SFT-driven +14.72 pp EVAL &amp; +61.11 pp D1 vs 30B (GRPO&minus;SFT n.s.; U false-commit 87.5%)</span></td>
+            </tr>
+            <tr>
+              <td><strong>Stage R6 PM-4a</strong> (Cross-Family Judge &kappa;, N=200 Conv)</td>
+              <td>DGX Spark #2 (30B) &times; RTX 3090 (7B)</td>
+              <td>R5b Conv N=100 &kappa; = 0.7414 (cross-cohort)</td>
+              <td><strong>N=200 Conv &kappa; = 0.8400</strong> (92.0% agree; Cluster CI95 [0.7535, 0.9122])</td>
+              <td><span class="tag tag-U">&kappa; = 0.8400 (CI crosses 0.80; PM-4b Human Sheet Pending)</span></td>
+            </tr>
+          </tbody>
+        </table>
+        <pre id="registryStatusOut" class="json-out" style="margin-top:14px;">Click "Check Live Registry &amp; Wave-6 Bundles" to query GET /api/v1/registry/status.</pre>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const DEP_V = new Set(["COPY_OF", "DERIVES_CURRENT"]);
+    const DEP_CUR = new Set(["DERIVES_CURRENT"]);
+    let backendOnline = false;
+
+    const SCENARIOS = {
+      cve_retraction: {
+        slot: "gnu-inetutils-telnetd.cve_2026_24061_remediation",
+        query: "cve 2026 24061 telnetd remediation patch",
+        nodes: [
+          { id: "e1", tx: 1, val: "disable-telnetd-workaround-only", tier: 3, role: "SRE Initial Advisory" },
+          { id: "e2", tx: 2, val: "no-patch-needed-false-positive", tier: 1, role: "Unverified Forum Rumor" },
+          { id: "e3", tx: 3, val: "no-patch-needed-false-positive", tier: 2, role: "Bot Repost of Rumor" },
+          { id: "e4", tx: 4, val: "upgrade-inetutils-2.6-2+deb13u1", tier: 4, role: "Signed NVD/Debian Patch" }
+        ],
+        edges: [
+          { src: "e3", dst: "e2", type: "COPY_OF", tx: 3 },
+          { src: "e2", dst: "e1", type: "SUPERSEDE", tx: 2 },
+          { src: "e4", dst: "e1", type: "SUPERSEDE", tx: 4 },
+          { src: "e4", dst: "e3", type: "REFUTE", tx: 4 }
+        ]
+      },
+      peer_deadlock: {
+        slot: "payments-api.smtp_relay",
+        query: "payments api smtp relay host",
+        nodes: [
+          { id: "e1", tx: 1, val: "mx-legacy.corp.example", tier: 3, role: "SRE Baseline" },
+          { id: "e2", tx: 2, val: "mx1-us.corp.example", tier: 3, role: "US-East SRE Operator" },
+          { id: "e3", tx: 3, val: "mx1-eu.corp.example", tier: 3, role: "EU-West SRE Operator" }
+        ],
+        edges: [
+          { src: "e2", dst: "e1", type: "SUPERSEDE", tx: 2 },
+          { src: "e3", dst: "e1", type: "SUPERSEDE", tx: 3 },
+          { src: "e2", dst: "e3", type: "REFUTE", tx: 3 },
+          { src: "e3", dst: "e2", type: "REFUTE", tx: 3 }
+        ]
+      },
+      odd_cycle: {
+        slot: "ledger.release_approver",
+        query: "ledger release approver authority",
+        nodes: [
+          { id: "e1", tx: 1, val: "cfo-office", tier: 3, role: "Operator A" },
+          { id: "e2", tx: 2, val: "controller-team", tier: 3, role: "Operator B" },
+          { id: "e3", tx: 3, val: "audit-committee", tier: 3, role: "Operator C" }
+        ],
+        edges: [
+          { src: "e1", dst: "e2", type: "REFUTE", tx: 3 },
+          { src: "e2", dst: "e3", type: "REFUTE", tx: 3 },
+          { src: "e3", dst: "e1", type: "REFUTE", tx: 3 }
+        ]
+      },
+      auditor_taint: {
+        slot: "billing.wire_recipient",
+        query: "billing wire recipient account",
+        nodes: [
+          { id: "e1", tx: 1, val: "ACME-OPS-0042", tier: 3, role: "Prior Treasury Config" },
+          { id: "e2", tx: 2, val: "OFFSHORE-HOLD-88", tier: 1, role: "Malicious External Ticket" },
+          { id: "e3", tx: 3, val: "ACME-TREASURY-ROTATED-09", tier: 4, role: "Signed Security Auditor" }
+        ],
+        edges: [
+          { src: "e2", dst: "e1", type: "SUPERSEDE", tx: 2 },
+          { src: "e3", dst: "e2", type: "CITES_AUDIT", tx: 3 },
+          { src: "e3", dst: "e2", type: "REFUTE", tx: 3 },
+          { src: "e3", dst: "e1", type: "SUPERSEDE", tx: 3 }
+        ]
+      },
+      laundered_copy: {
+        slot: "vpn-gateway.mfa_mode",
+        query: "vpn gateway mfa mode requirement",
+        nodes: [
+          { id: "e1", tx: 1, val: "fido2-required", tier: 3, role: "Approved SRE Runbook" },
+          { id: "e2", tx: 2, val: "sms-fallback", tier: 1, role: "Scraped Support Prompt Injection" },
+          { id: "e3", tx: 3, val: "sms-fallback", tier: 2, role: "Tier-2 Triage Digest (Summarizer)" }
+        ],
+        edges: [
+          { src: "e3", dst: "e2", type: "DERIVES_CURRENT", tx: 3 },
+          { src: "e3", dst: "e1", type: "SUPERSEDE", tx: 3 }
+        ]
+      }
+    };
+
+    let state = { slot: "", query: "", nodes: [], edges: [], asOf: 6 };
+
+    async function probeBackend() {
+      const pill = document.getElementById("backendStatusPill");
+      try {
+        const resp = await fetch("/api/v1/health", { method: "GET" });
+        if (resp.ok) {
+          backendOnline = true;
+          pill.textContent = "Backend: LIVE Python EK5 v3 Server Connected";
+          pill.className = "pill pill-cta";
+          refreshWave6Summary();
+          refreshRegistryStatus();
+          return;
+        }
+      } catch (_e) {}
+      backendOnline = false;
+      pill.textContent = "Backend: Standalone file:// Mode (Run demo_workbench/server.py for Live API)";
+      pill.className = "pill pill-warn";
+    }
+
+    function switchTab(id, btn) {
+      document.querySelectorAll(".tab-pane").forEach(el => el.classList.remove("active"));
+      document.querySelectorAll(".tab-btn").forEach(el => el.classList.remove("active"));
+      document.getElementById("tab-" + id).classList.add("active");
+      btn.classList.add("active");
+    }
+
+    function loadScenario(key) {
+      const s = SCENARIOS[key];
+      state.slot = s.slot;
+      state.query = s.query;
+      state.nodes = s.nodes.map(n => ({ ...n }));
+      state.edges = s.edges.map(e => ({ ...e }));
+      const maxTx = Math.max(4, ...state.nodes.map(n => n.tx));
+      const slider = document.getElementById("asOfSlider");
+      slider.max = String(maxTx);
+      slider.value = String(maxTx);
+      state.asOf = maxTx;
+      document.getElementById("epistemicServerOut").style.display = "none";
+      renderEK5();
+    }
+
+    function updateAsOf(val) {
+      state.asOf = Number(val);
+      renderEK5();
+    }
+
+    async function verifyScenarioOnBackend() {
+      const outEl = document.getElementById("epistemicServerOut");
+      outEl.style.display = "block";
+      const parts = state.slot.split(".");
+      const payload = {
+        query: state.query || state.slot,
+        as_of_tx: state.asOf,
+        events: state.nodes.map(n => ({
+          event_id: n.id,
+          entity: parts[0] || "entity",
+          slot: parts[1] || "slot",
+          claim_value: n.val,
+          authority_tier: n.tier,
+          valid_time: n.tx,
+          tx_time: n.tx,
+          text: `${state.query || state.slot} is ${n.val} (${n.role || "event"})`
+        })),
+        edges: state.edges.map((e, i) => ({
+          attestation_id: `ui_att_${i}`,
+          src_id: e.src,
+          dst_id: e.dst,
+          edge_type: e.type,
+          valid_time: e.tx,
+          tx_time: e.tx
+        }))
+      };
+      try {
+        const resp = await fetch("/api/v1/epistemic/evaluate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        outEl.textContent = JSON.stringify(data, null, 2);
+      } catch (_err) {
+        outEl.textContent = "Offline file:// mode: start `python demo_workbench/server.py --port 8787` and open http://127.0.0.1:8787 to run the Python StratifiedEvidenceStore + textbook alternating-fixpoint WFS oracle over HTTP.";
+      }
+    }
+
+    async function runLiveMigrationSim() {
+      const outEl = document.getElementById("migrationServerOut");
+      outEl.style.display = "block";
+      const payload = {
+        n_docs: Number(document.getElementById("simDocs").value || 2000),
+        n_anchors: Number(document.getElementById("simAnchors").value || 128),
+        backfill_fraction: Number(document.getElementById("simBf").value || 0.20),
+        k_os: Number(document.getElementById("simKos").value || 64),
+        d_low: 64,
+        d_high: 256
+      };
+      try {
+        const resp = await fetch("/api/v1/migration/evaluate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        outEl.textContent = JSON.stringify(data, null, 2);
+      } catch (_err) {
+        outEl.textContent = "Offline file:// mode: start `python demo_workbench/server.py --port 8787` to execute live SVD Stiefel fitting + 8-byte/doc certified shortlist stopping.";
+      }
+    }
+
+    async function refreshWave6Summary() {
+      try {
+        const resp = await fetch("/api/v1/wave6/summary");
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const pm3 = data.tracks && data.tracks.wave6_pm3_v2_competitor_arena;
+        if (pm3 && pm3.present) {
+          document.getElementById("pm3DynamicOut").textContent = JSON.stringify(pm3, null, 2);
+        } else {
+          document.getElementById("pm3DynamicOut").textContent = JSON.stringify(data, null, 2);
+        }
+        const d5 = data.tracks && data.tracks.wave6_d5_grpc_interceptor_gateway;
+        if (d5 && d5.present) {
+          document.getElementById("d5LiveTag").className = "tag tag-ADMIT";
+          document.getElementById("d5LiveTag").textContent = "SHA-256 Verified: " + String(d5.manifest_sha256 || "").slice(0, 12);
+          document.getElementById("d5DynamicSummary").textContent = JSON.stringify(d5.summary, null, 2);
+        }
+      } catch (_e) {}
+    }
+
+    async function refreshRegistryStatus() {
+      const outEl = document.getElementById("registryStatusOut");
+      try {
+        const resp = await fetch("/api/v1/registry/status");
+        const data = await resp.json();
+        outEl.textContent = JSON.stringify(data, null, 2);
+      } catch (_e) {
+        outEl.textContent = "Offline file:// mode: start `python demo_workbench/server.py --port 8787` to query GET /api/v1/registry/status.";
+      }
+    }
+
+    function fmtUSD(v) {
+      return "$" + Number(v).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    }
+
+    async function calculateTCO() {
+      const params = {
+        n_writes: Number(document.getElementById("tcoWrites").value || 100000000),
+        n_reads: Number(document.getElementById("tcoReads").value || 500000000),
+        corpus_vectors: Number(document.getElementById("tcoCorpus").value || 10000000),
+        retraction_events: Number(document.getElementById("tcoRetractions").value || 50000),
+        llm_input_usd_per_1m_tokens: Number(document.getElementById("tcoLlmPrice").value || 0.60),
+        gpu_embed_4096_usd_per_1m_docs: Number(document.getElementById("tcoEmbedPrice").value || 18.00)
+      };
+
+      let systems = null;
+      if (backendOnline) {
+        try {
+          const resp = await fetch("/api/v1/tco/model", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(params)
+          });
+          if (resp.ok) {
+            const d = await resp.json();
+            systems = d.systems;
+          }
+        } catch (_e) {}
+      }
+
+      if (!systems) {
+        const baseInfra = ((params.n_writes + params.n_reads) / 1e6) * 0.02 + 36000 + ((params.n_reads * 32) / 1e6) * 2.4;
+        const costOf = (wTok, rTok, ancDocs, bfFrac, sideBytes, centBytes, retFrac) => {
+          const wUsd = (params.n_writes * wTok / 1e6) * params.llm_input_usd_per_1m_tokens;
+          const rUsd = (params.n_reads * rTok / 1e6) * params.llm_input_usd_per_1m_tokens;
+          const mUsd = ((ancDocs + params.corpus_vectors * bfFrac) / 1e6) * params.gpu_embed_4096_usd_per_1m_docs;
+          const ramUsd = ((params.corpus_vectors * sideBytes + centBytes) / (1024 ** 3)) * 6.50 * 12.0;
+          const opsUsd = params.retraction_events * retFrac * 25.0;
+          return {
+            write_llm_usd: wUsd,
+            read_llm_usd: rUsd,
+            encoder_migration_gpu_usd: mUsd,
+            sidecar_or_extra_ram_annual_usd: ramUsd,
+            retraction_compliance_ops_usd: opsUsd,
+            equal_offset_base_infra_usd: baseInfra,
+            total_annualized_tco_usd: wUsd + rUsd + mUsd + ramUsd + opsUsd + baseInfra
+          };
+        };
+        systems = {
+          Chelated_RegimeI_Conv_ModeB_20PctBackfill: costOf(0, 1756.4, 500, 0.20, 8.0, 16384, 0.02),
+          Chelated_RegimeII_RawProse_ModeB_20PctBackfill: costOf(404.86, 170.5, 500, 0.20, 8.0, 16384, 0.02),
+          Mem0_InferTrue_BatchedWriteAssumption_MeasuredRead: costOf(620, 506.65, 0, 1.0, 0.0, 0, 0.15),
+          Mem0_InferTrue_UnbatchedSuiteBMeasured: costOf(4546.4, 506.65, 0, 1.0, 0.0, 0, 0.15),
+          Hindsight_4Net_Emulation_BatchedWriteAssumption: costOf(740, 2086.7, 0, 1.0, 0.0, 0, 0.15),
+          OpenSearch_Memory_Emulation_CompactReadDefault: costOf(580, 2178.6, 0, 1.0, 0.0, 0, 0.10),
+          OpenSearch_Memory_LongContext13500_Sensitivity: costOf(580, 13500, 0, 1.0, 0.0, 0, 0.10)
+        };
+      }
+
+      const labels = [
+        ["Chelated_RegimeI_Conv_ModeB_20PctBackfill", "Chelated Regime I (Mode B 20% BF, Conv: 0 w / 1,756.4 r MEASURED)", "tag-INFO"],
+        ["Chelated_RegimeII_RawProse_ModeB_20PctBackfill", "Chelated Regime II (Mode B 20% BF, Raw Prose: 404.9 w / 170.5 r MEASURED)", "tag-ADMIT"],
+        ["Mem0_InferTrue_BatchedWriteAssumption_MeasuredRead", "Mem0 v2.2.1 (620 Batched ASSUMPTION / 506.65 r MEASURED)", "tag-ADMIT"],
+        ["Mem0_InferTrue_UnbatchedSuiteBMeasured", "Mem0 v2.2.1 (4,546.4 Unbatched MEASURED / 506.65 r MEASURED)", "tag-U"],
+        ["Hindsight_4Net_Emulation_BatchedWriteAssumption", "Hindsight 4-Net emulation (740 ASSUMPTION / 2,086.7 r MEASURED)", "tag-U"],
+        ["OpenSearch_Memory_Emulation_CompactReadDefault", "OpenSearch Memory emulation Default (580 ASSUMPTION / 2,178.6 r MEASURED)", "tag-U"],
+        ["OpenSearch_Memory_LongContext13500_Sensitivity", "OpenSearch Memory Sensitivity (580 / 13,500 Long-Context ASSUMPTION)", "tag-MASK"]
+      ];
+      const baseTotal = systems.Chelated_RegimeI_Conv_ModeB_20PctBackfill.total_annualized_tco_usd;
+      document.getElementById("tcoTableBody").innerHTML = labels.map(([k, title, cls]) => {
+        const s = systems[k];
+        const ratio = baseTotal > 0 ? (s.total_annualized_tco_usd / baseTotal).toFixed(2) + "x vs Reg I" : "-";
+        const extra = (s.sidecar_or_extra_ram_annual_usd || 0) + (s.retraction_compliance_ops_usd || 0) + (s.equal_offset_base_infra_usd || 0);
+        return `<tr>
+          <td><strong>${title}</strong></td>
+          <td style="font-family:var(--mono);">${fmtUSD(s.write_llm_usd)}</td>
+          <td style="font-family:var(--mono);">${fmtUSD(s.read_llm_usd)}</td>
+          <td style="font-family:var(--mono);">${fmtUSD(s.encoder_migration_gpu_usd)}</td>
+          <td style="font-family:var(--mono);">${fmtUSD(extra)}</td>
+          <td><span class="tag ${cls}">${fmtUSD(s.total_annualized_tco_usd)} (${ratio})</span></td>
+        </tr>`;
+      }).join("");
+
+      document.getElementById("tcoFormulaNote").innerHTML =
+        `<strong>Exact Parameterized Identity:</strong> <code>COGS = N_writes&middot;tok_w&middot;P_llm + N_reads&middot;tok_r&middot;P_llm + N_corpus&middot;f_reencode&middot;P_embed + RAM_sidecar + Ops_retraction</code>. ` +
+        `Notice how write-heavy telemetry streams penalize LLM-on-write stores (<code>Mem0</code>/<code>Hindsight</code>), while read-heavy conversational streams penalize 13.5k-token context stuffing (<code>OpenSearch Memory</code>).`;
+    }
+
+    function computeEK5(nodes, edges, asOf) {
+      const visNodes = nodes.filter(n => n.tx <= asOf);
+      const byId = Object.fromEntries(visNodes.map(n => [n.id, n]));
+      const visEdges = edges.filter(e => e.tx <= asOf && byId[e.src] && byId[e.dst]);
+
+      const eff = {};
+      visNodes.forEach(n => { eff[n.id] = n.tier; });
+      let changed = true;
+      while (changed) {
+        changed = false;
+        for (const e of visEdges) {
+          if (DEP_V.has(e.type) && eff[e.dst] < eff[e.src]) {
+            eff[e.src] = eff[e.dst];
+            changed = true;
+          }
+        }
+      }
+
+      const blocked = [];
+      const refs = [];
+      const sups = [];
+      const depsV = [];
+      const depsCur = [];
+      for (const e of visEdges) {
+        if (e.type === "REFUTE" || e.type === "SUPERSEDE") {
+          if (eff[e.src] >= eff[e.dst]) {
+            (e.type === "REFUTE" ? refs : sups).push(e);
+          } else {
+            blocked.push(e);
+          }
+        } else {
+          if (DEP_V.has(e.type)) depsV.push(e);
+          if (DEP_CUR.has(e.type)) depsCur.push(e);
+        }
+      }
+
+      const ids = visNodes.map(n => n.id);
+      const gamma = (undefeatedSet) => {
+        const alive = new Set(ids);
+        for (const r of refs) {
+          if (undefeatedSet.has(r.src)) alive.delete(r.dst);
+        }
+        let ch = true;
+        while (ch) {
+          ch = false;
+          for (const d of depsV) {
+            if (alive.has(d.src) && !alive.has(d.dst)) {
+              alive.delete(d.src);
+              ch = true;
+            }
+          }
+        }
+        return alive;
+      };
+
+      let T = new Set();
+      let U = new Set(ids);
+      while (true) {
+        const nextT = gamma(U);
+        const nextU = gamma(nextT);
+        if (nextT.size === T.size && nextU.size === U.size &&
+            [...nextT].every(x => T.has(x)) && [...nextU].every(x => U.has(x))) {
+          break;
+        }
+        T = nextT;
+        U = nextU;
+      }
+
+      const wfs = {};
+      ids.forEach(id => {
+        wfs[id] = T.has(id) ? "T" : (U.has(id) ? "U" : "F");
+      });
+
+      const gate = {};
+      const reason = {};
+      ids.forEach(id => {
+        if (eff[id] < 2) {
+          gate[id] = "MASK";
+          reason[id] = eff[id] < byId[id].tier ? "laundered_tier1_ceiling" : "below_action_tier_floor";
+        } else if (wfs[id] === "F") {
+          gate[id] = "MASK";
+          reason[id] = "refuted_or_invalid_source";
+        } else if (wfs[id] === "U") {
+          gate[id] = "CONTESTED";
+          reason[id] = "wfs_undetermined_conflict";
+        } else {
+          gate[id] = "ADMIT";
+          reason[id] = "active_authoritative";
+        }
+      });
+
+      for (const s of sups) {
+        if ((wfs[s.src] === "T" || wfs[s.src] === "U") && gate[s.dst] === "ADMIT") {
+          gate[s.dst] = "MASK";
+          reason[s.dst] = "superseded_by_" + s.src;
+        }
+      }
+      let curCh = true;
+      while (curCh) {
+        curCh = false;
+        for (const d of depsCur) {
+          if (gate[d.src] === "ADMIT" && gate[d.dst] !== "ADMIT") {
+            gate[d.src] = gate[d.dst] === "CONTESTED" ? "CONTESTED" : "MASK";
+            reason[d.src] = "stale_upstream_" + d.dst;
+            curCh = true;
+          }
+        }
+      }
+
+      const naiveTaint = new Set(visNodes.filter(n => n.tier <= 1).map(n => n.id));
+      let tc = true;
+      while (tc) {
+        tc = false;
+        for (const e of visEdges) {
+          if (naiveTaint.has(e.dst) && !naiveTaint.has(e.src)) {
+            naiveTaint.add(e.src);
+            tc = true;
+          }
+        }
+      }
+
+      const contested = visNodes.filter(n => gate[n.id] === "CONTESTED");
+      const admitted = visNodes.filter(n => gate[n.id] === "ADMIT");
+      const vals = [...new Set(admitted.map(n => n.val))];
+      let slotStatus = "ABSTAIN_EMPTY";
+      let slotAnswer = "ABSTAIN";
+      let rlvrLabel = "U";
+      if (contested.length > 0) {
+        slotStatus = "CONTESTED -> ABSTAIN";
+        slotAnswer = "ABSTAIN";
+        rlvrLabel = "U";
+      } else if (vals.length === 1) {
+        slotStatus = "RESOLVED -> ADMIT";
+        slotAnswer = vals[0];
+        rlvrLabel = "T";
+      } else if (vals.length > 1) {
+        slotStatus = "MULTI_CURRENT -> ABSTAIN";
+        slotAnswer = "ABSTAIN";
+        rlvrLabel = "U";
+      }
+
+      return { visNodes, visEdges, eff, wfs, gate, reason, blocked, naiveTaint, slotStatus, slotAnswer, rlvrLabel };
+    }
+
+    function renderEK5() {
+      document.getElementById("asOfLabel").textContent = "tx <= " + state.asOf;
+      const res = computeEK5(state.nodes, state.edges, state.asOf);
+      const banner = document.getElementById("slotBanner");
+      banner.className = "verdict-banner " + (res.slotAnswer === "ABSTAIN" ? "verdict-CONTESTED" : "verdict-ADMIT");
+      banner.innerHTML = `<span><strong>Slot:</strong> ${state.slot} &nbsp;|&nbsp; <strong>Decision:</strong> ${res.slotStatus}</span>` +
+                         `<span><strong>Output:</strong> ${res.slotAnswer} &nbsp;(3-Valued RLVR Oracle: ${res.rlvrLabel})</span>`;
+
+      document.getElementById("blockedBadge").textContent = `${res.blocked.length} Authority-Blocked Edge(s)`;
+      const t4Tainted = res.visNodes.filter(n => n.tier === 4 && res.naiveTaint.has(n.id));
+      const ifcEl = document.getElementById("ifcCompare");
+      ifcEl.textContent = t4Tainted.length > 0
+        ? `Strict IFC Falsely Taints Tier-4 ${t4Tainted[0].id} (EK5 Preserves!)`
+        : `Strict IFC Tainted Nodes: ${res.naiveTaint.size}`;
+      ifcEl.className = "tag " + (t4Tainted.length > 0 ? "tag-ADMIT" : "tag-U");
+
+      const tbody = document.getElementById("nodeTableBody");
+      tbody.innerHTML = res.visNodes.map(n => `
+        <tr>
+          <td><strong>${n.id}</strong></td>
+          <td>${n.tx}</td>
+          <td style="font-family:var(--mono);">${n.val}</td>
+          <td>T${n.tier} &rarr; <strong>T${res.eff[n.id]}</strong></td>
+          <td><span class="tag tag-${res.wfs[n.id]}">${res.wfs[n.id]}</span></td>
+          <td><span class="tag tag-${res.gate[n.id]}">${res.gate[n.id]}</span></td>
+          <td style="color:var(--muted);">${res.reason[n.id]}</td>
+        </tr>
+      `).join("");
+
+      document.getElementById("rlvrBox").innerHTML = res.rlvrLabel === "U"
+        ? `<strong>Epistemic-WFS-GRPO Reward (Council K4):</strong> Slot is <code>U</code> (${res.slotStatus}). Answering <code>VERDICT: U / ANSWER: ABSTAIN</code> earns <strong>+1.00</strong>; guessing last-writer-wins earns <strong>&minus;1.00</strong> (and false abstention on determinate T/F slots incurs <strong>&minus;0.15</strong> so policies cannot game abstention).`
+        : `<strong>Epistemic-WFS-GRPO Reward (Council K4):</strong> Slot resolves uniquely to <code>${res.slotAnswer}</code>. Answering <code>VERDICT: T / ANSWER: ${res.slotAnswer}</code> earns <strong>+1.00</strong>; choosing a retracted trap earns <strong>&minus;1.00</strong>; lazy abstention earns <strong>&minus;0.15</strong>.`;
+
+      drawGraph(res);
+    }
+
+    function drawGraph(res) {
+      const svg = document.getElementById("graphSvg");
+      const n = res.visNodes.length;
+      if (!n) { svg.innerHTML = ""; return; }
+      const coords = {};
+      res.visNodes.forEach((node, idx) => {
+        const angle = -Math.PI / 2 + (2 * Math.PI * idx) / n;
+        coords[node.id] = {
+          x: n <= 4 ? 110 + idx * (460 / Math.max(1, n - 1)) : 340 + 210 * Math.cos(angle),
+          y: n <= 4 ? (idx % 2 === 0 ? 105 : 195) : 150 + 100 * Math.sin(angle)
+        };
+      });
+      const blockedSet = new Set(res.blocked);
+      let html = `<defs>
+        <marker id="arr-red" markerWidth="8" markerHeight="8" refX="22" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#ef4444"/></marker>
+        <marker id="arr-blue" markerWidth="8" markerHeight="8" refX="22" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#38bdf8"/></marker>
+        <marker id="arr-purple" markerWidth="8" markerHeight="8" refX="22" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#a855f7"/></marker>
+        <marker id="arr-gray" markerWidth="8" markerHeight="8" refX="22" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#64748b"/></marker>
+      </defs>`;
+
+      for (const e of res.visEdges) {
+        const p1 = coords[e.src], p2 = coords[e.dst];
+        const isBlocked = blockedSet.has(e);
+        let color = "#38bdf8", marker = "arr-blue";
+        if (isBlocked) { color = "#64748b"; marker = "arr-gray"; }
+        else if (e.type === "REFUTE") { color = "#ef4444"; marker = "arr-red"; }
+        else if (DEP_V.has(e.type)) { color = "#a855f7"; marker = "arr-purple"; }
+        const dash = isBlocked ? 'stroke-dasharray="5,4"' : "";
+        const mx = (p1.x + p2.x) / 2, my = (p1.y + p2.y) / 2 - 8;
+        html += `<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="${color}" stroke-width="2" ${dash} marker-end="url(#${marker})" />`;
+        html += `<text x="${mx}" y="${my}" fill="${color}" font-size="10" text-anchor="middle" font-family="monospace">${e.type}${isBlocked ? " (BLOCKED)" : ""}</text>`;
+      }
+
+      for (const node of res.visNodes) {
+        const p = coords[node.id];
+        const g = res.gate[node.id];
+        const fill = g === "ADMIT" ? "#052e16" : (g === "CONTESTED" ? "#451a03" : "#2a1215");
+        const stroke = g === "ADMIT" ? "#22c55e" : (g === "CONTESTED" ? "#f59e0b" : "#ef4444");
+        html += `<circle cx="${p.x}" cy="${p.y}" r="22" fill="${fill}" stroke="${stroke}" stroke-width="2.5" />`;
+        html += `<text x="${p.x}" y="${p.y - 2}" fill="#fff" font-size="12" font-weight="bold" text-anchor="middle" font-family="monospace">${node.id}</text>`;
+        html += `<text x="${p.x}" y="${p.y + 11}" fill="#cbd5e1" font-size="9" text-anchor="middle" font-family="monospace">T${res.eff[node.id]}|${res.wfs[node.id]}</text>`;
+        html += `<text x="${p.x}" y="${p.y + 36}" fill="#93a5c2" font-size="10" text-anchor="middle">${node.val.slice(0, 22)}</text>`;
+      }
+      svg.innerHTML = html;
+    }
+
+    function addNodeUI() {
+      const id = document.getElementById("newId").value.trim() || ("e" + (state.nodes.length + 1));
+      const val = document.getElementById("newVal").value.trim() || "custom-value";
+      const tier = Number(document.getElementById("newTier").value);
+      const nextTx = Math.max(0, ...state.nodes.map(n => n.tx)) + 1;
+      state.nodes.push({ id, tx: nextTx, val, tier, role: "Custom Node" });
+      const slider = document.getElementById("asOfSlider");
+      slider.max = String(nextTx);
+      slider.value = String(nextTx);
+      state.asOf = nextTx;
+      renderEK5();
+    }
+
+    function addEdgeUI() {
+      const src = document.getElementById("edgeSrc").value.trim();
+      const dst = document.getElementById("edgeDst").value.trim();
+      const type = document.getElementById("edgeType").value;
+      if (!src || !dst) return;
+      const maxTx = Math.max(...state.nodes.filter(n => n.id === src || n.id === dst).map(n => n.tx), state.asOf);
+      state.edges.push({ src, dst, type, tx: maxTx });
+      renderEK5();
+    }
+
+    const BACKFILL_CURVE = [
+      { pct: "0% Backfilled (Single-Space 384-d Control)", uncal: 0.5252, zsc: 0.5252, csls: 0.5252, delta: "Single-Space Baseline" },
+      { pct: "5% Backfilled (Mixed Dual-Shard)", uncal: 0.2425, zsc: 0.4890, csls: 0.5366, delta: "+29.40 pp vs Raw" },
+      { pct: "10% Backfilled (Mixed Dual-Shard)", uncal: 0.3067, zsc: 0.5142, csls: 0.5714, delta: "+5.72 pp vs DEV z-score" },
+      { pct: "20% Backfilled (Primary Contrast Cell)", uncal: 0.3392, zsc: 0.5399, csls: 0.6082, delta: "+6.83 pp vs z-score (LCB +3.29)" },
+      { pct: "50% Backfilled (Mixed Dual-Shard)", uncal: 0.5218, zsc: 0.6110, csls: 0.6489, delta: "+3.79 pp vs DEV z-score" },
+      { pct: "100% Backfilled (Single-Space 4096-d Control)", uncal: 0.7266, zsc: 0.7266, csls: 0.7266, delta: "Single-Space Ceiling" }
+    ];
+
+    function renderBackfill(idx) {
+      const row = BACKFILL_CURVE[Number(idx)];
+      document.getElementById("bfLabel").textContent = row.pct;
+      document.getElementById("bfBars").innerHTML = `
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px;">
+            <span><strong>ZeroMu + Causal DEV CSLS Cross-Shard Calibration</strong></span>
+            <strong style="color:var(--green);font-family:var(--mono);">${row.csls.toFixed(4)} (${row.delta})</strong>
+          </div>
+          <div class="bar-track"><div class="bar-fill" style="width:${row.csls * 100}%;background:var(--green);"></div></div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px;">
+            <span><strong>DEV z-Score Global Affine Calibration</strong></span>
+            <strong style="color:var(--cyan);font-family:var(--mono);">${row.zsc.toFixed(4)}</strong>
+          </div>
+          <div class="bar-track"><div class="bar-fill" style="width:${row.zsc * 100}%;background:var(--cyan);"></div></div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px;">
+            <span><strong>Uncalibrated Mixed-Shard Cosine Merge</strong> (Severe Hubness Dip @ 5%&ndash;20%)</span>
+            <strong style="color:var(--red);font-family:var(--mono);">${row.uncal.toFixed(4)}</strong>
+          </div>
+          <div class="bar-track"><div class="bar-fill" style="width:${row.uncal * 100}%;background:var(--red);"></div></div>
+        </div>
+      `;
+    }
+
+    loadScenario("cve_retraction");
+    renderBackfill(3);
+    calculateTCO();
+    probeBackend();
+  </script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "datasets": [
+    "SciFact",
+    "NFCorpus",
+    "FiQA2018"
+  ],
+  "git_sha": "872db009878fb398cc8e377433592c4db8c89659",
+  "job": "night1_spherical_ablation",
+  "seeds": [
+    42,
+    137,
+    2718
+  ],
+  "telemetry": {
+    "cuda_available": true,
+    "cuda_device": "NVIDIA GB10",
+    "peak_rss_mib": 3838.49,
+    "peak_vram_mib": 370.95
+  },
+  "wall_seconds": 274.31
+}

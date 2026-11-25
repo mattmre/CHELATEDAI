@@ -1,0 +1,10 @@
+{
+  "artifact_sha256": {
+    "f2_locomo_live_rows.csv": "82ca417521af482b1a4fdbd001d077e3d6ccdcfdcda684a646aa984f9bbcee5e",
+    "f2_unified_zero_shortcut_locomo_verdict.md": "3a981c42ff84683dbccd3cd6d524d275d061ebcf89a192286ecbfaa0f0504562",
+    "f2_zero_shortcut_live_rows.csv": "fff6230e7d10d7fdde0a5e92f60ecfdb35f2f5c37b0fe9405b5a558033f5efe0"
+  },
+  "job": "flagship2_unified_zero_shortcut_and_locomo",
+  "manifest_sha256": "caf58b0f40f6d913f96e0b317163ef7e47237604c64e1199f729b0261a836ddd",
+  "status": "COMPLETED"
+}

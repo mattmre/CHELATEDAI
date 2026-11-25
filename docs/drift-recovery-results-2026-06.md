@@ -1,5 +1,15 @@
 # Drift Recovery Results - June 2026
 
+> [!WARNING]
+> **LEGACY_METRIC_LINEAGE_BLOCKED (2026-07-27; v2 blast-radius
+> reconditioning).** Every exact nDCG value, comparator ordering, selection,
+> recovery verdict, and H1/H2/H3 conclusion below is retained historical
+> diagnostic text, not accepted evidence. This surface was produced directly
+> or transitively from `drift_recovery_metrics.ndcg_at_k`, whose IDCG omitted
+> positive qrels outside the retrieved top-k. Do not use it for scientific,
+> promotion/rejection, paper, release, or roadmap claims until qrels-complete
+> regeneration and hash-linked supersession close `CD-MLR-01`.
+
 Source artifacts: `experiment_runs/drift-recovery/scifact_C*_{rotation,noise}_seed*.json`.
 Matrix: SciFact, conditions C0-C4, drift fraction 0.5, rotation angle 25 degrees, noise sigma 0.05, seeds 42/1337/7, `--max-queries 100 --sample-docs 1200 --cycles 12`.
 Device recorded in run configs: cuda. (Compute ran on GPU; `HF_HUB_OFFLINE=1` was set

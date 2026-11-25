@@ -1,0 +1,270 @@
+{
+  "anchor_budgets": [
+    250,
+    500,
+    1000,
+    2000
+  ],
+  "chain": [
+    "E0",
+    "E1",
+    "E2",
+    "E3"
+  ],
+  "dataset_manifests": {
+    "FiQA2018": {
+      "doc_count": 57638,
+      "encoders": {
+        "E0": {
+          "cache_hit": false,
+          "device": "cuda",
+          "dimension": 384,
+          "doc_count": 57638,
+          "doc_embs_sha256": "6fbd12a56770c18a08591c92968f595d27a60337b60efc2a1d0a99d3c4b617eb",
+          "doc_encode_ms": 41681.69,
+          "encoder_key": "E0",
+          "encoder_name": "sentence-transformers/all-MiniLM-L6-v2",
+          "query_count": 648,
+          "query_embs_sha256": "2e845a73a858ceb656ce281b85587d90f0ac0875a8ae3884f9185a18bcc1957f",
+          "query_encode_ms": 84.78,
+          "total_load_and_encode_ms": 42550.26
+        },
+        "E1": {
+          "cache_hit": false,
+          "device": "cuda",
+          "dimension": 384,
+          "doc_count": 57638,
+          "doc_embs_sha256": "4f8d8932d69ad4aa660f81fb719db6a73752db3bdbbb9c98dd34719279c806fa",
+          "doc_encode_ms": 110516.91,
+          "encoder_key": "E1",
+          "encoder_name": "BAAI/bge-small-en-v1.5",
+          "query_count": 648,
+          "query_embs_sha256": "cb3f3a3f11ebd49e574c04d9e7e153e0f39a391fa5491a3a357f82b08562b165",
+          "query_encode_ms": 138.09,
+          "total_load_and_encode_ms": 111383.92
+        },
+        "E2": {
+          "cache_hit": false,
+          "device": "cuda",
+          "dimension": 384,
+          "doc_count": 57638,
+          "doc_embs_sha256": "b99bfc09a307522e10e312c7f567e662680cf3d43c402c7c67354ecdd0a8353f",
+          "doc_encode_ms": 111223.15,
+          "encoder_key": "E2",
+          "encoder_name": "intfloat/e5-small-v2",
+          "query_count": 648,
+          "query_embs_sha256": "c56171ed24e23e26119a289851a0d3a983d3dd47157130533ce2c9d2303486c3",
+          "query_encode_ms": 145.03,
+          "total_load_and_encode_ms": 112165.61
+        },
+        "E3": {
+          "cache_hit": false,
+          "device": "cuda",
+          "dimension": 768,
+          "doc_count": 57638,
+          "doc_embs_sha256": "78c2f9f54db5c6e4bf5dfda1dda520fef35d2df8ca224ea96697cf844446ab00",
+          "doc_encode_ms": 386897.35,
+          "encoder_key": "E3",
+          "encoder_name": "sentence-transformers/all-mpnet-base-v2",
+          "query_count": 648,
+          "query_embs_sha256": "31a6f0608730a393c3ac98eee1db376d3a9f61f8ec6013c2c155ec10f85e61d7",
+          "query_encode_ms": 374.09,
+          "total_load_and_encode_ms": 389320.8
+        }
+      },
+      "metric_contract": {
+        "contract_version": "mlr-v1",
+        "duplicate_doc_id_policy": "fail_closed_value_error",
+        "gain_rule": "graded",
+        "ideal_ranking_population": "all_positive_qrels",
+        "implementation_file": "benchmark_utils.py",
+        "implementation_sha256": "98cab69b41a0fd2d5de6725b4847086a65f924c8d2d4b48aa98ec5d68a4dfa2b",
+        "k": 10,
+        "metric_name": "ndcg_at_k",
+        "qrels_sha256": "7cc346b00c8446af747c36ad4db03508f976986fdfe3a67b65cf33c1ad2f889f",
+        "query_inclusion_rule": "positive_qrels_only",
+        "tie_break": "score_desc_doc_id_asc"
+      },
+      "metric_contract_sha256": "5295c6c332c2271e3179061eac50970e9bb2e9baaf82d7be2c775333db493860",
+      "qrels_sha256": "7cc346b00c8446af747c36ad4db03508f976986fdfe3a67b65cf33c1ad2f889f",
+      "query_count": 648,
+      "split_sha256": "ab8c54a8f517f68cc39f639616d8c6842a762cdefebd9a12630244be17d27afe"
+    },
+    "NFCorpus": {
+      "doc_count": 3633,
+      "encoders": {
+        "E0": {
+          "cache_hit": false,
+          "device": "cuda",
+          "dimension": 384,
+          "doc_count": 3633,
+          "doc_embs_sha256": "70ec2e970775c5863b4d8dd51db977540f021ef9dc68f98672851ac8adef2431",
+          "doc_encode_ms": 3514.54,
+          "encoder_key": "E0",
+          "encoder_name": "sentence-transformers/all-MiniLM-L6-v2",
+          "query_count": 323,
+          "query_embs_sha256": "19ebda29469b1a7a7126d9cb2043a529b3b6db7cad43112e5fc60ada8bf25565",
+          "query_encode_ms": 91.24,
+          "total_load_and_encode_ms": 4243.76
+        },
+        "E1": {
+          "cache_hit": false,
+          "device": "cuda",
+          "dimension": 384,
+          "doc_count": 3633,
+          "doc_embs_sha256": "d0babf1d7c7be2286be4f7e4e9eed830f3d9f474c5138c77b55d6c01af2df6f4",
+          "doc_encode_ms": 12139.62,
+          "encoder_key": "E1",
+          "encoder_name": "BAAI/bge-small-en-v1.5",
+          "query_count": 323,
+          "query_embs_sha256": "3fca89f19b363e201c5b648431b3919e866546fa608e644c41a6eabacf32f521",
+          "query_encode_ms": 62.18,
+          "total_load_and_encode_ms": 12973.28
+        },
+        "E2": {
+          "cache_hit": false,
+          "device": "cuda",
+          "dimension": 384,
+          "doc_count": 3633,
+          "doc_embs_sha256": "6a56ed50182319aec63e888b70039bff76a163077c425fb23120e9e4b7febc7a",
+          "doc_encode_ms": 12247.64,
+          "encoder_key": "E2",
+          "encoder_name": "intfloat/e5-small-v2",
+          "query_count": 323,
+          "query_embs_sha256": "11f43580e2a6d9b3516191b8881f0fe564bd01aaeb8faed34219e3c228b2a652",
+          "query_encode_ms": 51.33,
+          "total_load_and_encode_ms": 13136.72
+        },
+        "E3": {
+          "cache_hit": false,
+          "device": "cuda",
+          "dimension": 768,
+          "doc_count": 3633,
+          "doc_embs_sha256": "a8fd019f8a09381aaccabf7feb930825e722f56872f2aa30bce97fe51ec4d7bb",
+          "doc_encode_ms": 41040.06,
+          "encoder_key": "E3",
+          "encoder_name": "sentence-transformers/all-mpnet-base-v2",
+          "query_count": 323,
+          "query_embs_sha256": "d6d18c76f4f80f88f90ac50f6509f1bb4dc26f84cf2a99a037eab9164b02de27",
+          "query_encode_ms": 126.72,
+          "total_load_and_encode_ms": 43249.4
+        }
+      },
+      "metric_contract": {
+        "contract_version": "mlr-v1",
+        "duplicate_doc_id_policy": "fail_closed_value_error",
+        "gain_rule": "graded",
+        "ideal_ranking_population": "all_positive_qrels",
+        "implementation_file": "benchmark_utils.py",
+        "implementation_sha256": "98cab69b41a0fd2d5de6725b4847086a65f924c8d2d4b48aa98ec5d68a4dfa2b",
+        "k": 10,
+        "metric_name": "ndcg_at_k",
+        "qrels_sha256": "7ae578d58e4936062e38b30bab89b576c14ea9fd4a43b39ffe0e90a3ba2eedac",
+        "query_inclusion_rule": "positive_qrels_only",
+        "tie_break": "score_desc_doc_id_asc"
+      },
+      "metric_contract_sha256": "a99e8e386efa62b72b0c5bda64f6e98e1c8daa6cee01f8cd6c03f063786c7ce2",
+      "qrels_sha256": "7ae578d58e4936062e38b30bab89b576c14ea9fd4a43b39ffe0e90a3ba2eedac",
+      "query_count": 323,
+      "split_sha256": "82bda357665529c1c8716b1b6d6038bb91f65d47c1dd275c9878675d82e7d843"
+    },
+    "SciFact": {
+      "doc_count": 5183,
+      "encoders": {
+        "E0": {
+          "cache_hit": false,
+          "device": "cuda",
+          "dimension": 384,
+          "doc_count": 5183,
+          "doc_embs_sha256": "e6ed15208f20bf299dafbf08140d6abb06228a05c6ea2b4319d5e64719f03f75",
+          "doc_encode_ms": 5236.1,
+          "encoder_key": "E0",
+          "encoder_name": "sentence-transformers/all-MiniLM-L6-v2",
+          "query_count": 300,
+          "query_embs_sha256": "5e0782902d10453f0c3aeae4d316cca9d6505b42eed3fd551c68bb0384c49472",
+          "query_encode_ms": 59.64,
+          "total_load_and_encode_ms": 6133.5
+        },
+        "E1": {
+          "cache_hit": false,
+          "device": "cuda",
+          "dimension": 384,
+          "doc_count": 5183,
+          "doc_embs_sha256": "4b0bc44c0e3ac045d09424baa80705f53d909b270c6a252c04a883a2bda6edf0",
+          "doc_encode_ms": 15907.83,
+          "encoder_key": "E1",
+          "encoder_name": "BAAI/bge-small-en-v1.5",
+          "query_count": 300,
+          "query_embs_sha256": "d578f7abe34a9c7ca44f3fa021a815de7a3eb1ec9374c47fa99183806bdf4a51",
+          "query_encode_ms": 95.84,
+          "total_load_and_encode_ms": 23770.67
+        },
+        "E2": {
+          "cache_hit": false,
+          "device": "cuda",
+          "dimension": 384,
+          "doc_count": 5183,
+          "doc_embs_sha256": "55e00529b6562f0c140575122ed1a19907a246e8fe8d7cea06f6599f86934fa3",
+          "doc_encode_ms": 15995.3,
+          "encoder_key": "E2",
+          "encoder_name": "intfloat/e5-small-v2",
+          "query_count": 300,
+          "query_embs_sha256": "fbd02843c8a088f58a4c8c8d6d8729d9be36a30c8f9eef74ddee4b9f030645ef",
+          "query_encode_ms": 102.16,
+          "total_load_and_encode_ms": 23721.4
+        },
+        "E3": {
+          "cache_hit": false,
+          "device": "cuda",
+          "dimension": 768,
+          "doc_count": 5183,
+          "doc_embs_sha256": "c4c7a170cfd039f17ae114c3d0b11b30165eb3e18f06fa10d54a26ae53bf9511",
+          "doc_encode_ms": 56097.84,
+          "encoder_key": "E3",
+          "encoder_name": "sentence-transformers/all-mpnet-base-v2",
+          "query_count": 300,
+          "query_embs_sha256": "830e618bc52220a1df7f0f6dcd8a10f92f288fb96da5f4551eb4d5fe9ad61cca",
+          "query_encode_ms": 301.58,
+          "total_load_and_encode_ms": 76361.73
+        }
+      },
+      "metric_contract": {
+        "contract_version": "mlr-v1",
+        "duplicate_doc_id_policy": "fail_closed_value_error",
+        "gain_rule": "graded",
+        "ideal_ranking_population": "all_positive_qrels",
+        "implementation_file": "benchmark_utils.py",
+        "implementation_sha256": "98cab69b41a0fd2d5de6725b4847086a65f924c8d2d4b48aa98ec5d68a4dfa2b",
+        "k": 10,
+        "metric_name": "ndcg_at_k",
+        "qrels_sha256": "2b6445e2db1b90e3ce277a9014cdbababbf85b54365c87ff838c7d70fe995c3b",
+        "query_inclusion_rule": "positive_qrels_only",
+        "tie_break": "score_desc_doc_id_asc"
+      },
+      "metric_contract_sha256": "6dde547967de64fecf8d312158b923b197c516519fd4d617ad6c537700c1df5b",
+      "qrels_sha256": "2b6445e2db1b90e3ce277a9014cdbababbf85b54365c87ff838c7d70fe995c3b",
+      "query_count": 300,
+      "split_sha256": "4fe4a7be31aacfc354a94982f9fa46ec296cb59eea1e3df9adc45d4db9881fa8"
+    }
+  },
+  "datasets": [
+    "SciFact",
+    "NFCorpus",
+    "FiQA2018"
+  ],
+  "git_sha": "09184c83c09d55be4ea332bba0b33cc0ebae701d",
+  "job": "night1_s2_multihop",
+  "row_count": 756,
+  "seeds": [
+    42,
+    137,
+    2718
+  ],
+  "telemetry": {
+    "cuda_available": true,
+    "cuda_device": "NVIDIA GB10",
+    "peak_rss_mib": 3688.41,
+    "peak_vram_mib": 5369.94
+  },
+  "wall_seconds": 1143.76
+}

@@ -226,8 +226,7 @@ def evaluate_rankings(
     for query_id, relevance in qrels.items():
         relevant_ids = {doc_id for doc_id, score in relevance.items() if score > 0}
         retrieved = [canonicalize_id(doc_id) for doc_id in rankings.get(query_id, [])[:k]]
-        relevance_by_rank = [1 if doc_id in relevant_ids else 0 for doc_id in retrieved]
-        ndcg_scores.append(float(ndcg_at_k(relevance_by_rank, k)))
+        ndcg_scores.append(float(ndcg_at_k(retrieved, relevant_ids, k, binary=True)))
         map_scores.append(float(mean_average_precision_at_k(retrieved, relevant_ids, k)))
         mrr_scores.append(float(mean_reciprocal_rank(retrieved, relevant_ids)))
         recall_scores.append(float(recall_at_k(retrieved, relevant_ids, k)))

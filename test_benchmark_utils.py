@@ -98,21 +98,21 @@ class TestDcgAtK(unittest.TestCase):
 # =============================================================================
 
 class TestNdcgAtK(unittest.TestCase):
-    """Tests for Normalized Discounted Cumulative Gain at rank k."""
+    """Tests for Normalized Discounted Cumulative Gain at rank k (complete-qrels contract)."""
 
     def test_ndcg_at_k_perfect_ranking(self):
-        """Perfect ranking [1,1,1] should give NDCG of 1.0."""
-        result = ndcg_at_k([1, 1, 1], 3)
+        """Perfect ranking of all 3 relevant docs should give NDCG of 1.0."""
+        result = ndcg_at_k(["a", "b", "c"], {"a", "b", "c"}, 3)
         self.assertAlmostEqual(result, 1.0, places=10)
 
     def test_ndcg_at_k_all_zeros(self):
-        """All-zero relevance should return 0.0 (no relevant docs)."""
-        result = ndcg_at_k([0, 0, 0], 3)
+        """All non-relevant retrieved docs should return 0.0."""
+        result = ndcg_at_k(["x", "y", "z"], {"a"}, 3)
         self.assertEqual(result, 0.0)
 
     def test_ndcg_at_k_reversed_ranking(self):
         """Worst possible ranking of a single relevant doc should be < 1.0."""
-        result = ndcg_at_k([0, 0, 1], 3)
+        result = ndcg_at_k(["x", "y", "a"], {"a"}, 3)
         self.assertGreater(result, 0.0)
         self.assertLess(result, 1.0)
 

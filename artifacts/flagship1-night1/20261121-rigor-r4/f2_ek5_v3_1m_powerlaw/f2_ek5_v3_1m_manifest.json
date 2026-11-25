@@ -1,0 +1,150 @@
+{
+  "differential_oracle_proofs": {
+    "bitemporal_cuts_28561": {
+      "mismatches": 0,
+      "total": 28561,
+      "wall_s": 0.01
+    },
+    "random_3_to_8_cyclic_auth_ops_25000": {
+      "mismatches": 0,
+      "total": 25000,
+      "wall_s": 1.33
+    },
+    "three_node_static_262144": {
+      "mismatches": 0,
+      "total": 262144,
+      "wall_s": 21.27
+    },
+    "two_node_snapshot_jumps_65536": {
+      "mismatches": 0,
+      "total": 65536,
+      "wall_s": 5.86
+    },
+    "two_node_static_256": {
+      "mismatches": 0,
+      "total": 256
+    }
+  },
+  "git_sha": "18973789615ecab1268a77ebd3c69a283607241c",
+  "scale_1m_kernel": {
+    "build_seconds": 27.3,
+    "dense_cascade_crossover": [
+      {
+        "budget_100k": {
+          "dirty_edges": 301,
+          "dirty_nodes": 101,
+          "used_fallback": false,
+          "wall_ms": 0.6178
+        },
+        "cascade_edges": 100,
+        "no_budget": {
+          "dirty_edges": 301,
+          "dirty_nodes": 101,
+          "used_fallback": false,
+          "wall_ms": 0.6334
+        }
+      },
+      {
+        "budget_100k": {
+          "dirty_edges": 3001,
+          "dirty_nodes": 1001,
+          "used_fallback": false,
+          "wall_ms": 6.0939
+        },
+        "cascade_edges": 1000,
+        "no_budget": {
+          "dirty_edges": 3001,
+          "dirty_nodes": 1001,
+          "used_fallback": false,
+          "wall_ms": 6.1378
+        }
+      },
+      {
+        "budget_100k": {
+          "dirty_edges": 30001,
+          "dirty_nodes": 10001,
+          "used_fallback": false,
+          "wall_ms": 80.5081
+        },
+        "cascade_edges": 10000,
+        "no_budget": {
+          "dirty_edges": 30001,
+          "dirty_nodes": 10001,
+          "used_fallback": false,
+          "wall_ms": 80.9061
+        }
+      },
+      {
+        "budget_100k": {
+          "dirty_edges": 150001,
+          "dirty_nodes": 50001,
+          "used_fallback": false,
+          "wall_ms": 524.9972
+        },
+        "cascade_edges": 50000,
+        "no_budget": {
+          "dirty_edges": 150001,
+          "dirty_nodes": 50001,
+          "used_fallback": false,
+          "wall_ms": 527.2901
+        }
+      }
+    ],
+    "hub_10k_locality": {
+      "downstream_pos_cycle_hub_dirty": 0,
+      "downstream_pos_cycle_hub_ms": 7.7955,
+      "multihop_F3_hub_dirty": 0,
+      "multihop_F3_hub_ms": 36.5227,
+      "shielded_F_hub_dirty": 0,
+      "shielded_F_hub_ms": 35.5835
+    },
+    "n_initial_edges": 585008,
+    "n_nodes": 1000000,
+    "powerlaw_cyclic_500_mutations": {
+      "max_dirty_nodes": 1,
+      "max_ms": 3242.5335,
+      "mean_dirty_nodes": 0.552,
+      "mean_ms": 54.272,
+      "p50_ms": 7.8167,
+      "p95_ms": 7.936,
+      "p99_ms": 2622.5931,
+      "spurious_full_scans": 0
+    },
+    "sparse_1000_mutations": {
+      "max_ms": 16.7312,
+      "mean_dirty_nodes": 3.0,
+      "mean_ms": 7.8596,
+      "p50_ms": 7.8409,
+      "p95_ms": 7.9463,
+      "p99_ms": 8.0588,
+      "spurious_full_scans": 0
+    }
+  },
+  "schema_version": "f2_ek5_v3_1m_powerlaw_v1",
+  "service_100k_end_to_end": {
+    "mutation_latency": {
+      "max_ms": 1.8235,
+      "mean_ms": 0.8557,
+      "p50_ms": 0.8474,
+      "p95_ms": 0.9043,
+      "p99_ms": 0.9364
+    },
+    "n_nodes": 100000,
+    "n_timed_ops": 500,
+    "pm5_p95_le_25ms_pass": true,
+    "query_latency": {
+      "max_ms": 0.0185,
+      "mean_ms": 0.0046,
+      "p50_ms": 0.0044,
+      "p95_ms": 0.0054,
+      "p99_ms": 0.0072
+    }
+  },
+  "telemetry": {
+    "cuda_available": true,
+    "cuda_device": "NVIDIA GB10",
+    "peak_rss_mib": 2562.66,
+    "peak_vram_mib": 0.0
+  },
+  "wall_seconds": 106.11
+}

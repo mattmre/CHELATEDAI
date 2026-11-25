@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chelated AI — External Investor Brief &amp; Commercial Opportunity (Non-NDA)</title>
+  <style>
+    :root {
+      --ink: #0f1c22;
+      --ink-soft: #2b414b;
+      --muted: #566d77;
+      --accent: #066e7a;
+      --accent-dark: #044e57;
+      --ok: #136239;
+      --ok-soft: #e9f6ee;
+      --warm: #7d2f0a;
+      --warm-soft: #fdf2ec;
+      --rule: #cbd8dd;
+      --paper: #ffffff;
+      --canvas: #eaf0f3;
+      --code-bg: #f3f7f9;
+      --radius: 12px;
+      --sans: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--canvas);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.55;
+      font-size: 15px;
+    }
+    header.topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(255, 255, 255, 0.96);
+      border-bottom: 1px solid var(--rule);
+      backdrop-filter: blur(8px);
+    }
+    .topbar-inner {
+      max-width: 1140px;
+      margin: 0 auto;
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .brand {
+      font-weight: 800;
+      font-size: 13px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent-dark);
+    }
+    .badge-nonnda {
+      background: var(--ok-soft);
+      color: var(--ok);
+      border: 1px solid #9ad0b3;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11.5px;
+      font-weight: 750;
+      letter-spacing: 0.04em;
+    }
+    main { max-width: 1140px; margin: 24px auto 56px; padding: 0 20px; }
+    section.slide {
+      background: var(--paper);
+      border: 1px solid var(--rule);
+      border-radius: 16px;
+      padding: 30px 36px;
+      margin-bottom: 22px;
+      box-shadow: 0 12px 32px rgba(15, 28, 34, 0.06);
+    }
+    .eyebrow {
+      font-size: 11.5px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--accent-dark);
+      margin: 0 0 6px;
+    }
+    h1, h2 { margin: 0 0 12px; letter-spacing: -0.02em; line-height: 1.22; }
+    h1 { font-size: clamp(24px, 2.8vw, 33px); }
+    h2 { font-size: 22px; }
+    .tldr-list {
+      margin: 14px 0 0;
+      padding-left: 20px;
+    }
+    .tldr-list li { margin-bottom: 8px; }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      margin: 20px 0 8px;
+    }
+    .kpi {
+      background: var(--code-bg);
+      border: 1px solid var(--rule);
+      border-top: 3px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+    }
+    .kpi.ok { border-top-color: var(--ok); background: var(--ok-soft); }
+    .kpi.warm { border-top-color: var(--warm); background: var(--warm-soft); }
+    .kpi .lbl { font-size: 11px; font-weight: 750; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+    .kpi .val { font-size: 24px; font-weight: 800; font-family: var(--mono); margin: 4px 0; }
+    .table-wrap { overflow-x: auto; margin: 14px 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    th, td { padding: 9px 11px; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; }
+    th { background: var(--code-bg); font-weight: 750; color: var(--ink-soft); }
+    td.num, th.num { text-align: right; font-family: var(--mono); }
+    td.best { color: var(--ok); font-weight: 750; }
+    td.warn { color: var(--warm); font-weight: 700; }
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      background: var(--code-bg);
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      margin: 14px 0;
+    }
+    .controls label { display: flex; flex-direction: column; font-size: 12px; font-weight: 700; color: var(--ink-soft); gap: 4px; }
+    .controls input { padding: 7px 9px; border: 1px solid var(--rule); border-radius: 6px; font-family: var(--mono); font-size: 13px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 18px; margin-top: 14px; }
+    .card { border: 1px solid var(--rule); border-radius: var(--radius); padding: 16px 18px; background: #fafcfd; }
+    .card h3 { margin: 0 0 8px; font-size: 16px; color: var(--accent-dark); }
+    .note { font-size: 12.5px; color: var(--muted); margin-top: 10px; }
+    @media print {
+      header.topbar { position: static; }
+      section.slide { break-inside: avoid; box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">Chelated AI &middot; Executive Investor Overview (PRE-RELEASE)</div>
+      <span class="badge-nonnda">EXTERNAL NON-NDA DILIGENCE BRIEF &middot; PRE-RELEASE (PM-4b HUMAN AUDIT &amp; PM-1b OPEN)</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- SLIDE 1: 5-LINE TLDR & KPI STRIP -->
+    <section class="slide">
+      <p class="eyebrow">Executive Summary &middot; Pre-Release Prototype (46/46 Sealed Bundles + 68 Formal Proofs; Independent PM-4b Human Audit Pending)</p>
+      <h1>Transaction Integrity &amp; Zero-Downtime Model Continuity for Enterprise AI</h1>
+      <ol class="tldr-list">
+        <li><strong>The Wedge:</strong> Drop-in gRPC governance control plane in front of existing vector databases&mdash;stopping AI agents from citing revoked policies (<code>0.00%</code> observed leakage across <code>43,040</code> Qdrant gRPC queries vs. up to <code>95.35%</code> on lagged replicas) and eliminating search crashes during AI model upgrades.</li>
+        <li><strong>Measured Lead:</strong> Reaches <strong><code>96.67%</code> accuracy</strong> (<code>+15.0</code> to <code>+51.7</code> points ahead of live <code>Mem0</code>, live temporal graph memory, and benchmarked <code>Hindsight</code> / <code>AWS OpenSearch Memory</code> architectures) on regulated updates &amp; conflicts, while cutting chat ingestion LLM token volume by <strong><code>70&times;&ndash;207&times;</code></strong> vs. LLM-rewriting stores.</li>
+        <li><strong>Margin Economics:</strong> Runs regulated enterprise RAG (<code>100M</code> updates / <code>500M</code> queries/yr) at <strong><code>~$187k/yr</code> total cloud COGS (<code>89.6%</code> bundled SaaS gross margin @ <code>$1.8M</code> ACV)</strong>, or <strong><code>85%&ndash;90%+</code> software margins</strong> via BYO-LLM VPC licensing.</li>
+        <li><strong>Exit / Sale Potential:</strong> Supports a <strong><code>$75M&ndash;$300M+</code> strategic M&amp;A exit</strong> to search/data-cloud leaders (<code>Elastic</code>, <code>Qdrant</code>, <code>Databricks</code>, <code>Snowflake</code>, <code>Confluent</code>, <code>Cloudflare</code>) or a <strong><code>$500M&ndash;$1B+</code> standalone compliance platform</strong>.</li>
+        <li><strong>Global Impact:</strong> Slashes redundant datacenter GPU/LLM energy wasted re-indexing archives and re-summarizing logs (retrieval-conditioned <code>7B</code> local models beating bare <code>30B</code> baselines <code>99.44%</code> vs. <code>38.33%</code> on matched enterprise evidence, and matching <code>70B</code> accuracy at <code>2.67&times;</code> lower reader VRAM), unlocking auditable AI for healthcare, finance, legal, and cyber defense.</li>
+      </ol>
+
+      <div class="kpi-grid">
+        <div class="kpi ok">
+          <div class="lbl">Regulated Accuracy (N=60 Blind Judge)</div>
+          <div class="val">96.67%</div>
+          <div><code>+15.0 to +51.7 pts</code> over competing memory architectures; <code>93.3%</code> conflict detection</div>
+        </div>
+        <div class="kpi ok">
+          <div class="lbl">Retracted-Policy Leakage (43,040 Queries)</div>
+          <div class="val">0.00%</div>
+          <div><code>7.90 ms</code> median / <code>21.19 ms</code> p95 gRPC service RTT (<code>+18.0 ms</code> max matched-load p95)</div>
+        </div>
+        <div class="kpi ok">
+          <div class="lbl">Bundled Regulated Gross Margin</div>
+          <div class="val">89.6%</div>
+          <div><code>$187k</code> annual COGS vs. <code>$463k&ndash;$944k</code> on competing memory architectures</div>
+        </div>
+        <div class="kpi warm">
+          <div class="lbl">Ingestion Token Reduction</div>
+          <div class="val">70&times;&ndash;207&times;</div>
+          <div><code>0</code> LLM tokens on conversational/telemetry writes; <code>353,105</code> zero-error formal checks</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 2: BLACK-BOX DEPLOYMENT DIAGRAM -->
+    <section class="slide">
+      <p class="eyebrow">Non-Invasive Deployment &middot; Zero Rip-and-Replace</p>
+      <h2>Black-Box gRPC Control Plane Above Existing Vector Infrastructure</h2>
+      <svg viewBox="0 0 960 195" width="100%" role="img" aria-label="Black-box Chelated AI enterprise deployment architecture">
+        <rect x="0" y="0" width="960" height="195" rx="10" fill="#f5f9fb" stroke="#cbd8dd"/>
+        <rect x="24" y="44" width="200" height="108" rx="8" fill="#ffffff" stroke="#066e7a" stroke-width="2"/>
+        <text x="124" y="76" text-anchor="middle" font-size="12.5" font-weight="800" fill="#044e57">Enterprise Apps &amp; Agents</text>
+        <text x="124" y="99" text-anchor="middle" font-size="11" fill="#2b414b">Financial &middot; Clinical &middot; Cyber &middot; Search</text>
+        <text x="124" y="121" text-anchor="middle" font-size="10.5" font-family="monospace" fill="#136239">Standard Binary gRPC</text>
+        <text x="124" y="139" text-anchor="middle" font-size="10" fill="#566d77">Zero App Rewrite Required</text>
+
+        <line x1="224" y1="84" x2="306" y2="84" stroke="#066e7a" stroke-width="2.2"/>
+        <polygon points="306,84 298,79 298,89" fill="#066e7a"/>
+        <line x1="306" y1="114" x2="224" y2="114" stroke="#136239" stroke-width="2.2"/>
+        <polygon points="224,114 232,109 232,119" fill="#136239"/>
+
+        <rect x="310" y="24" width="345" height="148" rx="10" fill="#e9f6ee" stroke="#136239" stroke-width="2.4"/>
+        <text x="482" y="52" text-anchor="middle" font-size="13" font-weight="800" fill="#136239">CHELATED AI CONTROL PLANE (BLACK BOX)</text>
+        <text x="482" y="79" text-anchor="middle" font-size="11.5" fill="#0f1c22">&bull; Proprietary Engine #1: Live Model &amp; Index Continuity</text>
+        <text x="482" y="103" text-anchor="middle" font-size="11.5" fill="#0f1c22">&bull; Proprietary Engine #2: Deterministic Truth &amp; Retraction Gate</text>
+        <text x="482" y="127" text-anchor="middle" font-size="11" font-weight="700" fill="#7d2f0a">&bull; Cryptographic Audit &amp; Point-in-Time Compliance Receipts</text>
+        <text x="482" y="150" text-anchor="middle" font-size="10.5" font-family="monospace" fill="#044e57">7.90 ms Service p50 | 0.904 ms State Update p95</text>
+
+        <line x1="655" y1="74" x2="734" y2="58" stroke="#066e7a" stroke-width="2"/>
+        <line x1="655" y1="122" x2="734" y2="138" stroke="#066e7a" stroke-width="2"/>
+
+        <rect x="736" y="24" width="200" height="66" rx="8" fill="#ffffff" stroke="#566d77" stroke-width="1.8"/>
+        <text x="836" y="52" text-anchor="middle" font-size="11.5" font-weight="750" fill="#0f1c22">Existing Legacy Index</text>
+        <text x="836" y="72" text-anchor="middle" font-size="10.5" fill="#566d77">Zero Re-Indexing Downtime</text>
+
+        <rect x="736" y="106" width="200" height="66" rx="8" fill="#ffffff" stroke="#066e7a" stroke-width="1.8"/>
+        <text x="836" y="134" text-anchor="middle" font-size="11.5" font-weight="750" fill="#0f1c22">Next-Gen Vector Index</text>
+        <text x="836" y="154" text-anchor="middle" font-size="10.5" fill="#566d77">Qdrant / Cloud Vector Stores</text>
+      </svg>
+    </section>
+
+    <!-- SLIDE 3: COMPETITIVE BENCHMARK & INTERACTIVE ROI -->
+    <section class="slide">
+      <p class="eyebrow">Parameterized Unit Economics &amp; Competitive Comparison</p>
+      <h2>Interactive Enterprise Cloud COGS &amp; Gross-Margin Simulator</h2>
+      <div class="controls">
+        <label>Annual Policy / Memory Updates
+          <input type="number" id="wIn" value="100000000" step="10000000">
+        </label>
+        <label>Annual Enterprise Queries
+          <input type="number" id="rIn" value="500000000" step="50000000">
+        </label>
+        <label>LLM Input Price ($ / 1M Tokens)
+          <input type="number" id="pIn" value="0.60" step="0.10">
+        </label>
+        <label>Illustrative Enterprise Contract ($ ACV)
+          <input type="number" id="acvIn" value="1800000" step="200000">
+        </label>
+      </div>
+      <div class="table-wrap">
+        <table id="econTbl">
+          <thead>
+            <tr>
+              <th>Architecture &amp; Operating Profile</th>
+              <th class="num">Regulated Accuracy</th>
+              <th class="num">Write LLM ($)</th>
+              <th class="num">Read LLM ($)</th>
+              <th class="num">Infra + Ops ($)</th>
+              <th class="num">Total Annual COGS</th>
+              <th class="num">Gross Margin</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="note">
+        <strong>Diligence Transparency Note:</strong> Costs combine measured benchmark token rates with explicit sensitivity assumptions for baseline infrastructure (<code>$86.4k/yr</code> at <code>100M</code> updates / <code>500M</code> queries) and compliance review escalations. Notice that on unregulated consumer chat with batched writes, <code>Mem0</code> achieves lower query-token cost (<code>$463k</code> vs. <code>$638k</code> in Chelated conversational mode) while trailing by <code>15.0</code> points on regulated conflict/retraction accuracy&mdash;highlighting why Chelated AI focuses squarely on <strong>regulated enterprise document governance (<code>$187k</code> COGS, <code>89.6%</code> margin)</strong> and <strong>self-hosted BYO-LLM software licensing (<code>85%&ndash;90%+</code> margin)</strong>.
+      </p>
+    </section>
+
+    <!-- SLIDE 4: M&A, MARKET VALUE & NEXT STEPS -->
+    <section class="slide">
+      <p class="eyebrow">Valuation Trajectory &amp; Diligence Process</p>
+      <h2>Strategic Acquisition Fit, Market Value, &amp; NDA Data Room</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Two High-Leverage Value Paths</h3>
+          <ul>
+            <li><strong>Strategic Tuck-In Exit (<code>$75M&ndash;$300M+</code>):</strong> Immediate compliance, retraction-safety, and zero-downtime migration answer for search &amp; data-cloud incumbents (<code>Elastic</code>, <code>Qdrant</code>, <code>Databricks</code>, <code>Snowflake</code>, <code>Confluent</code>, <code>Cloudflare</code>) competing against hyperscaler memory bundles.</li>
+            <li><strong>Standalone Regulated Control Plane (<code>$500M&ndash;$1B+</code>):</strong> High-retention enterprise infrastructure software across Finance, Healthcare, Legal, and Cybersecurity.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Available Immediately Under Mutual NDA</h3>
+          <ul>
+            <li>Live interactive <strong>Compliance Copilot &amp; 6-Tab Engineering / Economics Workbench</strong> demonstration (<code>9.47M</code> real-document cutover, 3 live search backends, and <code>7B</code> vs. <code>70B</code> reader parity).</li>
+            <li>Complete <strong><code>46/46</code>-Bundle Cryptographic Audit Registry</strong>, <strong><code>68</code>-Theorem Machine-Checked Formal Proof Suite</strong> (<code>27</code> exported roots verified in an independent external kernel; incremental deletions verified via <code>7,722</code>-checkpoint conformance), internal multi-model adversarial audit logs, &amp; <strong>Technical Monograph (<code>v7.0</code>, <code>PRE-RELEASE</code>)</strong>.</li>
+            <li>Full multi-node benchmark harnesses, raw evaluation logs, and scope disclosures (<code>PRE-RELEASE</code> pending independent <code>100</code>-item human grading <code>PM-4b</code>, consumer-chat gate <code>PM-1b</code>, and hosted takedown benign false-refusal calibration <code>PM-6</code> [<code>100%</code> enterprise derivative suppression &amp; <code>+47.4&ndash;47.6</code> AUROC pts vs. string filters, while trailing/tying simpler vector baselines on English paraphrase detection and missing the <code>&le;2.0%</code> benign false-refusal target at <code>6.25%&ndash;11.76%</code> with <code>15.6%&ndash;17.6%</code> adaptive red-team bypass; hosted gateway only, not model-weight erasure]; synchronous extraction takes <code>~2.1s</code> [<code>0.5B</code>, vs. <code>1.5s</code> target] to <code>~10.4s&ndash;25.2s</code> [<code>30B</code> e2e vs. <code>3.26s</code> bare <code>70B</code>], and <code>9.47M</code> mixed-version cutover wins <code>9</code> significant contrasts with <code>1</code> duplicate-question loss [<code>-6.92</code> pts]).</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      const usd = (v) => '$' + Math.round(v).toLocaleString('en-US');
+      function update() {
+        const w = Math.max(0, Number(document.getElementById('wIn').value) || 0);
+        const r = Math.max(0, Number(document.getElementById('rIn').value) || 0);
+        const p = Math.max(0, Number(document.getElementById('pIn').value) || 0);
+        const acv = Math.max(1, Number(document.getElementById('acvIn').value) || 1800000);
+        const baseInfra = ((w + r) / 1e6) * 0.02 + 36000 + ((r * 32) / 1e6) * 2.4;
+        const rows = [
+          ['Chelated AI — Regulated Document Governance (Primary Wedge)', '96.67%', 404.86, 170.5, baseInfra + 25042, true],
+          ['Chelated AI — Conversational / Telemetry Stream Mode', '96.67% (Reg)', 0, 1756.4, baseInfra + 25042, false],
+          ['Mem0 (v2.2.1 Live) — Turn-Batched Write Assumption', '81.67%', 620, 506.65, baseInfra + 187680, false],
+          ['Mem0 (v2.2.1 Live) — Unbatched Rolling Session Measured', '81.67%', 4546.4, 506.65, baseInfra + 187680, false],
+          ['OpenSearch Memory Architecture (Benchmarked Compact)', '80.00%', 580, 2178.6, baseInfra + 125180, false],
+          ['Vectorize Hindsight Architecture (Benchmarked)', '78.33%', 740, 2086.7, baseInfra + 187680, false]
+        ];
+        document.querySelector('#econTbl tbody').innerHTML = rows.map(([name, acc, wt, rt, infra, best]) => {
+          const wCost = (w * wt / 1e6) * p;
+          const rCost = (r * rt / 1e6) * p;
+          const tot = wCost + rCost + infra;
+          const margin = ((acv - tot) / acv * 100).toFixed(1) + '%';
+          return `<tr>
+            <td><strong>${name}</strong></td>
+            <td class="num ${best ? 'best' : ''}">${acc}</td>
+            <td class="num">${usd(wCost)}</td>
+            <td class="num">${usd(rCost)}</td>
+            <td class="num">${usd(infra)}</td>
+            <td class="num ${best ? 'best' : 'warn'}">${usd(tot)}</td>
+            <td class="num ${best ? 'best' : ''}">${margin}</td>
+          </tr>`;
+        }).join('');
+      }
+      ['wIn', 'rIn', 'pIn', 'acvIn'].forEach((id) => {
+        document.getElementById(id).addEventListener('input', update);
+        document.getElementById(id).addEventListener('change', update);
+      });
+      update();
+    })();
+  </script>
+</body>
+</html>

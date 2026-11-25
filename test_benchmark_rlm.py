@@ -72,58 +72,58 @@ class TestDcgAtK(unittest.TestCase):
 # =============================================================================
 
 class TestNdcgAtK(unittest.TestCase):
-    """Tests for Normalized Discounted Cumulative Gain at rank k."""
+    """Tests for Normalized Discounted Cumulative Gain at rank k (complete-qrels contract)."""
 
     def test_ndcg_at_k_perfect_ranking(self):
-        """Perfect ranking [1,1,1] should give NDCG of 1.0."""
-        result = ndcg_at_k([1, 1, 1], 3)
+        """Perfect ranking of 3 relevant docs should give NDCG of 1.0."""
+        result = ndcg_at_k(["d1", "d2", "d3"], {"d1", "d2", "d3"}, 3)
         self.assertAlmostEqual(result, 1.0, places=10)
 
     def test_ndcg_at_k_all_zeros(self):
-        """All-zero relevance should return 0.0 (no relevant docs)."""
-        result = ndcg_at_k([0, 0, 0], 3)
+        """No relevant docs retrieved should return 0.0."""
+        result = ndcg_at_k(["x1", "x2", "x3"], {"d1"}, 3)
         self.assertEqual(result, 0.0)
 
     def test_ndcg_at_k_reversed_ranking(self):
         """Worst possible ranking of a single relevant doc should be < 1.0."""
-        result = ndcg_at_k([0, 0, 1], 3)
+        result = ndcg_at_k(["x1", "x2", "d1"], {"d1"}, 3)
         self.assertGreater(result, 0.0)
         self.assertLess(result, 1.0)
 
     def test_ndcg_at_k_always_between_zero_and_one(self):
         """NDCG should always be in [0, 1] for binary relevance."""
-        test_cases = [
-            [1, 0, 0, 0, 0],
-            [0, 1, 0, 0, 0],
-            [0, 0, 0, 0, 1],
-            [1, 1, 1, 1, 1],
-            [0, 0, 0, 0, 0],
-            [1, 0, 1, 0, 1],
+        ranked = ["d0", "d1", "d2", "d3", "d4"]
+        qrel_cases = [
+            {"d0"},
+            {"d1"},
+            {"d4"},
+            {"d0", "d1", "d2", "d3", "d4"},
+            set(),
+            {"d0", "d2", "d4"},
         ]
-        for r in test_cases:
-            score = ndcg_at_k(r, 5)
-            self.assertGreaterEqual(score, 0.0, f"NDCG < 0 for r={r}")
-            self.assertLessEqual(score, 1.0, f"NDCG > 1 for r={r}")
+        for qrels in qrel_cases:
+            score = ndcg_at_k(ranked, qrels, 5)
+            self.assertGreaterEqual(score, 0.0, f"NDCG < 0 for qrels={qrels}")
+            self.assertLessEqual(score, 1.0, f"NDCG > 1 for qrels={qrels}")
 
     def test_ndcg_at_k_single_relevant_at_top_is_one(self):
         """Single relevant doc at rank 1 out of 1 relevant total -> NDCG = 1.0."""
-        result = ndcg_at_k([1, 0, 0], 3)
+        result = ndcg_at_k(["d0", "x1", "x2"], {"d0"}, 3)
         self.assertAlmostEqual(result, 1.0, places=10)
 
     def test_ndcg_at_k_k_truncates(self):
         """NDCG should only consider first k elements."""
-        # With k=2, the third element (1) should be ignored
-        result_k2 = ndcg_at_k([0, 0, 1], 2)
+        result_k2 = ndcg_at_k(["x0", "x1", "d2"], {"d2"}, 2)
         self.assertEqual(result_k2, 0.0)
 
     def test_ndcg_at_k_graded_relevance_normalization(self):
         """Graded relevance: ideal ranking [3,2,1] should give 1.0."""
-        result = ndcg_at_k([3, 2, 1], 3)
+        result = ndcg_at_k(["d3", "d2", "d1"], {"d3": 3, "d2": 2, "d1": 1}, 3)
         self.assertAlmostEqual(result, 1.0, places=10)
 
     def test_ndcg_at_k_graded_suboptimal(self):
         """Graded relevance in non-ideal order should be < 1.0."""
-        result = ndcg_at_k([1, 2, 3], 3)
+        result = ndcg_at_k(["d1", "d2", "d3"], {"d3": 3, "d2": 2, "d1": 1}, 3)
         self.assertLess(result, 1.0)
         self.assertGreater(result, 0.0)
 

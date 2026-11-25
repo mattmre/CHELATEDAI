@@ -1,0 +1,50 @@
+{
+  "disjoint_split_proof": {
+    "DEV": {
+      "n_entities": 2,
+      "n_episodes": 12,
+      "n_values": 12,
+      "scenarios": [
+        "bitemporal_as_of",
+        "cross_domain_standoff"
+      ],
+      "split_prompt_bundle_sha256": "5590eff8b99791a4eb549e75a9dd6cdde168a6a6ab3ce037c8389dca2303fe80"
+    },
+    "EVAL": {
+      "n_entities": 2,
+      "n_episodes": 18,
+      "n_values": 12,
+      "scenarios": [
+        "auditor_cites_poison",
+        "contested_successor",
+        "odd_refutation_cycle",
+        "summarizer_laundering"
+      ],
+      "split_prompt_bundle_sha256": "b11a141c1d888be5ff4730f2a5b2063a6ca346c8017d6d738337c05e18395003"
+    },
+    "TRAIN": {
+      "n_entities": 4,
+      "n_episodes": 24,
+      "n_values": 24,
+      "scenarios": [
+        "conflict_refute",
+        "peer_deadlock",
+        "silent_multi_current",
+        "supersede_chain",
+        "sybil_corroboration"
+      ],
+      "split_prompt_bundle_sha256": "bc331758edbc611995b5d31c312e7043c91c1e9e0406832a4dac3b7e4d95a207"
+    }
+  },
+  "git_sha": "4dbc98bf92359f386f4b6dc523da6f63db659ebc",
+  "mixed_commitment_reward_mean": -1.0,
+  "n_verified_rlvr_episodes": 54,
+  "negation_attack_reward_mean": -1.0,
+  "perfect_core_reward_mean": 1.0,
+  "perfect_format_bonus_mean": 0.04999999999999998,
+  "schema_version": "colab_h100_package_offline_verify_v2_disjoint_wfs",
+  "scope_note": "Offline WFS verifier & disjoint-split check ONLY; no H100 LoRA GRPO checkpoint trained yet.",
+  "status": "OK",
+  "trained_grpo_checkpoint_present": false,
+  "wrong_answer_max_format_bonus": 0.0
+}

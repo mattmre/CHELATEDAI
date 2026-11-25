@@ -1,0 +1,1336 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Representation-Safe &amp; Epistemically-Bounded AI Memory — Doctoral Whitepaper v7.0 Presentation</title>
+  <style>
+    :root {
+      --ink: #132026;
+      --ink-soft: #2e434d;
+      --muted: #50646e;
+      --accent: #066e7a;
+      --accent-dark: #044e57;
+      --accent-soft: #e8f5f6;
+      /* Locked R3 WCAG AAA contrast: 8.36:1 on #fdf2ec, 9.20:1 on #ffffff */
+      --warm: #7d2f0a;
+      --warm-soft: #fdf2ec;
+      --ok: #136239;
+      --ok-soft: #e9f6ee;
+      --warn: #7a4f00;
+      --warn-soft: #fef6df;
+      --rule: #cbd8dd;
+      --paper: #ffffff;
+      --canvas: #eaf0f2;
+      --code-bg: #f3f7f8;
+      --max-w: 1120px;
+      --radius: 10px;
+      --font-sans: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-serif: Georgia, Cambria, "Times New Roman", serif;
+      --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--canvas);
+      color: var(--ink);
+      font-family: var(--font-sans);
+      font-size: 15px;
+      line-height: 1.58;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--accent-dark); }
+    a:focus-visible, button:focus-visible {
+      outline: 3px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--rule);
+    }
+    .topbar-inner {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .brand {
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+      color: var(--accent-dark);
+    }
+    .nav {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .nav a {
+      color: var(--ink-soft);
+      text-decoration: none;
+      font-size: 12.5px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+    .nav a:hover { background: var(--accent-soft); color: var(--accent-dark); }
+
+    main {
+      max-width: var(--max-w);
+      margin: 22px auto 48px;
+      background: var(--paper);
+      border: 1px solid var(--rule);
+      border-radius: 14px;
+      box-shadow: 0 18px 46px rgba(19, 32, 38, 0.08);
+      padding: 40px 46px;
+    }
+
+    header.hero {
+      padding-bottom: 24px;
+      border-bottom: 3px solid var(--accent);
+    }
+    .release-status-banner {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px 15px;
+      margin-bottom: 18px;
+      border-radius: 8px;
+      background: var(--warm-soft);
+      border: 1.5px solid var(--warm);
+      color: var(--warm);
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.45;
+    }
+    .release-badge {
+      flex-shrink: 0;
+      background: var(--warm);
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 5px;
+      margin-top: 1px;
+    }
+    .eyebrow {
+      margin: 0 0 8px;
+      font-size: 11.5px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent-dark);
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(24px, 3vw, 34px);
+      line-height: 1.15;
+      letter-spacing: -0.025em;
+    }
+    .subtitle {
+      margin: 12px 0 0;
+      max-width: 82ch;
+      font-size: 15.5px;
+      color: var(--ink-soft);
+    }
+    .meta-strip {
+      margin-top: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 18px;
+      font-size: 12px;
+      color: var(--muted);
+      font-family: var(--font-mono);
+    }
+
+    .kpi-grid {
+      margin-top: 24px;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .kpi-card {
+      background: var(--code-bg);
+      border: 1px solid var(--rule);
+      border-top: 3px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+    }
+    .kpi-card.warm { border-top-color: var(--warm); background: var(--warm-soft); }
+    .kpi-card.ok { border-top-color: var(--ok); background: var(--ok-soft); }
+    .kpi-label {
+      font-size: 11px;
+      font-weight: 750;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+    .kpi-card.warm .kpi-label { color: var(--warm); }
+    .kpi-card.ok .kpi-label { color: var(--ok); }
+    .kpi-value {
+      margin: 4px 0 2px;
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+    }
+    .kpi-sub { font-size: 12px; color: var(--ink-soft); }
+
+    section { margin-top: 36px; }
+    h2 {
+      margin: 0 0 12px;
+      padding-bottom: 8px;
+      border-bottom: 1.5px solid var(--rule);
+      font-size: 21px;
+      letter-spacing: -0.015em;
+      color: var(--ink);
+    }
+    h3 {
+      margin: 22px 0 8px;
+      font-size: 16px;
+      color: var(--accent-dark);
+    }
+    p { margin: 8px 0 12px; }
+
+    .callout {
+      padding: 14px 16px;
+      border-radius: var(--radius);
+      border-left: 4px solid var(--accent);
+      background: var(--accent-soft);
+      margin: 14px 0;
+      font-size: 14px;
+    }
+    .callout.warm {
+      border-left-color: var(--warm);
+      background: var(--warm-soft);
+      color: var(--warm);
+    }
+    .callout.ok {
+      border-left-color: var(--ok);
+      background: var(--ok-soft);
+    }
+
+    .eq-box {
+      background: var(--code-bg);
+      border: 1px solid var(--rule);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin: 12px 0;
+      overflow-x: auto;
+      font-family: var(--font-serif);
+      font-size: 15.5px;
+    }
+
+    .figure-card {
+      margin: 18px 0;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      padding: 16px;
+      background: #fafcfd;
+    }
+    .figure-title {
+      font-size: 13.5px;
+      font-weight: 750;
+      color: var(--ink);
+      margin: 0 0 10px;
+    }
+    .figure-caption {
+      font-size: 12.5px;
+      color: var(--muted);
+      margin: 8px 0 0;
+    }
+    .figure-card svg {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .table-scroll {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      margin: 14px 0;
+      border: 1px solid var(--rule);
+      border-radius: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      background: #ffffff;
+    }
+    th, td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--rule);
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: var(--code-bg);
+      font-weight: 750;
+      color: var(--ink);
+      white-space: nowrap;
+    }
+    td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--font-mono); font-size: 12.5px; }
+    tr:last-child td { border-bottom: none; }
+    .best { font-weight: 800; color: var(--ok); }
+    .warn-cell { font-weight: 700; color: var(--warm); }
+    code {
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      background: var(--code-bg);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+
+    /* ARIA Progressive-Enhancement Tabs (zero-JS shows all panels cleanly!) */
+    .tablist {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 14px 0 12px;
+      border-bottom: 1.5px solid var(--rule);
+      padding-bottom: 8px;
+    }
+    .tablist button[role="tab"] {
+      appearance: none;
+      border: 1px solid var(--rule);
+      background: var(--code-bg);
+      color: var(--ink-soft);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 7px;
+      cursor: pointer;
+    }
+    .tablist button[role="tab"][aria-selected="true"] {
+      background: var(--accent-dark);
+      border-color: var(--accent-dark);
+      color: #ffffff;
+    }
+    .js-tabs-active [role="tabpanel"][hidden] { display: none; }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 750;
+      font-family: var(--font-mono);
+    }
+    .badge.pass { background: var(--ok-soft); color: var(--ok); border: 1px solid #9bd1b2; }
+    .badge.open { background: var(--warm-soft); color: var(--warm); border: 1px solid #dfb49e; }
+    .badge.partial { background: var(--warn-soft); color: var(--warn); border: 1px solid #e2c574; }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    footer {
+      margin-top: 40px;
+      padding-top: 16px;
+      border-top: 1px solid var(--rule);
+      font-size: 12.5px;
+      color: var(--muted);
+    }
+
+    @media (max-width: 820px) {
+      main { padding: 24px 18px; margin: 10px; }
+      .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 480px) {
+      main { padding: 18px 14px; margin: 0; border-radius: 0; border: none; }
+      .kpi-grid { grid-template-columns: 1fr; }
+      .topbar-inner { padding: 8px 12px; }
+      .release-status-banner { flex-direction: column; gap: 6px; }
+    }
+    @media print {
+      body { background: #ffffff; font-size: 11.5pt; }
+      .topbar { display: none; }
+      main { box-shadow: none; border: none; margin: 0; padding: 0; max-width: 100%; }
+      /* R3 Lock: release-status-banner MUST remain visible in print! */
+      .release-status-banner { display: flex !important; break-inside: avoid; }
+      .js-tabs-active [role="tabpanel"][hidden] { display: block !important; }
+      .figure-card, .callout { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="topbar" aria-label="Primary navigation">
+    <div class="topbar-inner">
+      <div class="brand">ChelatedAI Research &middot; Whitepaper v7.0</div>
+      <div class="nav">
+        <a href="#flagship1">Flagship #1</a>
+        <a href="#flagship2">Flagship #2</a>
+        <a href="#r5closure">R5/R5b Closure</a>
+        <a href="#wave4">Phase-2 &amp; Wave-4</a>
+        <a href="#wave6">Parts VI&ndash;VIII (Waves 5&ndash;15)</a>
+        <a href="#forensics">Emergent Forensics</a>
+        <a href="#gates">PM-1..PM-6 Gates</a>
+        <a href="#ledger">46-Bundle Ledger</a>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <header class="hero">
+      <div class="release-status-banner" role="status">
+        <span class="release-badge">PRE-RELEASE / HUMAN AUDIT &amp; CLEAN-RERUN GATES PENDING</span>
+        <span>
+          Draft v7.0 (Post-Wave-14 NDA <code>/formal</code> Lean 4 Proofs + Live <code>Demo D11 / PM-6</code> Takedown Firewall &amp; Wave-15 Adversarial Audit; <code>46/46</code> SHA-256 Receipt Bundles, <code>61/61</code> Side Hashes).
+          <code>PM-5</code> (benchmark-scoped), <code>/formal</code> Lean 4 (<code>Spec.lean</code> <code>63fe3e64</code>, <code>68</code> theorems, <code>0</code> <code>sorry</code>/<code>native_decide</code>, <code>nanoda_bin</code> <code>25,473</code> decls, <code>7,722</code>-ckpt conformance w/ <code>153</code> Pitfall-B pruning telemetry diffs &amp; incremental-deletions conformance-only), structured <code>PM-1a</code> + <code>D1 v2</code> (<code>93.33%</code>), <code>PM-2</code> 0-oracle bootstrap (<code>CausalEMA=0.9750</code>, <code>1.67 ms</code> p95; Tango <code>-0.0572</code>),
+          <code>PM-3</code> Suite A (<code>96.67%</code> vs all 4 Wave-6 arms + <code>D7</code> settled <code>96.67%</code> vs live <code>Graphiti 46.67%</code> / <code>Mem0 45.00%</code>; exact CP95 crosses 0 on 3/4 Wave-6 arms) &amp; Suite B (<code>0</code> write LLM toks, <code>1.56&times;</code> &amp; <code>70&ndash;207&times;</code> fewer toks; accuracy <code>LCB &le; 0</code>), and <code>PM-4a</code> (<code>N=200</code> conv <code>&kappa;=0.8400</code>; R5b <code>&kappa;=0.7414</code>) verified;
+          <code>PM-6</code> (<code>D11</code>, <code>pm6_posthoc_statistical_reanalysis.json</code>) is <strong>empirically mixed</strong> (<code>Arm 9</code> beats lexical <code>Arm 3</code> <code>+0.474/+0.476</code> AUROC &amp; <code>DE</code> <code>+0.152</code> Holm PASS, <code>100%</code> Gate-1 <code>R4</code>, but <strong>FAILS <code>r5_benign_fpr_le_002</code> at <code>6.25%/11.76% &gt; 2.0%</code></strong>, trails/ties <code>Arm 6/8</code> on EN <code>R3</code>, &amp; has <code>15.6%/17.6%</code> <code>R2b</code> breach);
+          remains <strong>PRE-RELEASE</strong> pending <code>PM-4b</code> human sheet &amp; <code>PM-1b</code> (<code>assignment_gates_pass=false</code>).
+          Registry SHA-256: <code>6ef7eba4f414</code>.
+        </span>
+      </div>
+      <p class="eyebrow">Doctoral Technical Monograph v7.0 &middot; 4-Node Fleet (RTX 3090 + 3&times; DGX Spark GB10) + Lean 4 / nanoda_bin</p>
+      <h1>Representation-Safe &amp; Epistemically-Bounded Long-Horizon Memory for Compound AI Systems</h1>
+      <p class="subtitle">
+        Conformal, Geodesic Polar, &amp; 8-Byte Sidecar Subtractive-Centroid Spherical Migration Bridges (<code>Flagship #1</code> + <code>TRA-1</code> + <code>9.47M</code> Real Cutover + 3-Engine Parity + <code>Demo D5</code> Gateway + Lean 4 <code>Theorems 1a&ndash;4</code>)
+        unified with Stratified <em>K</em>=4 Well-Founded Evidence Maintenance, <code>CITES_AUDIT</code> Dual Provenance, Hosted Takedown Firewall (<code>D11/PM-6</code> vs. active superposed recurrent memory <code>MemT-1.0</code> <code>arXiv:2610.26825v5</code>), &amp; SFT/GRPO Post-Training (<code>Flagship #2</code> / <code>EK5 v3</code>).
+      </p>
+      <div class="meta-strip">
+        <span>DATE: 2026-11-25</span>
+        <span>AUDITS: 15 Tri-Model Council + 4-Model R5b Panel + Waves 4/5/8/10/12/14/15 Multi-Model Audits &amp; Judges</span>
+        <span>BUNDLES: 46/46 SHA-256 Consistent (61/61 Side Hashes)</span>
+        <span>PRISTINE MIRROR: 15/15 Byte-Exact (b37e6a55)</span>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi-card ok">
+          <div class="kpi-label">ZeroMu HNSW, CSLS &amp; OOD</div>
+          <div class="kpi-value">16/18 OOD &middot; 99.9% HNSW</div>
+          <div class="kpi-sub"><code>99.88%/99.77%</code> mean (<code>90%</code> min) @ <code>ef=32</code>, <code>100%</code> @ <code>64</code>; <code>CSLS</code> beats <code>z-score</code> &amp; <code>RRF</code> (<code>LCB95&gt;0</code> @ <code>10&ndash;50%</code>); trails in-dom Procrustes by <code>~1 pp</code> (<code>std=0.038</code>).</div>
+        </div>
+        <div class="kpi-card ok">
+          <div class="kpi-label">EK5 v3 WFS &amp; Multi-Agent D3</div>
+          <div class="kpi-value">0 / 353,105 &middot; 77/80</div>
+          <div class="kpi-sub">Zero WFS mismatches (<code>+0/10,827</code> offline RLVR); co-designed <code>D3</code> <code>B4</code> <code>77/80</code> vs <code>B3</code> <code>56/80</code>, <code>0/80</code> attacks (CP95 <code>&le;16.84%</code>/fam), <code>20/20</code> F4 survival.</div>
+        </div>
+        <div class="kpi-card ok">
+          <div class="kpi-label">4-Node Fleet &amp; Zero-Oracle PM-2</div>
+          <div class="kpi-value">93.33% &middot; 1.67 ms</div>
+          <div class="kpi-sub"><code>Small-3B+Chelated v2</code> <code>93.33%</code> vs <code>30B Bare</code> <code>71.67%</code>; 0-oracle <code>CausalEMA=0.9750</code> (<code>1.672 ms</code> p95, Boot <code>-5.0 pp</code>, Tango <code>-0.0572</code>; R5b <code>Query0W=0.695</code>).</div>
+        </div>
+        <div class="kpi-card warm">
+          <div class="kpi-label">Honest Gate Status</div>
+          <div class="kpi-value">PRE-RELEASE</div>
+          <div class="kpi-sub"><code>PM-4b</code> human sheet pending (<code>N=200</code> conv <code>&kappa;=0.8400</code>; R5b <code>0.7414</code>); <code>PM-1b</code> <code>assignment_gates_pass=false</code> (<code>M1c=0.7692</code>); <code>PM-3</code> <code>0.73</code> vs <code>0.69</code> <code>mem0</code> (<code>71.3&times;</code> tok).</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- ================================================================== -->
+    <!-- SECTION 1: FLAGSHIP #1 -->
+    <!-- ================================================================== -->
+    <section id="flagship1">
+      <h2>1. Flagship #1 &mdash; Conformal, Geodesic Polar, &amp; Subtractive-Centroid Spherical Migration</h2>
+      <p>
+        We preserve all pristine historical baselines (<code>Uncentered Ridge</code>, <code>Centered Affine Ridge</code>, <code>A2</code>,
+        ambient <code>A2c</code>, <code>A3_Full</code>, <code>BF20</code>) directly beside every council-refined and emergent bridge.
+        All Flagship #1 metrics use complete-qrels canonical <code>mlr-v1</code> linear-gain <code>nDCG@10</code> (identical to
+        <code>2<sup>r</sup>&minus;1</code> on binary qrels, with dual linear/exponential reporting on graded corpora) and fail-closed
+        <code>TRA-1</code> contracts. <strong>Honest <code>s3</code> Disclosure:</strong> while <code>TRA-1</code> blocked
+        <strong>8/8</strong> hostile wrong-space mutations, bundle <code>s3</code>'s overall machine verdict was
+        <code>TRA1_OR_M4_NEEDS_REVIEW</code> due to <code>NFCorpus</code> cross-dimensional <code>LCB97.5 = -0.045658</code>.
+      </p>
+
+      <div class="grid-2">
+        <div class="eq-box" aria-label="EM-2 Zero-Reindex 1-Float Identity">
+          <strong>EM-2 (<code>A2-ZeroMu-DualFit</code>) Zero-Reindex 1-Float Identity:</strong><br>
+          <math xmlns="http://www.w3.org/1998/Math/MathML" display="block">
+            <mrow>
+              <mi>cos</mi>
+              <mo>(</mo><mover><mi>q</mi><mo>^</mo></mover><mo>,</mo><msub><mi>d</mi><mi>j</mi></msub><mo>&minus;</mo><msub><mi>&mu;</mi><mi>y</mi></msub><mo>)</mo>
+              <mo>=</mo>
+              <mfrac>
+                <mrow>
+                  <mo>&langle;</mo><mover><mi>q</mi><mo>^</mo></mover><mo>,</mo><msub><mi>d</mi><mi>j</mi></msub><mo>&rangle;</mo>
+                  <mo>&minus;</mo>
+                  <mo>&langle;</mo><mover><mi>q</mi><mo>^</mo></mover><mo>,</mo><msub><mi>&mu;</mi><mi>y</mi></msub><mo>&rangle;</mo>
+                </mrow>
+                <msqrt>
+                  <mn>1</mn><mo>+</mo><msup><mrow><mo>&Vert;</mo><msub><mi>&mu;</mi><mi>y</mi></msub><mo>&Vert;</mo></mrow><mn>2</mn></msup>
+                  <mo>&minus;</mo><mn>2</mn><mo>&langle;</mo><msub><mi>d</mi><mi>j</mi></msub><mo>,</mo><msub><mi>&mu;</mi><mi>y</mi></msub><mo>&rangle;</mo>
+                </msqrt>
+              </mfrac>
+            </mrow>
+          </math>
+        </div>
+        <div class="eq-box" aria-label="A2g Carbon C1 Soft-Collar Formula">
+          <strong>A2g (<code>GeodesicPolarBridge</code>) Carbon <em>C</em><sup>1</sup> Soft-Collar:</strong><br>
+          <math xmlns="http://www.w3.org/1998/Math/MathML" display="block">
+            <mrow>
+              <msub><mi>r</mi><mtext>eff</mtext></msub><mo>(</mo><mi>r</mi><mo>)</mo>
+              <mo>=</mo>
+              <mrow>
+                <mo>{</mo>
+                <mtable columnalign="left">
+                  <mtr><mtd><mi>r</mi><mo>,</mo></mtd><mtd><mi>r</mi><mo>&le;</mo><msub><mi>r</mi><mn>0</mn></msub><mo>=</mo><mi>&pi;</mi><mo>&minus;</mo><mn>0.10</mn></mtd></mtr>
+                  <mtr><mtd><msub><mi>r</mi><mn>0</mn></msub><mo>+</mo><mi>&delta;</mi><mi>tanh</mi><mo>(</mo><mfrac><mrow><mi>r</mi><mo>&minus;</mo><msub><mi>r</mi><mn>0</mn></msub></mrow><mi>&delta;</mi></mfrac><mo>)</mo><mo>,</mo></mtd><mtd><mi>r</mi><mo>&gt;</mo><msub><mi>r</mi><mn>0</mn></msub><mo>,</mo><mspace width="0.4em"/><mi>&delta;</mi><mo>=</mo><mn>0.05</mn></mtd></mtr>
+                </mtable>
+              </mrow>
+            </mrow>
+          </math>
+        </div>
+      </div>
+
+      <!-- FIGURE 1: 18-Cell OOD Static Inline SVG -->
+      <figure class="figure-card">
+        <div class="figure-title">Figure 1 &mdash; Zero-Shot Cross-Domain OOD Transfer (R4 <code>f1_r4_comprehensive</code>, 3 Seeds): <code>EM-2</code> &amp; <code>A2g</code> vs. <code>CAR</code> &amp; <code>A2c</code></div>
+        <svg viewBox="0 0 860 270" role="img" aria-label="Grouped bar chart comparing CAR, A2c, A2g, EM-2 ZeroMu-Query, and EM-2 ZeroMu-DualAdap across six representative cross-domain 4096-d OOD transfers">
+          <rect x="0" y="0" width="860" height="270" fill="#ffffff"/>
+          <!-- Gridlines -->
+          <g stroke="#dce5e9" stroke-width="1">
+            <line x1="65" y1="215" x2="835" y2="215"/>
+            <line x1="65" y1="165" x2="835" y2="165"/>
+            <line x1="65" y1="115" x2="835" y2="115"/>
+            <line x1="65" y1="65" x2="835" y2="65"/>
+            <line x1="65" y1="25" x2="835" y2="25"/>
+          </g>
+          <g font-family="monospace" font-size="11" fill="#50646e" text-anchor="end">
+            <text x="58" y="219">0.00</text><text x="58" y="169">0.16</text><text x="58" y="119">0.32</text><text x="58" y="69">0.48</text><text x="58" y="29">0.60</text>
+          </g>
+          <!-- Legend -->
+          <g font-family="sans-serif" font-size="11" font-weight="600">
+            <rect x="70" y="8" width="11" height="11" fill="#9fb2bc"/><text x="85" y="17" fill="#2e434d">CAR</text>
+            <rect x="135" y="8" width="11" height="11" fill="#5c8a97"/><text x="150" y="17" fill="#2e434d">A2c Amb</text>
+            <rect x="220" y="8" width="11" height="11" fill="#7d2f0a"/><text x="235" y="17" fill="#7d2f0a">A2g C1Soft</text>
+            <rect x="320" y="8" width="11" height="11" fill="#066e7a"/><text x="335" y="17" fill="#044e57">ZM-Query (0-write)</text>
+            <rect x="465" y="8" width="11" height="11" fill="#136239"/><text x="480" y="17" fill="#136239">ZM-DualAdap (16/18 wins)</text>
+          </g>
+          <!-- Scale: y = 215 - val * 316.7 (0.60 -> 25) -->
+          <!-- Group 1: CoSQA->LegalC 1024->4096: CAR 0.237, A2c 0.331, A2g 0.362, ZMQ 0.485, ZMDA 0.565 -->
+          <g transform="translate(82,0)">
+            <rect x="0" y="140" width="16" height="75" fill="#9fb2bc"/>
+            <rect x="18" y="110" width="16" height="105" fill="#5c8a97"/>
+            <rect x="36" y="100" width="16" height="115" fill="#7d2f0a"/>
+            <rect x="54" y="61" width="16" height="154" fill="#066e7a"/>
+            <rect x="72" y="36" width="16" height="179" fill="#136239"/>
+            <text x="44" y="233" text-anchor="middle" font-size="10.5" fill="#132026" font-weight="700">Code&rarr;LegalC</text>
+            <text x="44" y="247" text-anchor="middle" font-size="10" fill="#50646e">1024&rarr;4096</text>
+          </g>
+          <!-- Group 2: CoSQA->LegalC 384->4096: 0.217, 0.315, 0.422, 0.424, 0.505 -->
+          <g transform="translate(208,0)">
+            <rect x="0" y="146" width="16" height="69" fill="#9fb2bc"/>
+            <rect x="18" y="115" width="16" height="100" fill="#5c8a97"/>
+            <rect x="36" y="81" width="16" height="134" fill="#7d2f0a"/>
+            <rect x="54" y="81" width="16" height="134" fill="#066e7a"/>
+            <rect x="72" y="55" width="16" height="160" fill="#136239"/>
+            <text x="44" y="233" text-anchor="middle" font-size="10.5" fill="#132026" font-weight="700">Code&rarr;LegalC</text>
+            <text x="44" y="247" text-anchor="middle" font-size="10" fill="#50646e">384&rarr;4096</text>
+          </g>
+          <!-- Group 3: SciFact->LegalC 1024->4096: 0.287, 0.363, 0.404, 0.437, 0.544 -->
+          <g transform="translate(334,0)">
+            <rect x="0" y="124" width="16" height="91" fill="#9fb2bc"/>
+            <rect x="18" y="100" width="16" height="115" fill="#5c8a97"/>
+            <rect x="36" y="87" width="16" height="128" fill="#7d2f0a"/>
+            <rect x="54" y="77" width="16" height="138" fill="#066e7a"/>
+            <rect x="72" y="43" width="16" height="172" fill="#136239"/>
+            <text x="44" y="233" text-anchor="middle" font-size="10.5" fill="#132026" font-weight="700">Sci&rarr;LegalC</text>
+            <text x="44" y="247" text-anchor="middle" font-size="10" fill="#50646e">1024&rarr;4096</text>
+          </g>
+          <!-- Group 4: SciFact->LegalC 384->4096: 0.204, 0.277, 0.374, 0.389, 0.479 -->
+          <g transform="translate(460,0)">
+            <rect x="0" y="150" width="16" height="65" fill="#9fb2bc"/>
+            <rect x="18" y="127" width="16" height="88" fill="#5c8a97"/>
+            <rect x="36" y="97" width="16" height="118" fill="#7d2f0a"/>
+            <rect x="54" y="92" width="16" height="123" fill="#066e7a"/>
+            <rect x="72" y="63" width="16" height="152" fill="#136239"/>
+            <text x="44" y="233" text-anchor="middle" font-size="10.5" fill="#132026" font-weight="700">Sci&rarr;LegalC</text>
+            <text x="44" y="247" text-anchor="middle" font-size="10" fill="#50646e">384&rarr;4096</text>
+          </g>
+          <!-- Group 5: CoSQA->SciFact 1024->4096: 0.005, 0.035, 0.084, 0.206, 0.256 -->
+          <g transform="translate(586,0)">
+            <rect x="0" y="213" width="16" height="2" fill="#9fb2bc"/>
+            <rect x="18" y="204" width="16" height="11" fill="#5c8a97"/>
+            <rect x="36" y="188" width="16" height="27" fill="#7d2f0a"/>
+            <rect x="54" y="150" width="16" height="65" fill="#066e7a"/>
+            <rect x="72" y="134" width="16" height="81" fill="#136239"/>
+            <text x="44" y="233" text-anchor="middle" font-size="10.5" fill="#132026" font-weight="700">Code&rarr;SciFact</text>
+            <text x="44" y="247" text-anchor="middle" font-size="10" fill="#50646e">1024&rarr;4096 (51&times;)</text>
+          </g>
+          <!-- Group 6: SciFact->CoSQA 1024->4096: 0.020, 0.050, 0.105, 0.154, 0.191 -->
+          <g transform="translate(712,0)">
+            <rect x="0" y="209" width="16" height="6" fill="#9fb2bc"/>
+            <rect x="18" y="199" width="16" height="16" fill="#5c8a97"/>
+            <rect x="36" y="182" width="16" height="33" fill="#7d2f0a"/>
+            <rect x="54" y="166" width="16" height="49" fill="#066e7a"/>
+            <rect x="72" y="154" width="16" height="61" fill="#136239"/>
+            <text x="44" y="233" text-anchor="middle" font-size="10.5" fill="#132026" font-weight="700">Sci&rarr;Code</text>
+            <text x="44" y="247" text-anchor="middle" font-size="10" fill="#50646e">1024&rarr;4096 (9.5&times;)</text>
+          </g>
+        </svg>
+        <figcaption class="figure-caption">
+          Removing the source-domain target centroid <code>&mu;_y</code> (<code>EM-2</code>) eliminates OOD centroid collapse:
+          <code>ZM-Query</code> (true zero-write) sweeps 12/12 up-projection OOD cells and <code>ZM-DualAdap</code> wins 16/18 overall.
+        </figcaption>
+      </figure>
+
+      <!-- ARIA Interactive Tabs (Zero-JS static fallback shows all 3 tables cleanly!) -->
+      <div class="tablist" role="tablist" aria-label="Flagship 1 empirical tables">
+        <button role="tab" id="tab-ood" aria-selected="true" aria-controls="panel-ood">18-Cell OOD Transfer</button>
+        <button role="tab" id="tab-chains" aria-selected="false" aria-controls="panel-chains">3-Hop 4096-d &amp; 6-BEIR 4-Hop</button>
+        <button role="tab" id="tab-peaks-b4" aria-selected="false" aria-controls="panel-peaks-b4">Theorem 1 Peaks &amp; B4 Backfill</button>
+      </div>
+
+      <div id="panel-ood" role="tabpanel" aria-labelledby="tab-ood">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>OOD Transfer Cell</th>
+                <th class="num">CAR</th>
+                <th class="num">A2c Amb</th>
+                <th class="num">A2g C1Soft</th>
+                <th class="num">ZM-Query (0-wr)</th>
+                <th class="num">ZM-DualFit</th>
+                <th class="num">ZM-DualAdap</th>
+                <th class="num">A3 Full</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><code>CoSQA &rarr; Legal_Contracts (1024&rarr;4096)</code></td><td class="num">0.2372</td><td class="num">0.3305</td><td class="num">0.3621</td><td class="num">0.4849</td><td class="num">0.4634</td><td class="num best">0.5646</td><td class="num">0.2594</td></tr>
+              <tr><td><code>CoSQA &rarr; Legal_Contracts (384&rarr;4096)</code></td><td class="num">0.2166</td><td class="num">0.3148</td><td class="num">0.4217</td><td class="num">0.4241</td><td class="num">0.4187</td><td class="num best">0.5045</td><td class="num">0.2274</td></tr>
+              <tr><td><code>CoSQA &rarr; Legal_Contracts (4096&rarr;384)</code></td><td class="num">0.4236</td><td class="num">0.4104</td><td class="num">0.3617</td><td class="num">0.3919</td><td class="num">0.4082</td><td class="num best">0.5069</td><td class="num">0.4505</td></tr>
+              <tr><td><code>CoSQA &rarr; SciFact (1024&rarr;4096)</code></td><td class="num warn-cell">0.0050</td><td class="num">0.0349</td><td class="num">0.0839</td><td class="num">0.2064</td><td class="num">0.1972</td><td class="num best">0.2559</td><td class="num">0.0115</td></tr>
+              <tr><td><code>CoSQA &rarr; SciFact (384&rarr;4096)</code></td><td class="num warn-cell">0.0069</td><td class="num">0.0382</td><td class="num">0.1126</td><td class="num">0.1220</td><td class="num">0.1219</td><td class="num best">0.1559</td><td class="num">0.0097</td></tr>
+              <tr><td><code>SciFact &rarr; CoSQA (1024&rarr;4096)</code></td><td class="num warn-cell">0.0201</td><td class="num">0.0500</td><td class="num">0.1051</td><td class="num">0.1539</td><td class="num">0.1405</td><td class="num best">0.1910</td><td class="num">0.0259</td></tr>
+              <tr><td><code>SciFact &rarr; CoSQA (384&rarr;4096)</code></td><td class="num warn-cell">0.0136</td><td class="num">0.0286</td><td class="num">0.0887</td><td class="num">0.1057</td><td class="num">0.1029</td><td class="num best">0.1461</td><td class="num">0.0114</td></tr>
+              <tr><td><code>SciFact &rarr; Legal_Contracts (1024&rarr;4096)</code></td><td class="num">0.2874</td><td class="num">0.3629</td><td class="num">0.4037</td><td class="num">0.4370</td><td class="num">0.4300</td><td class="num best">0.5442</td><td class="num">0.3064</td></tr>
+              <tr><td><code>SciFact &rarr; Legal_Contracts (384&rarr;4096)</code></td><td class="num">0.2042</td><td class="num">0.2767</td><td class="num">0.3736</td><td class="num">0.3890</td><td class="num">0.3828</td><td class="num best">0.4790</td><td class="num">0.2028</td></tr>
+              <tr><td><code>SciFact &rarr; Legal_QuAD (4096&rarr;384)</code></td><td class="num">0.0429</td><td class="num">0.0349</td><td class="num">0.0361</td><td class="num">0.0315</td><td class="num">0.0309</td><td class="num">0.0389</td><td class="num best">0.0458</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="panel-chains" role="tabpanel" aria-labelledby="tab-chains">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Multi-Hop Chain Suite</th>
+                <th class="num">Composed CAR</th>
+                <th class="num">Composed A2c-OOS</th>
+                <th class="num">A2g C1Soft</th>
+                <th class="num">EM-2 ZeroMu (Best)</th>
+                <th class="num">&Delta; vs CAR</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><code>SciFact 3-Hop 4096&rarr;384 (n=1000, Hop 2)</code></td><td class="num">0.4813</td><td class="num">0.5007</td><td class="num">&mdash;</td><td class="num best">0.5254 (DualFit)</td><td class="num best">+0.0441</td></tr>
+              <tr><td><code>SciFact 3-Hop 4096&rarr;384 (n=2000, Hop 3)</code></td><td class="num">0.5063</td><td class="num">0.5718</td><td class="num">&mdash;</td><td class="num best">0.5886 (DualFit)</td><td class="num best">+0.0823</td></tr>
+              <tr><td><code>CoSQA 3-Hop 4096&rarr;384 (n=2000, Hop 3)</code></td><td class="num">0.2166</td><td class="num">0.2254</td><td class="num">&mdash;</td><td class="num best">0.2340 (DualFit)</td><td class="num best">+0.0174</td></tr>
+              <tr><td><code>BEIR ArguAna 4-Hop (E4&rarr;E0)</code></td><td class="num">0.1790</td><td class="num">0.2010</td><td class="num">0.2045</td><td class="num best">0.2291 (DualAdap)</td><td class="num best">+0.0501</td></tr>
+              <tr><td><code>BEIR FiQA2018 4-Hop (E4&rarr;E0)</code></td><td class="num">0.0527</td><td class="num">0.0512</td><td class="num">0.0514</td><td class="num best">0.0692 (DualAdap)</td><td class="num best">+0.0165</td></tr>
+              <tr><td><code>BEIR NFCorpus 4-Hop (E4&rarr;E0)</code></td><td class="num">0.1233</td><td class="num">0.1367</td><td class="num">0.1443</td><td class="num best">0.1474 (DualAdap)</td><td class="num best">+0.0241</td></tr>
+              <tr><td><code>BEIR Quora 4-Hop (E4&rarr;E0)</code></td><td class="num">0.3361</td><td class="num">0.3412</td><td class="num">0.3669</td><td class="num best">0.3998 (Query)</td><td class="num best">+0.0637</td></tr>
+              <tr><td><code>BEIR SCIDOCS 4-Hop (E4&rarr;E0)</code></td><td class="num">0.0595</td><td class="num">0.0553</td><td class="num">0.0568</td><td class="num best">0.0666 (DualAdap)</td><td class="num best">+0.0071</td></tr>
+              <tr><td><code>BEIR SciFact 4-Hop (E4&rarr;E0)</code></td><td class="num">0.2431</td><td class="num">0.2569</td><td class="num">0.2506</td><td class="num best">0.2632 (DualAdap)</td><td class="num best">+0.0201</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="panel-peaks-b4" role="tabpanel" aria-labelledby="tab-peaks-b4">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Suite / Dataset</th>
+                <th class="num">Raw Peak &kappa;</th>
+                <th class="num">Polar &kappa;</th>
+                <th class="num">BF20 Legacy</th>
+                <th class="num">B4 SmoothTail</th>
+                <th class="num">B4 + CSLS10 (Full)</th>
+                <th class="num">B4 + CSLS10 (B2-OldSpace 0-Enc)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><code>ArguAna (E0&rarr;E3&rarr;E1 / E3&rarr;E0 BF20)</code></td><td class="num warn-cell">74.81</td><td class="num best">1.0000</td><td class="num">0.3211</td><td class="num">0.3211</td><td class="num">0.3508</td><td class="num best">0.3510</td></tr>
+              <tr><td><code>SciFact (E0&rarr;E3&rarr;E1 / E3&rarr;E0 BF20)</code></td><td class="num warn-cell">155.27</td><td class="num best">1.0000</td><td class="num">0.5577</td><td class="num">0.5622</td><td class="num best">0.5699</td><td class="num">0.5450</td></tr>
+              <tr><td><code>NFCorpus (E0&rarr;E3&rarr;E1 / E3&rarr;E0 BF20)</code></td><td class="num warn-cell">368.64</td><td class="num best">1.0000</td><td class="num">0.2305</td><td class="num best">0.2306</td><td class="num">0.2223</td><td class="num">0.2142</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- FIGURE 2 & FIGURE 3 side-by-side -->
+      <div class="grid-2">
+        <figure class="figure-card">
+          <div class="figure-title">Figure 2 &mdash; Multi-Hop 4-Hop BEIR &amp; 3-Hop 4096-d Sweep (18/18 Wins by <code>EM-2</code>)</div>
+          <svg viewBox="0 0 420 215" role="img" aria-label="Comparison of Composed CAR, A2c-OOS, and EM-2 ZeroMu on 4096-d 3-hop and BEIR 4-hop chains">
+            <rect x="0" y="0" width="420" height="215" fill="#ffffff"/>
+            <g stroke="#dce5e9"><line x1="45" y1="175" x2="405" y2="175"/><line x1="45" y1="125" x2="405" y2="125"/><line x1="45" y1="75" x2="405" y2="75"/><line x1="45" y1="25" x2="405" y2="25"/></g>
+            <g font-family="monospace" font-size="10" fill="#50646e" text-anchor="end"><text x="40" y="179">0.0</text><text x="40" y="129">0.2</text><text x="40" y="79">0.4</text><text x="40" y="29">0.6</text></g>
+            <!-- Scale: y = 175 - val*250 -->
+            <g transform="translate(55,0)">
+              <rect x="0" y="48" width="18" height="127" fill="#9fb2bc"/><rect x="20" y="32" width="18" height="143" fill="#5c8a97"/><rect x="40" y="28" width="18" height="147" fill="#136239"/>
+              <text x="29" y="193" text-anchor="middle" font-size="9.5" font-weight="700" fill="#132026">Sci 3H (2k)</text>
+            </g>
+            <g transform="translate(142,0)">
+              <rect x="0" y="55" width="18" height="120" fill="#9fb2bc"/><rect x="20" y="50" width="18" height="125" fill="#5c8a97"/><rect x="40" y="44" width="18" height="131" fill="#136239"/>
+              <text x="29" y="193" text-anchor="middle" font-size="9.5" font-weight="700" fill="#132026">Sci 3H H2</text>
+            </g>
+            <g transform="translate(229,0)">
+              <rect x="0" y="91" width="18" height="84" fill="#9fb2bc"/><rect x="20" y="90" width="18" height="85" fill="#5c8a97"/><rect x="40" y="75" width="18" height="100" fill="#136239"/>
+              <text x="29" y="193" text-anchor="middle" font-size="9.5" font-weight="700" fill="#132026">Quora 4H</text>
+            </g>
+            <g transform="translate(316,0)">
+              <rect x="0" y="130" width="18" height="45" fill="#9fb2bc"/><rect x="20" y="125" width="18" height="50" fill="#5c8a97"/><rect x="40" y="118" width="18" height="57" fill="#136239"/>
+              <text x="29" y="193" text-anchor="middle" font-size="9.5" font-weight="700" fill="#132026">ArguAna 4H</text>
+            </g>
+            <g font-size="9.5" font-weight="700">
+              <rect x="55" y="6" width="10" height="10" fill="#9fb2bc"/><text x="68" y="14" fill="#2e434d">CAR</text>
+              <rect x="115" y="6" width="10" height="10" fill="#5c8a97"/><text x="128" y="14" fill="#2e434d">A2c-OOS</text>
+              <rect x="200" y="6" width="10" height="10" fill="#136239"/><text x="213" y="14" fill="#136239">EM-2 ZeroMu</text>
+            </g>
+          </svg>
+        </figure>
+
+        <figure class="figure-card">
+          <div class="figure-title">Figure 3 &mdash; Theorem 1 Peak Spectral Repair (<code>A2c-Polar</code>) &amp; <code>B4</code> Backfill (<code>ArguAna</code>)</div>
+          <svg viewBox="0 0 420 215" role="img" aria-label="Condition number repair on interior peak chains and B4 smooth-tail plus B2-OldSpace backfill gain on ArguAna">
+            <rect x="0" y="0" width="420" height="215" fill="#ffffff"/>
+            <!-- Left half: Log10 cond number repair -->
+            <text x="105" y="18" text-anchor="middle" font-size="11" font-weight="750" fill="#044e57">Peak E0&rarr;E3&rarr;E1 &kappa; (log10)</text>
+            <g font-family="monospace" font-size="9.5" fill="#2e434d">
+              <text x="10" y="55">NFCorpus</text><rect x="68" y="44" width="115" height="12" fill="#7d2f0a"/><text x="187" y="54" fill="#7d2f0a" font-weight="700">368.6</text>
+              <text x="10" y="80">FiQA2018</text><rect x="68" y="69" width="112" height="12" fill="#7d2f0a"/><text x="184" y="79" fill="#7d2f0a" font-weight="700">323.0</text>
+              <text x="10" y="105">SciFact</text><rect x="68" y="94" width="98" height="12" fill="#7d2f0a"/><text x="170" y="104" fill="#7d2f0a" font-weight="700">155.3</text>
+              <text x="10" y="130">ArguAna</text><rect x="68" y="119" width="84" height="12" fill="#7d2f0a"/><text x="156" y="129" fill="#7d2f0a" font-weight="700">74.8</text>
+              <text x="10" y="160" font-weight="700" fill="#136239">A2c-Polar</text><rect x="68" y="149" width="8" height="12" fill="#136239"/><text x="80" y="159" fill="#136239" font-weight="700">1.0000 (6/6)</text>
+            </g>
+            <line x1="224" y1="15" x2="224" y2="195" stroke="#cbd8dd" stroke-dasharray="4 3"/>
+            <!-- Right half: ArguAna B4 Backfill -->
+            <text x="322" y="18" text-anchor="middle" font-size="11" font-weight="750" fill="#044e57">ArguAna BF20 nDCG@10</text>
+            <g font-family="monospace" font-size="9.5" fill="#2e434d">
+              <text x="234" y="58">BF0 Bridge</text><rect x="234" y="63" width="102" height="13" fill="#9fb2bc"/><text x="341" y="73">0.3079</text>
+              <text x="234" y="96">BF20 Legacy</text><rect x="234" y="101" width="110" height="13" fill="#5c8a97"/><text x="349" y="111">0.3211</text>
+              <text x="234" y="134">B4+CSLS Full</text><rect x="234" y="139" width="126" height="13" fill="#066e7a"/><text x="365" y="149">0.3508</text>
+              <text x="234" y="172" font-weight="700" fill="#136239">B4+OldSpace</text><rect x="234" y="177" width="128" height="13" fill="#136239"/><text x="367" y="187" font-weight="700" fill="#136239">0.3510</text>
+            </g>
+          </svg>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ================================================================== -->
+    <!-- SECTION 2: FLAGSHIP #2 -->
+    <!-- ================================================================== -->
+    <section id="flagship2">
+      <h2>2. Flagship #2 &mdash; <code>EK5 v3</code> Stratified <em>K</em>=4 Evidence Engine &amp; <code>EM-1</code> (<code>M4e</code>)</h2>
+      <p>
+        <code>EK5 v3</code> (<code>ek5_v3_stratified.py</code>) replaces heuristic retraction with a four-stratum formal engine
+        (<em>K</em>=2 logical core, <strong><em>K</em>=4 production store</strong>, <em>K</em>=8 architectural unification with
+        <code>TRA-1</code> and bounded continuous scoring strictly inside <code>ADMIT</code>).
+      </p>
+
+      <div class="grid-2">
+        <div class="eq-box" aria-label="Stratum 1 Anti-Laundering Ceiling">
+          <strong>Stratum 1 Capability-Scoped Anti-Laundering Ceiling:</strong><br>
+          <math xmlns="http://www.w3.org/1998/Math/MathML" display="block">
+            <mrow>
+              <msub><mover><mi>&alpha;</mi><mo>~</mo></mover><mi>q</mi></msub><mo>(</mo><mi>v</mi><mo>,</mo><mi>c</mi><mo>)</mo>
+              <mo>=</mo>
+              <mi>min</mi>
+              <mo>(</mo>
+                <msub><mi>&alpha;</mi><mrow><mtext>raw</mtext><mo>,</mo><mi>q</mi></mrow></msub><mo>(</mo><mi>v</mi><mo>,</mo><mi>c</mi><mo>)</mo>
+                <mo>,</mo>
+                <munder><mi>min</mi><mrow><mi>d</mi><mo>&isin;</mo><msubsup><mi>D</mi><mi>V</mi><mi>q</mi></msubsup><mo>(</mo><mi>v</mi><mo>)</mo></mrow></munder>
+                <msub><mover><mi>&alpha;</mi><mo>~</mo></mover><mi>q</mi></msub><mo>(</mo><mi>d</mi><mo>,</mo><mi>c</mi><mo>)</mo>
+              <mo>)</mo>
+            </mrow>
+          </math>
+        </div>
+        <div class="eq-box" aria-label="Stratum 2 Exact WFS Alternating Fixpoint">
+          <strong>Stratum 2 Exact Alternating-Reduct WFS (Option 1A):</strong><br>
+          <math xmlns="http://www.w3.org/1998/Math/MathML" display="block">
+            <mrow>
+              <msup><mi>T</mi><mo>*</mo></msup><mo>=</mo><mi>lfp</mi><mo>(</mo><msup><mi>&Gamma;</mi><mn>2</mn></msup><mo>)</mo>
+              <mo>,</mo><mspace width="0.8em"/>
+              <msup><mi>F</mi><mo>*</mo></msup><mo>=</mo><mi>V</mi><mo>&setminus;</mo><mi>&Gamma;</mi><mo>(</mo><msup><mi>T</mi><mo>*</mo></msup><mo>)</mo>
+              <mo>,</mo><mspace width="0.8em"/>
+              <msup><mi>U</mi><mo>*</mo></msup><mo>=</mo><mi>&Gamma;</mi><mo>(</mo><msup><mi>T</mi><mo>*</mo></msup><mo>)</mo><mo>&setminus;</mo><msup><mi>T</mi><mo>*</mo></msup>
+            </mrow>
+          </math>
+        </div>
+      </div>
+
+      <!-- FIGURE 4: EK5 v3 Architecture Flow SVG -->
+      <figure class="figure-card">
+        <div class="figure-title">Figure 4 &mdash; <code>EK5 v3</code> Stratified <em>K</em>=4 Pipeline &amp; Passive Non-Blocking <code>EM-3</code> Telemetry Channel</div>
+        <svg viewBox="0 0 860 155" role="img" aria-label="Four-stratum lexicographic pipeline from Stratum 0 Bitemporal Visibility to Stratum 1 Anti-Laundering Authority Ceiling, Stratum 2 Option 1A Epistemic WFS, and Stratum 3 Temporal Currency, feeding passive EM-3 Telemetry">
+          <rect x="0" y="0" width="860" height="155" fill="#ffffff"/>
+          <defs>
+            <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#044e57"/>
+            </marker>
+          </defs>
+          <rect x="12" y="18" width="185" height="72" rx="8" fill="#e8f5f6" stroke="#066e7a" stroke-width="1.5"/>
+          <text x="104" y="38" text-anchor="middle" font-size="11.5" font-weight="800" fill="#044e57">Stratum 0: Visibility</text>
+          <text x="104" y="56" text-anchor="middle" font-size="10" fill="#2e434d">as_of(vt, tx) + Multiplicity</text>
+          <text x="104" y="72" text-anchor="middle" font-size="10" fill="#2e434d">Missing parent &rarr; &alpha;=0, V=F</text>
+
+          <line x1="197" y1="54" x2="225" y2="54" stroke="#044e57" stroke-width="2" marker-end="url(#arr)"/>
+          <rect x="227" y="18" width="192" height="72" rx="8" fill="#e8f5f6" stroke="#066e7a" stroke-width="1.5"/>
+          <text x="323" y="38" text-anchor="middle" font-size="11.5" font-weight="800" fill="#044e57">Stratum 1: Authority &alpha;~</text>
+          <text x="323" y="56" text-anchor="middle" font-size="10" fill="#2e434d">Anti-Laundering min over D_V</text>
+          <text x="323" y="72" text-anchor="middle" font-size="10" fill="#2e434d">CITES_AUDIT exempt from D_V</text>
+
+          <line x1="419" y1="54" x2="447" y2="54" stroke="#044e57" stroke-width="2" marker-end="url(#arr)"/>
+          <rect x="449" y="18" width="190" height="72" rx="8" fill="#e9f6ee" stroke="#136239" stroke-width="1.5"/>
+          <text x="544" y="38" text-anchor="middle" font-size="11.5" font-weight="800" fill="#136239">Stratum 2: Option 1A WFS</text>
+          <text x="544" y="56" text-anchor="middle" font-size="10" fill="#2e434d">Tarjan Pos-SCC + Plain-FIFO</text>
+          <text x="544" y="72" text-anchor="middle" font-size="10" fill="#2e434d">Pitfall A/B + 0/353,105 parity</text>
+
+          <line x1="639" y1="54" x2="667" y2="54" stroke="#044e57" stroke-width="2" marker-end="url(#arr)"/>
+          <rect x="669" y="18" width="178" height="72" rx="8" fill="#e9f6ee" stroke="#136239" stroke-width="1.5"/>
+          <text x="758" y="38" text-anchor="middle" font-size="11.5" font-weight="800" fill="#136239">Stratum 3: Currency</text>
+          <text x="758" y="56" text-anchor="middle" font-size="10" fill="#2e434d">Direct-B_i + Lineage DAG</text>
+          <text x="758" y="72" text-anchor="middle" font-size="10" fill="#2e434d">D_C vs AMENDS + Cyc Cap</text>
+
+          <!-- Passive EM-3 Telemetry Bar -->
+          <rect x="70" y="112" width="720" height="32" rx="6" fill="#fdf2ec" stroke="#7d2f0a" stroke-dasharray="5 3" stroke-width="1.4"/>
+          <text x="430" y="132" text-anchor="middle" font-size="10.5" font-weight="700" fill="#7d2f0a">
+            EM-3 Passive Telemetry (Zero WFS Feedback): unfounded_cycle_nodes | blocked_auth | quarantined_sup_cycles
+          </text>
+          <line x1="323" y1="90" x2="323" y2="110" stroke="#7d2f0a" stroke-dasharray="3 2" marker-end="url(#arr)"/>
+          <line x1="544" y1="90" x2="544" y2="110" stroke="#7d2f0a" stroke-dasharray="3 2" marker-end="url(#arr)"/>
+          <line x1="758" y1="90" x2="700" y2="110" stroke="#7d2f0a" stroke-dasharray="3 2" marker-end="url(#arr)"/>
+        </svg>
+      </figure>
+
+      <!-- FIGURE 5 & FIGURE 6 side-by-side -->
+      <div class="grid-2">
+        <figure class="figure-card">
+          <div class="figure-title">Figure 5 &mdash; <code>EK5 v3</code> 100k Service (<code>PM-5</code>) &amp; 1M-Node Kernel Scaling</div>
+          <svg viewBox="0 0 420 215" role="img" aria-label="Latency comparison showing 100k service p95 at 0.904 ms versus 25 ms SLO, and 1M sparse and power-law p95 at 7.95 ms and 7.94 ms">
+            <rect x="0" y="0" width="420" height="215" fill="#ffffff"/>
+            <line x1="150" y1="25" x2="150" y2="180" stroke="#cbd8dd"/>
+            <!-- 25 ms SLO line at x = 150 + 25*9.5 = 387.5 -->
+            <line x1="387" y1="22" x2="387" y2="182" stroke="#7d2f0a" stroke-width="1.8" stroke-dasharray="5 3"/>
+            <text x="384" y="16" text-anchor="end" font-size="10" font-weight="800" fill="#7d2f0a">PM-5 SLO: 25.0 ms</text>
+            <g font-family="monospace" font-size="10.5" fill="#132026">
+              <text x="142" y="54" text-anchor="end">100k SlotIdx p95</text>
+              <rect x="150" y="42" width="3" height="16" fill="#136239"/><text x="158" y="54" fill="#136239" font-weight="700">0.0054 ms</text>
+
+              <text x="142" y="88" text-anchor="end">100k Mut p95</text>
+              <rect x="150" y="76" width="9" height="16" fill="#136239"/><text x="164" y="88" fill="#136239" font-weight="700">0.904 ms (27.6&times; margin)</text>
+
+              <text x="142" y="122" text-anchor="end">1M Sparse p95</text>
+              <rect x="150" y="110" width="76" height="16" fill="#066e7a"/><text x="231" y="122" fill="#044e57" font-weight="700">7.95 ms (0 fallbacks)</text>
+
+              <text x="142" y="156" text-anchor="end">1M PwrLaw p95</text>
+              <rect x="150" y="144" width="75" height="16" fill="#066e7a"/><text x="230" y="156" fill="#044e57" font-weight="700">7.94 ms (10k hubs |D|=0)</text>
+            </g>
+            <text x="15" y="200" font-size="10" fill="#7d2f0a">Honest tail: Stratum-1 giant-cone Tarjan p99 = 2,622.6 ms (max 3,242.5 ms).</text>
+          </svg>
+        </figure>
+
+        <figure class="figure-card">
+          <div class="figure-title">Figure 6 &mdash; Balanced 10-Conv <code>LoCoMo N=300</code> (Regime A Clean vs. B Blind Echo)</div>
+          <svg viewBox="0 0 420 215" role="img" aria-label="LoCoMo 300-item accuracy across M1, M1c, M2, M4b, M4c, and EM-1 M4e for both unmodified clean and blind neutral echo regimes">
+            <rect x="0" y="0" width="420" height="215" fill="#ffffff"/>
+            <g stroke="#dce5e9"><line x1="42" y1="175" x2="405" y2="175"/><line x1="42" y1="115" x2="405" y2="115"/><line x1="42" y1="55" x2="405" y2="55"/></g>
+            <g font-family="monospace" font-size="9.5" fill="#50646e" text-anchor="end"><text x="38" y="179">0.20</text><text x="38" y="119">0.32</text><text x="38" y="59">0.44</text></g>
+            <!-- Scale: y = 175 - (val - 0.20)*500 -->
+            <g font-size="9.5" font-weight="700">
+              <rect x="55" y="7" width="10" height="10" fill="#5c8a97"/><text x="69" y="15" fill="#2e434d">Reg A Clean</text>
+              <rect x="155" y="7" width="10" height="10" fill="#136239"/><text x="169" y="15" fill="#136239">Reg B Blind Echo</text>
+            </g>
+            <!-- M1: 0.383, 0.383 -->
+            <g transform="translate(52,0)"><rect x="0" y="83" width="18" height="92" fill="#5c8a97"/><rect x="20" y="83" width="18" height="92" fill="#136239"/><text x="19" y="193" text-anchor="middle" font-size="9.5" font-weight="700">M1</text></g>
+            <!-- M1c: 0.383, 0.393 -->
+            <g transform="translate(110,0)"><rect x="0" y="83" width="18" height="92" fill="#5c8a97"/><rect x="20" y="78" width="18" height="97" fill="#136239"/><text x="19" y="193" text-anchor="middle" font-size="9.5" font-weight="700">M1c</text></g>
+            <!-- M2: 0.363, 0.357 -->
+            <g transform="translate(168,0)"><rect x="0" y="93" width="18" height="82" fill="#5c8a97"/><rect x="20" y="97" width="18" height="78" fill="#7d2f0a"/><text x="19" y="193" text-anchor="middle" font-size="9.5" font-weight="700">M2</text></g>
+            <!-- M4b: 0.340, 0.350 -->
+            <g transform="translate(226,0)"><rect x="0" y="105" width="18" height="70" fill="#5c8a97"/><rect x="20" y="100" width="18" height="75" fill="#7d2f0a"/><text x="19" y="193" text-anchor="middle" font-size="9.5" font-weight="700">M4b</text></g>
+            <!-- M4c: 0.350, 0.367 -->
+            <g transform="translate(284,0)"><rect x="0" y="100" width="18" height="75" fill="#5c8a97"/><rect x="20" y="92" width="18" height="83" fill="#066e7a"/><text x="19" y="193" text-anchor="middle" font-size="9.5" font-weight="700">M4c</text></g>
+            <!-- M4e: 0.370, 0.393 -->
+            <g transform="translate(342,0)"><rect x="0" y="90" width="18" height="85" fill="#066e7a"/><rect x="20" y="78" width="18" height="97" fill="#136239"/><text x="19" y="193" text-anchor="middle" font-size="9.5" font-weight="800" fill="#136239">M4e*</text></g>
+          </svg>
+        </figure>
+      </div>
+
+      <div class="callout warm">
+        <strong>Mandatory Historical &amp; Pre-Fix Audit Disclosures:</strong>
+        (1) On ICLR 2025 <code>LongMemEval-S</code> v2 (<code>f2_longmemeval_v2</code>), <code>M4b</code> beat every baseline by
+        <code>+25.64</code> to <code>+41.03 pp</code> under Regime B echo stress, <strong>but</strong> regressed on Regime A
+        <code>single-session-user</code> clean controls (<strong><code>42/50</code> vs. <code>46/50</code></strong> for <code>M1_hybrid_flat</code>).
+        (2) Pre-fix R3 LoCoMo (<code>f2_unified_zs_locomo</code>) suffered <code>117/3</code> conversation skew and a <code>3-key</code> / <code>25-row</code>
+        judge race; R4 remediated all four bugs across all 10 conversations (<code>N=300</code>, <code>0</code> inconsistent keys), where
+        <code>EM-1 M4e</code> cut <code>M4c</code>'s clean loss by 60% (<code>-3.33 &rarr; -1.33 pp</code>), directly motivating <code>EM-4</code> below.
+      </div>
+
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>R4 Suite &amp; Arm</th>
+              <th class="num">Metric / Overall</th>
+              <th class="num">Clean / Baseline</th>
+              <th class="num">Stress / K=4 Hard</th>
+              <th>Key Verified Margin &amp; Honest Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>ZS v2 (N=240): <code>C4_v3_ek5_v3_k4</code></strong></td><td class="num best">1.0000</td><td class="num">150.2 toks</td><td class="num best">8/8 fams 100%</td><td><strong>+37.50 pp</strong> vs <code>C4_v2</code> (<code>0.6250</code>), <strong>+12.50 pp</strong> vs <code>C2c</code>/<code>C3</code> (<code>0.8750</code>), <strong>+24.17 pp</strong> vs <code>C2b</code> (<code>0.7583</code>). <em>Note:</em> <code>C0/C1/C2</code> hit <code>1.0000</code> on <code>&le;top_k</code> items &rarr; hardened in R5b <code>ZS v3</code>.</td></tr>
+            <tr><td><strong>LoCoMo-300 (R4): <code>M4e_minimal_pair_split</code></strong></td><td class="num best">0.3933 (Reg B)</td><td class="num">0.3700 (Reg A)</td><td class="num best">0.5600 Fact</td><td><strong>+4.33 pp</strong> vs <code>M4b</code> (<code>cluster CI95=[+1.33, +7.67 pp]</code>); <code>-1.33 pp</code> clean vs <code>M1</code> (<code>0.3833</code>) &rarr; matched <code>M1</code> (<code>+0.00 pp</code>) in R5 <code>M4f</code>.</td></tr>
+            <tr><td><strong>LongMemEval-S (v2): <code>M4b</code></strong></td><td class="num">0.7812 (78 KU + 50 SSU)</td><td class="num warn-cell">42/50 vs 46/50</td><td class="num best">0.7436 KU</td><td><strong>+28.21 pp</strong> vs <code>M1</code> &amp; <strong>+41.03 pp</strong> vs <code>M2</code> under 6-echo stress; intra-session clean loss fixed on full <code>N=500</code> by <code>EM-4</code>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ================================================================== -->
+    <!-- SECTION 2B: OVERNIGHT R5 & R5B GATE-CLOSURE RESULTS -->
+    <!-- ================================================================== -->
+    <section id="r5closure">
+      <h2>2B. Overnight R5 &amp; R5b Evidence &amp; 4-Model Panel Disclosures</h2>
+      <p>
+        Across nine additive DGX Spark bundles (<code>20261122-overnight-r5</code> &amp; <code>20261122-r5b-completion</code>),
+        we evaluated <code>EM-4</code> heuristic soft telemetry routing (<code>em4_soft_telemetry_routing.py</code>: <code>M4f</code>,
+        <code>M4g</code>) and structured blocked-authority routing (<code>C4_v4</code> in <code>scripts/run_r5b_spark6724_completion.py</code>),
+        audited end-to-end by <code>GPT-6.2 Astra Ultra</code>, <code>Claude Opus 5.5 Ultrathink</code>, <code>Grok 4.7 XHigh</code>,
+        and <code>Gemini 4 Neon XHigh</code>.
+      </p>
+
+      <div class="grid-2">
+        <figure class="figure-card">
+          <div class="figure-title">Figure 7 &mdash; Flooded Structured <code>ZS v3</code> (<code>N=240</code>) &amp; Steelmanned <code>mem0ai 2.2.1</code> (<code>N=80</code>)</div>
+          <svg viewBox="0 0 420 215" role="img" aria-label="Flooded Zero-Shortcut v3 accuracy comparing C0, C3, C2c, C2b Jaccard, Steelmanned mem0ai 2.2.1 on N=80, C4_v3, and C4_v4">
+            <rect x="0" y="0" width="420" height="215" fill="#ffffff"/>
+            <line x1="145" y1="18" x2="145" y2="188" stroke="#cbd8dd"/>
+            <g font-family="monospace" font-size="10" fill="#132026">
+              <text x="139" y="36" text-anchor="end">C0 BM25 (N=240)</text>
+              <rect x="145" y="25" width="5" height="14" fill="#9fb2bc"/><text x="155" y="36" fill="#50646e">0.0208</text>
+
+              <text x="139" y="60" text-anchor="end">C3 TMS (N=240)</text>
+              <rect x="145" y="49" width="8" height="14" fill="#9fb2bc"/><text x="158" y="60" fill="#50646e">0.0375</text>
+
+              <text x="139" y="84" text-anchor="end">C2 / C2c (N=240)</text>
+              <rect x="145" y="73" width="34" height="14" fill="#5c8a97"/><text x="184" y="84" fill="#2e434d">0.1625</text>
+
+              <text x="139" y="108" text-anchor="end">C2b All-8 (N=240)</text>
+              <rect x="145" y="97" width="71" height="14" fill="#5c8a97"/><text x="221" y="108" fill="#2e434d">0.3375 (0.9667 echo)</text>
+
+              <text x="139" y="132" text-anchor="end">Mem0 Steel (N=80)</text>
+              <rect x="145" y="121" width="100" height="14" fill="#7d2f0a"/><text x="250" y="132" fill="#7d2f0a" font-weight="700">0.475 vs 0.975 C4v4</text>
+
+              <text x="139" y="156" text-anchor="end">C4_v3 (N=240)</text>
+              <rect x="145" y="145" width="184" height="14" fill="#066e7a"/><text x="334" y="156" fill="#044e57" font-weight="700">0.8750</text>
+
+              <text x="139" y="180" text-anchor="end" font-weight="800" fill="#136239">C4_v4 (N=240)</text>
+              <rect x="145" y="169" width="210" height="14" fill="#136239"/><text x="360" y="180" fill="#136239" font-weight="800">1.000 (0.95-1.0)</text>
+            </g>
+            <text x="14" y="204" font-size="9.5" fill="#136239" font-weight="700">Structured graph edges supplied to C4; 80/80 in 4 PM-4a cells (conv &kappa;=0.7414).</text>
+          </svg>
+        </figure>
+
+        <figure class="figure-card">
+          <div class="figure-title">Figure 8 &mdash; Full <code>LongMemEval-S N=500</code> Clean &amp; <code>PM-2</code> Hybrid Peak QA Arms</div>
+          <svg viewBox="0 0 420 215" role="img" aria-label="Full LongMemEval N=500 clean accuracy and PM-2 hybrid E0 to E3 to E1 peak QA arms including Query0W at 0.695 and DualAdap at 0.965">
+            <rect x="0" y="0" width="420" height="215" fill="#ffffff"/>
+            <text x="105" y="18" text-anchor="middle" font-size="10.5" font-weight="750" fill="#044e57">LME-S N=500 Clean</text>
+            <g font-family="monospace" font-size="9.5" fill="#2e434d">
+              <text x="10" y="52">M4b Old</text><rect x="68" y="41" width="102" height="13" fill="#7d2f0a"/><text x="174" y="52" fill="#7d2f0a">0.5140</text>
+              <text x="10" y="86">M1 Flat</text><rect x="68" y="75" width="110" height="13" fill="#5c8a97"/><text x="182" y="86">0.5480</text>
+              <text x="10" y="120" font-weight="700" fill="#044e57">M4f EM4</text><rect x="68" y="109" width="110" height="13" fill="#066e7a"/><text x="182" y="120" fill="#044e57" font-weight="700">0.5480</text>
+              <text x="10" y="154" font-weight="700" fill="#136239">M4g EM4</text><rect x="68" y="143" width="114" height="13" fill="#136239"/><text x="186" y="154" fill="#136239" font-weight="700">0.5580</text>
+            </g>
+            <line x1="226" y1="14" x2="226" y2="185" stroke="#cbd8dd" stroke-dasharray="4 3"/>
+            <text x="324" y="18" text-anchor="middle" font-size="10.5" font-weight="750" fill="#044e57">PM-2 Peak QA (N=200)</text>
+            <g font-family="monospace" font-size="9.5" fill="#2e434d">
+              <text x="232" y="44">No EK5v3</text><rect x="292" y="34" width="14" height="12" fill="#7d2f0a"/><text x="310" y="44" fill="#7d2f0a">0.170</text>
+              <text x="232" y="76">CAR / Q0W</text><rect x="292" y="66" width="58" height="12" fill="#5c8a97"/><text x="354" y="76">0.695</text>
+              <text x="232" y="108" font-weight="700" fill="#136239">DualAdap</text><rect x="292" y="98" width="81" height="12" fill="#136239"/><text x="377" y="108" fill="#136239" font-weight="700">0.965</text>
+              <text x="232" y="140">Native E1</text><rect x="292" y="130" width="83" height="12" fill="#066e7a"/><text x="379" y="140">0.985</text>
+            </g>
+            <text x="12" y="203" font-size="9.2" fill="#7d2f0a">SciFact n=86 scorer p95=0.718ms (36.55ms uncached); QA family-guard rerun open.</text>
+          </svg>
+        </figure>
+      </div>
+
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>R5 / R5b Evaluation Suite</th>
+              <th class="num">Primary Arm</th>
+              <th class="num">Key Comparator(s)</th>
+              <th class="num">Verified Margin / CI95</th>
+              <th>4-Model Panel Scope &amp; Diagnostic Disclosures</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><strong><code>PM-1a</code> Structured <code>ZS v3</code> (N=240)</strong></td><td class="num best">1.0000 (<code>C4_v4</code>)</td><td class="num"><code>C2b</code> 0.3375 / <code>C4_v3</code> 0.8750</td><td class="num best">LCB95 +60.4 pp vs C2b</td><td>Consumes fixture edges post-hoc after <code>r5_s1</code> (<code>0.950&ndash;1.000</code> on <code>N=80</code> draws); <code>C2b=0.9667</code> on paraphrase flood, <code>0.000</code> on 5 graph families.</td></tr>
+            <tr><td><strong><code>PM-1b</code> <code>LoCoMo-300</code> + <code>EM-4</code></strong></td><td class="num best">0.3867 / 0.4000</td><td class="num"><code>M1</code> 0.3867 / <code>M3</code> 0.4133 clean</td><td class="num">M4f Tango -1.26 / M4g LCB -1.00 pp</td><td><code>M4f</code> matched <code>M1</code> (<code>297/300</code> identical prompts, <code>0.630</code> Rec@5); tuned post-R4 error inspection; blind echo <code>M4e=0.4133</code> vs <code>M1c=0.4000</code> (LCB <code>-1.33 pp</code>).</td></tr>
+            <tr><td><strong><code>PM-1b</code> Full <code>LongMemEval-S N=500</code></strong></td><td class="num best">0.5480 / 0.5580</td><td class="num"><code>M1</code> 0.5480 / unstripped <code>M1c</code> 0.7692</td><td class="num warn-cell">KU +24.36 pp (LCB +12.82)</td><td>Clean parity passed (<code>SSU=0.9143</code> Tango <code>-5.20 pp</code>); <strong>stress sub-gate UNMET</strong> (<code>&lt;+25/+15 pp</code>, <code>0.7564 &lt; 0.7692</code> <code>M1c</code>; 6 synthetic prefixes matched).</td></tr>
+            <tr><td><strong><code>PM-2</code> Coupled Peak QA &amp; Scorer</strong></td><td class="num">0.9650 DualAdap / 0.6950 Query0W</td><td class="num">Native 0.9850 / CAR 0.6950 / NoEK5 0.1700</td><td class="num warn-cell">-2.0 pp (Boot -4.5, Tango -5.29)</td><td><code>12/12</code> ABI blocks &amp; dense wins vs CAR; <code>0.7181 ms</code> timed <code>n=86</code> cached SciFact scorer (<code>36.55 ms</code> uncached); QA <code>c["family"]</code> guard &amp; batch <code>&mu;_q</code> &rarr; rerun open.</td></tr>
+            <tr><td><strong><code>PM-3</code> Steelmanned <code>mem0ai 2.2.1</code></strong></td><td class="num best">0.9750 (ZS) / 0.7000 (KU)</td><td class="num"><code>mem0ai</code> 0.4750 (ZS) / 0.6000 (LME KU)</td><td class="num">ZS LCB +38.8 / KU LCB -3.3 pp</td><td><code>0.48 ms</code> structured graph routing vs <code>2,988 ms</code> raw-text <code>Memory.add</code> (<code>80/80</code> nonempty searches); Suite B <code>N=30</code> (<code>top20_chron</code>) non-significant.</td></tr>
+            <tr><td><strong><code>PM-4a</code> <code>2&times;2</code> Nemotron-30B &times; Qwen2.5-7B</strong></td><td class="num best">80/80 (4/4 cells)</td><td class="num">Conv &kappa;=0.7414 (87%) / Pooled &kappa;=0.9570</td><td class="num">Pooled CI95 [0.9376, 0.9751]</td><td>Reuses 80 ZS cases across 4 cells (<code>ZS &kappa;=0.9847</code>); sealed key gitignored so <code>PM-4b</code> 100-item human sheet remains blind.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ================================================================== -->
+    <!-- SECTION 2C: PHASE-2 FLEET & WAVE-4 ADJUDICATION (J1-J7) -->
+    <!-- ================================================================== -->
+    <section id="wave4">
+      <h2>2C. Phase-2 4-Node Fleet, Live Qdrant/CSLS, Multi-Agent <code>D3</code>, &amp; Wave-4 Adjudication (<code>J1&ndash;J7</code>)</h2>
+      <p>
+        Eight Part V receipt bundles validate raw-prose 4-node fleet execution, live Qdrant HNSW-DOT + calibrated <code>CSLS</code>
+        backfill, <code>1,000,000</code>-vector radius-matched migration &amp; semantic-smear defense, fair identical-raw-text
+        <code>PM-3</code> (<code>N=100</code>), zero-oracle causal <code>PM-2</code>, held-out <code>PM-1b</code>, isolated <code>N=200</code>
+        conversational <code>&kappa;</code>, and co-designed multi-agent anti-poisoning (<code>Demo D3</code>)&mdash;positioned directly
+        against 2025&ndash;2026 baselines: <strong>Drift-Adapter</strong> (<code>arXiv:2509.23471</code>), <strong>Maystre et al.</strong>
+        (<code>arXiv:2510.13406</code>), <strong>TMA-NM</strong> (<code>arXiv:2606.24322</code>), <strong>Qlt-Arg</strong>
+        (<code>arXiv:2611.25361</code>), <strong>MemStrata</strong> (<code>arXiv:2606.26511</code>), <strong>vec2vec</strong>
+        (<code>arXiv:2505.12540</code>; <code>TRA-1</code> prevents cross-tenant bridge/anchor misuse, complementing encryption at rest),
+        <strong>Abstain-R1</strong> (<code>arXiv:2604.17073</code>), <strong>AbstentionBench</strong> (<code>arXiv:2506.09038</code>),
+        and <strong>NAFBench</strong> (<code>arXiv:2609.27517</code>).
+      </p>
+
+      <div class="grid-2">
+        <figure class="figure-card">
+          <div class="figure-title">Figure 9 &mdash; <code>D2-4096d</code> Mixed-Shard Backfill @ 20% &amp; Live Qdrant HNSW-DOT (<code>8edbc4df0e76</code>)</div>
+          <svg viewBox="0 0 420 215" role="img" aria-label="SciFact 384 to 4096 backfill at 20 percent comparing Raw uncalibrated, RRF k=60, DEV z-score, and CSLS, plus Qdrant HNSW recall at ef 32 and 64">
+            <rect x="0" y="0" width="420" height="215" fill="#ffffff"/>
+            <text x="210" y="18" text-anchor="middle" font-size="10.5" font-weight="750" fill="#044e57">SciFact 384&rarr;4096 @ 20% Backfill (n=86 REPORT)</text>
+            <g font-family="monospace" font-size="10" fill="#132026">
+              <text x="132" y="46" text-anchor="end">Raw Uncalib</text>
+              <rect x="138" y="35" width="95" height="14" fill="#7d2f0a"/><text x="238" y="46" fill="#7d2f0a">0.3392</text>
+              <text x="132" y="74" text-anchor="end">RRF (k=60)</text>
+              <rect x="138" y="63" width="142" height="14" fill="#9fb2bc"/><text x="285" y="74" fill="#2e434d">0.5064</text>
+              <text x="132" y="102" text-anchor="end">DEV z-Score</text>
+              <rect x="138" y="91" width="151" height="14" fill="#5c8a97"/><text x="294" y="102" fill="#2e434d">0.5399</text>
+              <text x="132" y="130" text-anchor="end" font-weight="800" fill="#136239">ZeroMu+CSLS</text>
+              <rect x="138" y="119" width="170" height="14" fill="#136239"/><text x="313" y="130" fill="#136239" font-weight="800">0.6082 (LCB&gt;0 vs all)</text>
+            </g>
+            <line x1="20" y1="148" x2="400" y2="148" stroke="#cbd8dd" stroke-dasharray="4 3"/>
+            <text x="20" y="168" font-size="9.8" fill="#044e57" font-weight="700">Live Qdrant HNSW-DOT (4B sidecar + 16KB &mu;_d; raw index resident):</text>
+            <text x="20" y="185" font-size="9.5" fill="#132026">ef=32: 99.88%/99.77% mean (90% min) top-10 recall, nDCG@10=0.5252; ef=64: 100.0%.</text>
+            <text x="20" y="201" font-size="9.2" fill="#7d2f0a">In-dom 0% BF: ZeroMu 0.5252 vs Uncent Procrustes 0.5352 (&minus;1.0 pp, LCB &minus;3.43 pp @ std=0.038).</text>
+          </svg>
+        </figure>
+
+        <figure class="figure-card">
+          <div class="figure-title">Figure 10 &mdash; Co-Designed Multi-Agent <code>D3</code> (<code>fce71a605f64</code>) &amp; <code>1M</code> Radius-Matched Scale (<code>908434685ea6</code>)</div>
+          <svg viewBox="0 0 420 215" role="img" aria-label="Multi-agent D3 task accuracy and ASR across B0, B2 strict IFC, B3 unbridged, and B4 Chelated, plus 1M radius-matched Recall at 10">
+            <rect x="0" y="0" width="420" height="215" fill="#ffffff"/>
+            <text x="110" y="18" text-anchor="middle" font-size="10.5" font-weight="750" fill="#044e57">Demo D3 Task Acc (N=80)</text>
+            <g font-family="monospace" font-size="9.5" fill="#2e434d">
+              <text x="10" y="48">B0 Flat</text><rect x="74" y="38" width="27" height="12" fill="#7d2f0a"/><text x="105" y="48" fill="#7d2f0a">0.300 (67.5% ASR)</text>
+              <text x="10" y="78">B2 IFC</text><rect x="74" y="68" width="49" height="12" fill="#9fb2bc"/><text x="127" y="78">0.550 (0/20 F4!)</text>
+              <text x="10" y="108">B3 Unbr</text><rect x="74" y="98" width="63" height="12" fill="#5c8a97"/><text x="141" y="108">0.700 (56/80)</text>
+              <text x="10" y="138" font-weight="700" fill="#136239">B4 Chel</text><rect x="74" y="128" width="87" height="12" fill="#136239"/><text x="165" y="138" fill="#136239" font-weight="700">0.963 (77/80)</text>
+            </g>
+            <line x1="232" y1="14" x2="232" y2="160" stroke="#cbd8dd" stroke-dasharray="4 3"/>
+            <text x="326" y="18" text-anchor="middle" font-size="10.5" font-weight="750" fill="#044e57">D2-1M Rec@10 (99.5% synth)</text>
+            <g font-family="monospace" font-size="9.5" fill="#2e434d">
+              <text x="238" y="54">Q-Affine</text><rect x="296" y="44" width="46" height="12" fill="#7d2f0a"/><text x="346" y="54" fill="#7d2f0a">0.380</text>
+              <text x="238" y="90">Procrust</text><rect x="296" y="80" width="65" height="12" fill="#5c8a97"/><text x="365" y="90">0.540</text>
+              <text x="238" y="126" font-weight="700" fill="#136239">ZeroMu</text><rect x="296" y="116" width="66" height="12" fill="#136239"/><text x="366" y="126" fill="#136239" font-weight="700">0.550</text>
+            </g>
+            <text x="12" y="182" font-size="9.2" fill="#132026">D3 co-designed templates &amp; trusted tiers: 0/80 attacks (CP95 &le;4.51% all, &le;16.84%/fam).</text>
+            <text x="12" y="199" font-size="9.2" fill="#136239">D2-1M: +17.0 pp vs QueryAffine (CI95 [+10, +24 pp]), 0.0% stale resurrection (vs 60&ndash;76.5%).</text>
+          </svg>
+        </figure>
+      </div>
+
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Part V Bundle &amp; Wave-4 Item</th>
+              <th class="num">Primary Verified Result</th>
+              <th class="num">Key Baselines</th>
+              <th class="num">Two-Sided CI95 / Bounds</th>
+              <th>Mandatory Wave-4 Adjudication (<code>J1&ndash;J7</code>) Disclosures</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><strong><code>phase2_wave2_d1v2_and_d2_1m</code> (<code>908434685ea6</code>)</strong></td><td class="num best">93.33% Small-3B / 0.550 1M</td><td class="num">30B Bare 71.67% / QAff 0.380</td><td class="num best">+8.3 pp LCB / [+10, +24 pp]</td><td><code>D1 v2</code> leads <code>Mem0</code> <code>85.0%</code> non-significantly (<code>LCB &minus;5.0 pp</code>); <code>D2-1M</code> is <code>99.5%</code> synthetic cone-matched (<code>3.82 MiB</code> sidecar + resident <code>3,906 MiB</code> index); Wave-1 <code>ae356253d359</code> <code>83.33%</code>.</td></tr>
+            <tr><td><strong><code>phase2_d2_qdrant_hnsw_csls_backfill</code> (<code>8edbc4df0e76</code>, <code>J3</code>)</strong></td><td class="num best">0.6082 CSLS@20% / 99.88% ef32</td><td class="num">z-score 0.5399 / RRF 0.5064 / Raw 0.3392</td><td class="num best">LCB +3.29 / +6.42 / +18.32 pp</td><td>Row identity verified (<code>min_doc_cos=1.0000</code>, <code>msl=384</code>); <code>CSLS</code> beats all 3 @ <code>10/20/50%</code>; trails in-dom Procrustes by <code>&minus;0.99 pp</code> (<code>LCB &minus;3.43 pp</code>); <code>FiQA/NFCorpus</code> <code>MISSING_4096</code>.</td></tr>
+            <tr><td><strong><code>r6_pm2_labelfree_closure</code> (<code>eaf3fbad25d0</code>, <code>J2</code>)</strong></td><td class="num best">0.9750 CausalEMA (1.67 ms p95)</td><td class="num">Native 1.000 / CAR 0.625 / Flat 0.135</td><td class="num warn-cell">Boot &minus;5.0 pp / Tango -0.0572</td><td><code>0</code> oracle metadata reads (trace-verified), unified selector across all arms, <code>5</code>-seed shuffle <code>std=0.0</code>, <code>DualFit_1Float_FixedMuX=0.9300</code>; Native <code>1.000</code> ceiling task.</td></tr>
+            <tr><td><strong><code>r6_pm3_fair_rawtext_n100</code> (<code>168c48e71537</code>)</strong></td><td class="num best">0.7300 Chelated (N=100)</td><td class="num">mem0 True 0.6900 / False 0.4400</td><td class="num">True LCB &minus;6.0 / False +18.0 pp</td><td>Identical raw messages across <code>N=60</code> enterprise + <code>N=40</code> live <code>LME</code>; <code>pm3_closed_lcb95_gt_0=false</code> vs <code>infer=True</code>, but uses <strong>71.3&times; fewer tokens</strong> (<code>4.3k</code> vs <code>307.6k</code>).</td></tr>
+            <tr><td><strong><code>r6_pm1b_conversational_sota</code> (<code>54a9fc475fb9</code>, <code>J4</code>)</strong></td><td class="num best">0.440 LoCoMo 5&ndash;9 / 0.578 LME</td><td class="num">MiniLM 0.400 &amp; 0.514 / FlatBGE 0.367 &amp; 0.578</td><td class="num warn-cell">LME Tango +0.33 pp; gates=false</td><td>Single frozen held-out shot: <code>J4</code> wins <code>LoCoMo 5&ndash;9</code> clean (<code>+6.0 pp</code> vs <code>v3</code>) &amp; stress (<code>0.4267</code>), but clean <code>LME</code> gain is <code>DualGran BGE-M3</code> (<code>EK5 &Delta;=0</code>), <code>J4</code> cap hurts <code>KU</code> (<code>0.718</code> vs <code>0.795</code>), <code>assignment_gates_pass=false</code>.</td></tr>
+            <tr><td><strong><code>r6_pm4_conversational_kappa_n200</code> (<code>5c699f4e4b6e</code>, <code>J5</code>)</strong></td><td class="num best">&kappa; = 0.8400 (92.0% agree)</td><td class="num">R5b N=100 conv &kappa; = 0.7414</td><td class="num">Cluster CI95 [0.7535, 0.9122]</td><td>Isolated <code>N=200</code> v8 rubric (<code>200/200</code> clean parses, dual YES+NO rejected); CI crosses <code>0.80</code>; blinded <code>pm4_human_grader.html</code> ready for <code>PM-4b</code>.</td></tr>
+            <tr><td><strong><code>phase2_d3_multiagent_poisoning</code> (<code>fce71a605f64</code>, <code>J1/J6</code>)</strong></td><td class="num best">77/80 B4 (0/80 ASR, 20/20 F4)</td><td class="num">B3 56/80 / B2 IFC 0/20 F4 / B0 67.5% ASR</td><td class="num">ASR CP95 &le;4.51% (16.84%/fam)</td><td>Co-designed templates &amp; trusted tiers; disjoint-template complete-linkage ablation reported; offline 3-valued WFS RLVR verifier <code>0/10,827</code> mismatches (trained weights in Part VI <code>f20433dce33c</code>).</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ================================================================== -->
+    <!-- SECTION 2D: PART VI (WAVES 5-8) CLOSURE & GATEWAY -->
+    <!-- ================================================================== -->
+    <section id="wave6">
+      <h2>2D. Part VI (Waves 5&ndash;8) &mdash; 3-BEIR 4096-d Migration, gRPC Gateway (<code>D5</code>), 4-Way Arena, &amp; 7B <code>SFT+GRPO</code></h2>
+      <p>
+        Five additive Part VI receipt bundles (<code>8/8</code> side hashes verified) execute under Wave-5 (<code>K1&ndash;K6</code>) and
+        Wave-8 (<code>M1&ndash;M5</code>) 4-Model Cross-Judgment. Competitor architectures <code>Vectorize Hindsight</code> and
+        <code>AWS OpenSearch Memory</code> are explicitly labeled <code>emulation (ours)</code>; <code>Demo D5</code> compiles project-defined
+        <code>SearchService.KnnQuery</code> Protobuf over live containerized <code>Qdrant :16334</code>
+        (<code>live_opensearch_java_cluster_claimed = false</code>).
+      </p>
+
+      <div class="grid-2">
+        <figure class="figure-card">
+          <div class="figure-title">Figure 11 &mdash; 4-Way Competitor Arena Suite A (<code>05442a849c19</code>) &amp; 3-BEIR Mode B (<code>dcb84026a15c</code>)</div>
+          <svg viewBox="0 0 420 215" role="img" aria-label="Suite A regulated drift accuracy across 5 systems and 3-BEIR Mode B 20 percent backfill nDCG at 10">
+            <rect x="0" y="0" width="420" height="215" fill="#ffffff"/>
+            <text x="112" y="18" text-anchor="middle" font-size="10.2" font-weight="750" fill="#044e57">Suite A Regulated (N=60)</text>
+            <g font-family="monospace" font-size="9.2" fill="#2e434d">
+              <text x="8" y="46">Mem0 False</text><rect x="76" y="36" width="56" height="12" fill="#7d2f0a"/><text x="136" y="46" fill="#7d2f0a">61.7%</text>
+              <text x="8" y="72">Hindsight*</text><rect x="76" y="62" width="71" height="12" fill="#9fb2bc"/><text x="151" y="72">78.3%</text>
+              <text x="8" y="98">OS Mem*</text><rect x="76" y="88" width="73" height="12" fill="#5c8a97"/><text x="153" y="98">80.0%</text>
+              <text x="8" y="124">Mem0 True</text><rect x="76" y="114" width="75" height="12" fill="#066e7a"/><text x="155" y="124">81.7%</text>
+              <text x="8" y="150" font-weight="700" fill="#136239">Chelated</text><rect x="76" y="140" width="88" height="12" fill="#136239"/><text x="168" y="150" fill="#136239" font-weight="700">96.7%</text>
+            </g>
+            <line x1="224" y1="14" x2="224" y2="165" stroke="#cbd8dd" stroke-dasharray="4 3"/>
+            <text x="322" y="18" text-anchor="middle" font-size="10.2" font-weight="750" fill="#044e57">3-BEIR Mode B @ 20% (n=371)</text>
+            <g font-family="monospace" font-size="9.2" fill="#2e434d">
+              <text x="230" y="58">RRF k=60</text><rect x="292" y="48" width="64" height="13" fill="#9fb2bc"/><text x="360" y="58">0.3237</text>
+              <text x="230" y="96">DEV z-Sc</text><rect x="292" y="86" width="70" height="13" fill="#5c8a97"/><text x="366" y="96">0.3510</text>
+              <text x="230" y="134" font-weight="700" fill="#136239">DEV CSLS</text><rect x="292" y="124" width="76" height="13" fill="#136239"/><text x="372" y="134" fill="#136239" font-weight="700">0.3779</text>
+            </g>
+            <text x="10" y="182" font-size="9" fill="#132026">*emulation (ours). Suite A boot LCB97.5 &gt; 0 vs all 4; exact CP95 &le; 0 on 3/4 arms.</text>
+            <text x="10" y="199" font-size="9" fill="#7d2f0a">Mode B n=500 anchors = 0.87% FiQA / 9.65% SciFact / 13.76% NFCorpus (FiQA-carried).</text>
+          </svg>
+        </figure>
+
+        <figure class="figure-card">
+          <div class="figure-title">Figure 12 &mdash; <code>Demo D4</code> 7B <code>SFT+GRPO</code> (<code>f20433dce33c</code>) &amp; <code>Demo D5</code> gRPC Gateway (<code>cba30b931812</code>)</div>
+          <svg viewBox="0 0 420 215" role="img" aria-label="Demo D4 7B SFT and SFT+GRPO vs Bare 30B on EVAL and D1, plus Demo D5 250 Hz LAN latency and retraction fencing">
+            <rect x="0" y="0" width="420" height="215" fill="#ffffff"/>
+            <text x="112" y="18" text-anchor="middle" font-size="10.2" font-weight="750" fill="#044e57">D4 EVAL / D1 (272 tok)</text>
+            <g font-family="monospace" font-size="9.2" fill="#2e434d">
+              <text x="8" y="48">Base 7B</text><rect x="70" y="38" width="19" height="12" fill="#7d2f0a"/><text x="93" y="48">19.2 / 8.3%</text>
+              <text x="8" y="78">Bare 30B</text><rect x="70" y="68" width="30" height="12" fill="#9fb2bc"/><text x="104" y="78">30.0 / 38.3%</text>
+              <text x="8" y="108">SFT 7B</text><rect x="70" y="98" width="43" height="12" fill="#066e7a"/><text x="117" y="108">42.5 / 100%</text>
+              <text x="8" y="138" font-weight="700" fill="#136239">SFT+GRPO</text><rect x="70" y="128" width="45" height="12" fill="#136239"/><text x="119" y="138" fill="#136239" font-weight="700">44.7 / 99.4%</text>
+            </g>
+            <line x1="224" y1="14" x2="224" y2="165" stroke="#cbd8dd" stroke-dasharray="4 3"/>
+            <text x="322" y="18" text-anchor="middle" font-size="10.2" font-weight="750" fill="#044e57">D5 gRPC (:16335 over Qdrant)</text>
+            <g font-family="monospace" font-size="9.2" fill="#132026">
+              <text x="232" y="50">Svc RTT p50/p95: 7.90 / 21.19 ms</text>
+              <text x="232" y="72">Sched E2E p95:   153.75 ms</text>
+              <text x="232" y="94">Same-dim &Delta;p95:  +18.00 ms (&le;25)</text>
+              <text x="232" y="116" fill="#136239" font-weight="700">Stale Leak:      0.00% (0&ndash;90%)</text>
+              <text x="232" y="138" fill="#7d2f0a">50% Retr Rec@10: 0.9942 (&lt;0.995)</text>
+            </g>
+            <text x="10" y="182" font-size="9" fill="#7d2f0a">D4 lift is SFT-carried (GRPO&minus;SFT p=0.45 n.s.; EVAL U false-commit=87.5%; 30B fmt=0%).</text>
+            <text x="10" y="199" font-size="9" fill="#132026">D5: 8.71&times; smaller 384d ingress; 0 B/doc vector egress; 90% density uses 100% exact fallback.</text>
+          </svg>
+        </figure>
+      </div>
+
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Part VI Bundle &amp; Wave-8 Item</th>
+              <th class="num">Primary Verified Result</th>
+              <th class="num">Key Comparators</th>
+              <th class="num">Bounds / Multiplicity</th>
+              <th>Mandatory Wave-8 Cross-Judgment (<code>M1&ndash;M5</code>) Disclosures</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><strong><code>wave6_pm1b_v4_reranked_sota</code> (<code>5fcfab2b4c1c</code>, <code>M1</code>)</strong></td><td class="num best">95.00% Virgin (1,028 tok)</td><td class="num">NoEK5 95.83% / FlatBGE 91.67% / MiniLM 86.67%</td><td class="num warn-cell">Holm p=0.0766 (OPEN)</td><td><code>PM-1b</code> stays <code>SCOPED/OPEN</code> (<code>assignment_gates_pass=false</code>); <code>2.42&times;</code> compaction vs <code>FlatBGE</code> (<code>2,488</code> tok); <code>KU +41.67 pp</code> matched by <code>FlatBGE</code>; DEV-inclusive <code>LME-500</code> <code>60.60%</code> @ <code>2,190.9</code> tok; <code>34/101</code> quantile ties.</td></tr>
+            <tr><td><strong><code>wave6_d2_4096d_3beir_complete</code> (<code>dcb84026a15c</code>, <code>M2</code>)</strong></td><td class="num best">0.3779 Mode B CSLS@20%</td><td class="num">DEV z-score 0.3510 / RRF 0.3237</td><td class="num best">LCB97.5 +1.32 / +3.81 pp</td><td><code>n=500</code> anchors = <code>0.87%</code> FiQA / <code>9.65%</code> SciFact / <code>13.76%</code> NFCorpus; <code>FiQA</code>-carried (per-dom SciFact/NFCorpus n.s.); <code>bf16</code> minima <code>0.99947&ndash;0.99976 &lt; 0.9999</code>; Mode A SciFact null, FiQA pos-excl <code>&minus;2.08 pp</code> vs Procrustes.</td></tr>
+            <tr><td><strong><code>wave6_pm3_v2_competitor_arena</code> (<code>05442a849c19</code>, <code>M1/M4</code>)</strong></td><td class="num best">96.67% Suite A / 62.5% B</td><td class="num">Mem0T 81.7% / OSM* 80.0% / Hind* 78.3% / Mem0F 61.7%</td><td class="num">Suite A Boot &gt;0; CP95 &le;0 (3/4)</td><td><code>*emulation (ours)</code>; Suite A <code>9.69s</code> pre-ack extraction (<code>6,882.7</code> write tok) &amp; <code>0.7833</code> <code>[SUPERSEDED]</code> substring scan; Suite B <code>0</code> write LLM tok (<code>1.56&times;</code> &amp; <code>70&ndash;207&times;</code> fewer tok, <code>521 ms</code> read p50, all <code>LCB97.5 &le; 0</code>).</td></tr>
+            <tr><td><strong><code>wave6_d4_trained_epistemic_grpo</code> (<code>f20433dce33c</code>, <code>M3</code>)</strong></td><td class="num best">44.72% EVAL / 99.44% D1</td><td class="num">SFT 42.5% &amp; 100% / 30B 30.0% &amp; 38.3%</td><td class="num">vs 30B Holm 0.0218 / 0.0003</td><td>Matched <code>max_new_tokens=272</code>; <strong>SFT carries lift</strong> (<code>GRPO&minus;SFT</code> <code>+2.22/&minus;0.56 pp</code> Holm <code>0.45/0.73</code> n.s.); <code>EVAL</code> <code>false_commit_on_u = 87.5%</code>; 30B <code>valid_format=0%</code>; <code>max_frac_zero_std=1.0</code> (mean <code>0.1667</code>).</td></tr>
+            <tr><td><strong><code>wave6_d5_grpc_interceptor_gateway</code> (<code>cba30b931812</code>, <code>M2</code>)</strong></td><td class="num best">7.90/21.19 ms Svc RTT</td><td class="num">Sched E2E p95 153.75 ms / +18.0 ms &Delta;p95</td><td class="num best">0.00% Stale Leak (43,040 q)</td><td><code>live_opensearch_java_cluster_claimed=false</code> (Protobuf over Qdrant <code>:16334</code> <code>sha256:d277592721d2...</code>); direct <code>4096d</code> saturated @ <code>218.79 Hz</code>; <code>50%</code> retr. Recall@10 <code>0.9942 &lt; 0.995</code>; <code>90%</code> uses <code>100%</code> exact fallback.</td></tr>
+            <tr><td><strong><code>wave11_d6_opensearch_pgvector_qdrant</code> (<code>0578d56b715d</code>, <code>L1</code>)</strong></td><td class="num best">3-Engine Exact Parity / 0% Stale</td><td class="num">FiQA CSLS 0.3068 vs Z 0.2563 / Raw 0.1962</td><td class="num best">100% Admitted Rec@10 (SciFact)</td><td>Live Docker OpenSearch 3.9, pgvector 0.8.7/PG17 (<code>halfvec</code> <code>2e-3</code> tol.), Qdrant 1.20.2; <strong><code>62/70</code> exact fallback + <code>8/70</code> exact by design</strong> (single-run &rarr; no ANN latency claim); SciFact-only simulated stale replica; FiQA 0% retr. only; <code>nDCG</code> under &gt;0% retr. not recorded.</td></tr>
+            <tr><td><strong><code>wave11_d7_live_zep_graphiti_arena</code> (<code>d6a12534fa7c</code>, <code>L2</code>)</strong></td><td class="num best">96.67% Settled Suite A</td><td class="num">Live Graphiti 46.67% / Live Mem0 45.00%</td><td class="num best">Tango LCB +35.8/+39.3 pp (p&lt;1e-4)</td><td>1 seed/reader/judge; <strong>e2e write+bg slowest at <code>10,373 ms</code></strong> (<code>144.6 ms</code> post-extract ack) vs <code>7,524 ms</code> Graphiti / <code>2,755 ms</code> Mem0; Suite B (<code>N=20</code>, 90% vs 60%/55%, McNemar <code>p=0.039</code>) is <strong>descriptive-only</strong> (0 write LLM tok, <code>has_answer</code> retr.); post-run <code>&lt;REDACTED&gt;</code> seal.</td></tr>
+            <tr><td><strong><code>wave11_d8_compliance_copilot</code> (<code>7395d687c54f</code>, <code>L3</code>)</strong></td><td class="num best">38/38 Checks &amp; 3/3 Ed25519</td><td class="num">RAG 17 / Overwrite* 15 vs Chelated 0 Stale</td><td class="num best">0/56 Non-NDA &amp; --public 403</td><td>Floor-tier synthetic loopback fixture (<code>FastBM25</code> + 512d char-3gram + RRF k=60); Arm-2 overwrite emulation; fixed runner test key (ephemeral key in live server); oracle-only custom inject.</td></tr>
+            <tr><td><strong><code>wave11_d9_fast_extractor_and_u_grpo</code> (<code>c41fae097f76</code>, <code>L4</code>)</strong></td><td class="num best">0.5B 96.67% / GRPO Null</td><td class="num">4.60&times; vs 30B; VIRGIN_V2 48.6% vs SFT 50.0%</td><td class="num warn-cell">2,104 ms &gt; 1,500; Holm p=0.618</td><td>Part A <code>Qwen2.5-0.5B</code> misses <code>1,500 ms</code> gate (<code>latency_gate_not_met</code>; CP95 <code>-0.74 pp</code> vs Mem0, Tango <code>+8.08 pp</code>; 100% JSON includes salvage/coercion). Part B <code>dr_grpo</code> (<code>virgin_for_grpo_arm_only</code>) confirms <strong>&ldquo;K4 stands under Protocol v2&rdquo;</strong> (<strong>gains are SFT-carried</strong>; <code>u_fc=41.67%</code> on <code>VIRGIN_V2</code> vs <code>81.67%</code> on <code>Look #2</code> where det NI missed <code>81.67% vs 85.00%</code>; 20k vs 10k resamples).</td></tr>
+            <tr><td><strong><code>wave11_d10_5m_real_cutover_and_70b_scale</code> (<code>e50b87460387</code>, <code>L5</code>)</strong></td><td class="num best">9.47M Cutover / 7B=70B NF4</td><td class="num">9 Wins, 12 n.s.+, 2 n.s.&minus;, 1 Loss; 7B=70B</td><td class="num warn-cell">Quora -6.92 pp (p&le;0.0012 floor)</td><td>Part A (<code>1,891,457 = 19.98%</code> 1024d shard; shared-graph mask standalone; <code>0.984</code> on 50 q, <code>0.944</code> on n=25, 200 retr.): <code>9</code> Holm wins (<code>p&le;0.0012</code> floor), <code>12</code> n.s. pos (MSMARCO vs RRF <code>p=0.0553</code>), <code>2</code> n.s. neg, <code>1</code> sig. loss (<code>Quora -6.92 pp</code> vs RRF) + 6 Rec@10 point losses (not multiplicity-tested). Part B: <code>Mid-7B+Chelated</code> (<code>538 ms</code> reader, <strong><code>25.15s</code> e2e</strong>) ties <code>Bare Llama-3.3-70B (4-bit NF4)</code> (<code>3.26s</code> k=5, <code>5.36s</code> k=17; <strong>e2e <code>24.75&ndash;26.60s</code> under fixed <code>24.61s</code> 30B extractor</strong>); <code>Small-1.5B</code> <code>-5.00 pp</code> (Holm <code>p=0.1929</code> n.s.); <code>97.8%</code> judge agree (<code>&kappa;=0</code> ceiling).</td></tr>
+            <tr><td><strong><code>wave14_d11_pm6_takedown_carryforward</code> (<code>7248d05a02ba</code>, <code>Part VIII</code>) + <code>/formal</code></strong></td><td class="num best">Lean 4 68 Thms + +0.474/+0.476 vs Arm 3</td><td class="num">R4 100% (Arms 4/6/8/9); DE +0.152 (p=0.029)</td><td class="num warn-cell">R5 FPR 6.25%/11.76% &gt; 2% FAIL</td><td><code>/formal</code>: <code>Spec.lean</code> <code>63fe3e64</code>, <code>0</code> <code>sorry</code>/<code>native_decide</code>, <code>nanoda_bin</code> <code>25,473</code> decls, <code>7,722</code>-ckpt conformance (<code>153</code> Pitfall-B reason diffs; incremental-deletions conformance-only). <code>D11/PM-6</code> (<code>pm6_posthoc_statistical_reanalysis.json</code>, disclosures <code>D1&ndash;D11</code>): <code>all_gates_pass=true</code> is process-only; <strong>TEST <code>r5_benign_fpr_le_002</code> FAILS</strong> (<code>2/32=6.25%</code> Nemotron, <code>2/17=11.76%</code> Qwen, <code>N&ge;149</code> needed for 2%); EN <code>R3</code> parity/loss vs <code>Arm 6</code> raw cosine &amp; <code>Arm 8</code> linear bridge (0% FPR); <code>ES</code> fails Holm (<code>0.1467</code>); <code>mu_lang=mu_en</code> null; <code>R2b</code> red-team breach <code>15.6%/17.6%</code>; rank <code>382/384</code> (<code>0.650</code> residual); hosted gateway only (not weight erasure; active <code>MemT-1.0</code> <code>arXiv:2610.26825v5</code> superposed state &amp; <code>_state_identity()</code> weight-SHA omission cited accurately).</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ================================================================== -->
+    <!-- SECTION 3: CAUSAL BUG-IMPACT & EMERGENT FORENSICS -->
+    <!-- ================================================================== -->
+    <section id="forensics">
+      <h2>3. Causal Bug-Impact &amp; Emergent-Mechanism Forensics</h2>
+      <p>
+        Auditing all R0&ndash;R5 defects for downstream chain-of-logic impact classified each defect as a
+        <code>PURE_FIX</code>, <code>EMERGENT_ADDITIVE</code>, or <code>EMERGENT_SUBTRACTIVE</code> discovery&mdash;yielding
+        five concrete mechanisms verified on DGX Spark across R4 and R5/R5b:
+      </p>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Causal Mechanism</th>
+              <th>Class</th>
+              <th>R4 &amp; R5/R5b Verified Empirical Outcome</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><code>EM-1</code></td><td><code>M4e</code> Minimal-Pair Contradiction vs. Echo Split (from <code>M4b</code> clean loss)</td><td><code>EMERGENT_ADDITIVE</code></td><td>Rule-verified conflict guard cuts <code>M4c</code> LoCoMo clean loss <strong>60%</strong>; reaches <code>0.4133</code> vs <code>0.4000</code> <code>M1c</code> (LCB <code>-1.33 pp</code>) on R5 blind echoes.</td></tr>
+            <tr><td><code>EM-2</code></td><td><code>A2-ZeroMu</code> Subtractive Centroid Removal (from OOD <code>+&mu;_y</code> collapse)</td><td><code>EMERGENT_SUBTRACTIVE</code></td><td><strong>16/18</strong> OOD wins (up to <strong>51.2&times;</strong> CAR), <strong>12/12</strong> 4096-d 3-hop wins, <strong>6/6</strong> BEIR 4-hop wins, <strong>12/12</strong> coupled dense wins over CAR.</td></tr>
+            <tr><td><code>EM-3</code></td><td>Non-Blocking Epistemic Telemetry + <code>C4_v4</code> Blocked-Attack Demotion</td><td><code>EMERGENT_ADDITIVE</code></td><td>Zero WFS feedback (<code>0/353,105</code> mismatches); post-hoc <code>blocked_authority_edges</code> demotion lifts structured <code>ZS v3</code> <code>0.875 &rarr; 1.000</code> (<code>0.950&ndash;1.000</code> across draws).</td></tr>
+            <tr><td><code>EM-4</code></td><td>Soft Telemetry Fallback &amp; De-Spoofed Origin Routing (<code>M4f</code> / <code>M4g</code>)</td><td><code>EMERGENT_ADDITIVE</code></td><td>Matches <code>M1</code> (<strong>+0.00 pp</strong>) across 800 clean queries (<code>LoCoMo-300</code> + <code>LME N=500</code>); post-panel complete-linkage &amp; tiebreak guards added.</td></tr>
+            <tr><td><code>EM-5b</code></td><td><code>A2c-SoftSpec</code> Empirical-Bayes Shrinkage (from <code>n=1000 &lt; 1024</code> Hop-2 dip)</td><td><code>EMERGENT_ADDITIVE</code></td><td>Implemented &amp; tested; R4 showed OOS+<code>EM-2</code> cured Hop-2 while small-DEV (<code>86</code> q) tuning slightly overfit &rarr; gated on <code>n_dev &ge; 250</code>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ================================================================== -->
+    <!-- SECTION 4: PRE-RELEASE GATES -->
+    <!-- ================================================================== -->
+    <section id="gates">
+      <h2>4. Harmonized Pre-Release Gates (<code>PM-1..PM-5</code>) &mdash; Post-Wave-8 Adjudicated Status</h2>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Gate</th>
+              <th>Scope &amp; Pre-Registered Threshold</th>
+              <th>Status</th>
+              <th>Verified Post-Wave-8 Evidence &amp; Open Scope</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><code>PM-1a</code></td><td>Flooded <code>Zero-Shortcut v3</code> (<code>&ge;98%</code>, <code>LCB95 &gt; +15 pp</code>) + <code>353,105</code> WFS Proofs + Raw-Prose <code>D1 v2</code></td><td><span class="badge pass">STRUCTURED PASS / D1 v2 RAW-PROSE FLEET VERIFIED</span></td><td><code>0/353,105</code> oracle mismatches; structured <code>C4_v4=100.0%</code> (<code>240/240</code>; <code>C2b=0.9667</code> on paraphrase flood); raw-prose <code>D1 v2</code> <code>Small-3B=93.33%</code> (<code>56/60</code>, <code>LCB95 +8.33 pp</code> vs <code>30B Bare</code>).</td></tr>
+            <tr><td><code>PM-1b</code></td><td><code>LongMemEval-S N=500</code>, <code>LoCoMo-300</code>, <code>J4</code> Held-Out Shot, &amp; Wave-6 <code>Virgin-120</code></td><td><span class="badge open">SCOPED / OPEN (assignment_gates_pass = false)</span></td><td><code>Virgin-120</code> <code>95.00%</code> @ <code>1,028</code> tok (<code>2.42&times;</code> compaction vs <code>FlatBGE</code>; trails <code>NoEK5=95.83%</code>; Holm <code>p=0.0766</code> vs <code>MiniLM</code>); DEV-inclusive <code>LME-500</code> <code>2,190.9</code> vs <code>6,088</code> tok; R5 <code>M1c=0.7692 &gt; 0.7564</code> keeps gate open.</td></tr>
+            <tr><td><code>PM-2</code></td><td>Zero-oracle causal coupled service (<code>E0&rarr;E3&rarr;E1</code> peak + <code>384&harr;4096</code> + <code>TRA-1</code> + temporal echoes)</td><td><span class="badge partial">ZERO-ORACLE BOOTSTRAP PASS / EXACT TANGO -0.0572</span></td><td><code>J2</code> (<code>eaf3fbad25d0</code>): <code>0</code> oracle reads, <code>1.672 ms</code> p95, <code>CausalEMA=0.9750</code> vs <code>1.000</code> Native (Boot <code>-5.0 pp</code> PASS, Tango <code>-0.0572</code>), <code>+35 pp</code> vs CAR (R5b <code>DualAdap=0.965</code>, <code>Query0W=0.695</code>).</td></tr>
+            <tr><td><code>PM-3</code></td><td>Pinned upstream <code>mem0ai 2.2.1</code> + <code>Hindsight</code>/<code>OpenSearch</code> <code>emulation (ours)</code></td><td><span class="badge partial">SUITE A SUPERIORITY (BOOT/TANGO) / SUITE B TOKEN SAVINGS, ACCURACY INCONCLUSIVE</span></td><td>Suite A (<code>N=60</code>) <code>96.67%</code> beats all 4 on boot/Tango (exact CP95 &le;0 on 3/4); Suite B (<code>N=40</code>, <code>521 ms</code> read p50) <code>0</code> write LLM tok (<code>1.56&times;</code> &amp; <code>70&ndash;207&times;</code> fewer tok; all <code>LCB97.5 &le; 0</code>; R6 <code>N=100</code> <code>0.73</code> vs <code>0.69</code>).</td></tr>
+            <tr><td><code>PM-4</code></td><td>Cross-family <code>{Nemotron-30B, Qwen2.5-7B}</code> <code>N=200</code> conv <code>&kappa;</code> + 100-item blind human audit</td><td><span class="badge open">PM-4a CONV &kappa; = 0.8400 / PM-4b HUMAN GRADING PENDING</span></td><td>Isolated <code>N=200</code> conv <code>&kappa;=0.8400</code> (<code>92%</code>, cluster <code>[0.7535, 0.9122]</code>; R5b <code>N=100</code> conv <code>&kappa;=0.7414</code>, pooled <code>0.9570</code>); blinded <code>PM-4b</code> human sheet is sole open human gate.</td></tr>
+            <tr><td><code>PM-5</code></td><td><code>100k</code> service <code>p95 &le; 25.0 ms</code> + <code>1M</code>/<code>9.47M</code> scale + <code>D5</code> gRPC + <code>100%</code> SHA-256</td><td><span class="badge pass">CLEARED (PASS), BENCHMARK-SCOPED</span></td><td><code>0.904 ms</code> mut p95 (<code>27.6&times;</code> margin), <code>1M</code> WFS <code>7.94 ms</code>, <code>9.47M</code> dual-shard p95 <code>4.46 ms</code>, <code>D5</code> <code>250 Hz</code> svc p95 <code>21.19 ms</code> (<code>153.75 ms</code> e2e p95, <code>+18.0 ms</code> &Delta;p95), <code>46/46</code> bundles &amp; <code>61/61</code> side hashes verified!</td></tr>
+            <tr><td><code>PM-6</code> &amp; <code>/formal</code></td><td>Hosted takedown &amp; <code>4096&rarr;384</code> carry-forward (<code>7248d05a02ba</code>) + Lean 4 <code>Spec.lean</code> <code>63fe3e64</code></td><td><span class="badge partial">FORMAL DEDUCTIVE PASS / PM-6 EMPIRICALLY MIXED (R5 FPR FAIL)</span></td><td>Lean 4 <code>68</code> theorems + <code>nanoda_bin</code> (<code>25,473</code> decls) + <code>7,722</code>-ckpt conformance PASS. <code>PM-6</code>: <code>Arm 9</code> beats <code>Arm 3</code> (<code>Holm p=0.0012</code>) &amp; <code>DE</code> (<code>p=0.029</code>), <code>100%</code> Gate-1 <code>R4</code>, but misses <code>&le;2%</code> R5 FPR (<code>6.25%/11.76%</code>), trails/ties <code>Arm 6/8</code> on EN <code>R3</code>, &amp; has <code>15.6%/17.6%</code> <code>R2b</code> breach.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ================================================================== -->
+    <!-- SECTION 5: 46-BUNDLE CRYPTOGRAPHIC LEDGER -->
+    <!-- ================================================================== -->
+    <section id="ledger">
+      <h2>5. Single-Source 8-Part SHA-256 Receipt Ledger (<code>46/46</code> Bundles)</h2>
+      <p>
+        Generated and gated by <code>python scripts/build_whitepaper_assets.py --check</code> and <code>python scripts/verify_all_offline.py --full-formal</code> (<code>formal_tier=PASS</code>, <code>0</code> skipped checks) against
+        <code>docs/research/verified_registry.json</code> (<code>registry_content_sha256: 6ef7eba4f414</code>; integrity check over
+        manifests, side hashes, <code>Spec.lean</code> <code>63fe3e64</code>, <code>pm6_posthoc_statistical_reanalysis.json</code>, 2025&ndash;2026 comparator citations, and mandatory disclosure tokens). All <code>15/15</code> pristine pre-fix mirror files in
+        <code>archive/pristine-b37e6a55-exact/</code> match git tag <code>baseline/pre-fix-pristine-2026-11-21</code> (<code>b37e6a55</code>).
+        All <code>61/61</code> receipt-bound side-artifact SHA-256 digests in Parts I&ndash;VIII (<code>2 + 6 + 4 + 13 + 16 + 8 + 10 + 2</code>) verify
+        byte-for-byte.
+      </p>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Part</th>
+              <th>Bundle ID</th>
+              <th>Role</th>
+              <th>Verified <code>manifest_sha256</code> (Prefix)</th>
+              <th class="num">Wall (s)</th>
+              <th class="num">Side Hashes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Part I</td><td><code>s1</code></td><td><code>HISTORICAL_PRIMARY</code></td><td><code>920af9de9a62</code></td><td class="num">1226.40</td><td class="num">2 / 2 JSON</td></tr>
+            <tr><td>Part I</td><td><code>s2</code> / <code>s3</code></td><td><code>HISTORICAL_PRIMARY</code> (<code>s3</code>: <code>TRA1_OR_M4_NEEDS_REVIEW</code>)</td><td><code>19d8c5898c6a</code> / <code>b07e2dd27bcd</code></td><td class="num">1143.8 / 160.7</td><td class="num">0</td></tr>
+            <tr><td>Part I</td><td><code>spherical</code> / <code>precipitated</code></td><td><code>HISTORICAL_PRIMARY</code></td><td><code>5dcc0b7685ea</code> / <code>53e7cb6f7f91</code></td><td class="num">274.3 / 689.0</td><td class="num">0</td></tr>
+            <tr><td>Part I</td><td><code>f1_expanded</code> / <code>f1_conformal_4hop</code></td><td><code>HISTORICAL_PRIMARY</code></td><td><code>281ce6eab455</code> / <code>78da59866ad6</code></td><td class="num">1830.0 / 98.9</td><td class="num">0</td></tr>
+            <tr><td>Part I</td><td><code>f2_iq04</code> / <code>f2_hard</code> / <code>iq01</code></td><td><code>HISTORICAL_PRIMARY</code> / <code>FALSIFIER</code></td><td><code>148d80bf3faa</code> / <code>f7960dd626f7</code> / <code>7467ab068125</code></td><td class="num">47.9 / 60.0 / 39.3</td><td class="num">0</td></tr>
+            <tr><td>Part I</td><td><code>f2_longmemeval</code> / <code>f2_longmemeval_v2</code></td><td><code>SUPERSEDED</code> / <code>HISTORICAL_PRIMARY</code></td><td><code>d7245073f2a4</code> / <code>c14845a78c6f</code></td><td class="num">446.4 / 362.4</td><td class="num">0</td></tr>
+            <tr><td>Part II</td><td><code>f2_ek5_v2_1m</code> / <code>f2_unified_zs_locomo</code></td><td><code>PRE_FIX_AUDIT_BASELINE</code></td><td><code>7f306adb7a55</code> / <code>caf58b0f40f6</code></td><td class="num">14.8 / 244.0</td><td class="num">6 / 6</td></tr>
+            <tr><td>Part II</td><td><code>f1_4096_ood</code></td><td><code>MANIFEST_AGGREGATE_ONLY</code></td><td><code>ce81b9303150</code></td><td class="num">3479.66</td><td class="num">0</td></tr>
+            <tr><td><strong>Part III</strong></td><td><strong><code>f1_r4_comprehensive</code></strong></td><td><strong><code>R4_VERIFIED_PRIMARY</code></strong></td><td><code>266ee0f902da</code></td><td class="num">1352.92</td><td class="num best">2 / 2 (100%)</td></tr>
+            <tr><td><strong>Part III</strong></td><td><strong><code>f2_ek5_v3_1m_powerlaw</code></strong></td><td><strong><code>R4_VERIFIED_PRIMARY</code></strong></td><td><code>2941048ccbe3</code></td><td class="num">106.11</td><td class="num best">Manifest</td></tr>
+            <tr><td><strong>Part III</strong></td><td><strong><code>f2_r4_zero_shortcut_v2_and_locomo</code></strong></td><td><strong><code>R4_VERIFIED_PRIMARY</code></strong></td><td><code>2a3f4368366b</code></td><td class="num">264.03</td><td class="num best">2 / 2 (100%)</td></tr>
+            <tr><td><strong>Part IV</strong></td><td><code>r5_s1_zs_v3_pre_c4v4</code> / <strong><code>r5b_s1_zs_v3_pm1a_closure</code></strong></td><td><code>DIAGNOSTIC</code> / <strong><code>R5B_VERIFIED_PRIMARY</code> (<code>PM-1a</code>)</strong></td><td><code>c686357e459a</code> / <code>f6fdabf529c4</code></td><td class="num">91.9 / 98.6</td><td class="num best">2 / 2 (100%)</td></tr>
+            <tr><td><strong>Part IV</strong></td><td><strong><code>r5_s2_locomo_300_em4</code></strong> / <strong><code>r5_s3_longmemeval_n500</code></strong></td><td><strong><code>R5_VERIFIED_PRIMARY</code> (<code>PM-1b</code> Clean + KU)</strong></td><td><code>b8702cc1dda3</code> / <code>94f75e051e37</code></td><td class="num">181.8 / 557.4</td><td class="num best">2 / 2 (100%)</td></tr>
+            <tr><td><strong>Part IV</strong></td><td><code>r5_s1_pm2_dense_oov_probe</code> / <code>r5b_s1b_pm2_hybrid_coupled</code></td><td><code>DIAGNOSTIC</code> / <code>R5B_PARTIAL_PRIMARY</code> (<code>PM-2</code>)</td><td><code>80503ba8eb98</code> / <code>bfb921755911</code></td><td class="num">113.1 / 83.8</td><td class="num best">3 / 3 (100%)</td></tr>
+            <tr><td><strong>Part IV</strong></td><td><code>r5b_s2_pm3_mem0_default_probe</code> / <strong><code>r5b_s2b_pm3_steelmanned_mem0</code></strong></td><td><code>DIAGNOSTIC</code> / <strong><code>R5B_VERIFIED_PRIMARY</code> (<code>PM-3</code>)</strong></td><td><code>0e1c10b7429f</code> / <code>123bf2e023bd</code></td><td class="num">556.5 / 580.8</td><td class="num best">4 / 4 (100%)</td></tr>
+            <tr><td><strong>Part IV</strong></td><td><strong><code>r5b_s4_pm4_cross_family_2x2</code></strong></td><td><strong><code>R5B_VERIFIED_PRIMARY</code> (<code>PM-4a</code> conv <code>&kappa;=0.7414</code>)</strong></td><td><code>86739124c579</code></td><td class="num">1761.93</td><td class="num best">2 / 2 (100%)</td></tr>
+            <tr><td><strong>Part V</strong></td><td><strong><code>r6_pm1b_conversational_sota</code></strong> / <strong><code>r6_pm2_labelfree_closure</code></strong></td><td><strong><code>WAVE4_ADJUDICATED_PRIMARY</code> (<code>J4</code> / <code>J2</code>)</strong></td><td><code>54a9fc475fb9</code> / <code>eaf3fbad25d0</code></td><td class="num">2561.1 / 89.4</td><td class="num best">3 / 3 (100%)</td></tr>
+            <tr><td><strong>Part V</strong></td><td><strong><code>r6_pm3_fair_rawtext_n100</code></strong> / <strong><code>r6_pm4_conversational_kappa_n200</code></strong></td><td><strong><code>WAVE4_ADJUDICATED_PRIMARY</code> (<code>PM-3</code> / <code>J5</code>)</strong></td><td><code>168c48e71537</code> / <code>5c699f4e4b6e</code></td><td class="num">live / 70.0</td><td class="num best">3 / 3 (100%)</td></tr>
+            <tr><td><strong>Part V</strong></td><td><code>phase2_d1_4node_local_fleet_proof</code> / <strong><code>phase2_wave2_d1v2_and_d2_1m</code></strong></td><td><code>FLEET_BASELINE</code> / <strong><code>WAVE4_ADJUDICATED_PRIMARY</code></strong></td><td><code>ae356253d359</code> / <code>908434685ea6</code></td><td class="num">219.4 / 310.2</td><td class="num best">2 / 2 (100%)</td></tr>
+            <tr><td><strong>Part V</strong></td><td><strong><code>phase2_d2_qdrant_hnsw_csls_backfill</code></strong> / <strong><code>phase2_d3_multiagent_poisoning</code></strong></td><td><strong><code>WAVE4_ADJUDICATED_PRIMARY</code> (<code>J3</code> / <code>J6+J1</code>)</strong></td><td><code>8edbc4df0e76</code> / <code>fce71a605f64</code></td><td class="num">7.1 idx / 367.6</td><td class="num best">8 / 8 (100%)</td></tr>
+            <tr><td><strong>Part VI</strong></td><td><strong><code>wave6_pm1b_v4_reranked_sota</code></strong> / <strong><code>wave6_d2_4096d_3beir_complete</code></strong></td><td><strong><code>WAVE8_ADJUDICATED_PRIMARY</code> (<code>M1</code> / <code>M2</code>)</strong></td><td><code>5fcfab2b4c1c</code> / <code>dcb84026a15c</code></td><td class="num">1511.5 / 84.9</td><td class="num best">5 / 5 (100%)</td></tr>
+            <tr><td><strong>Part VI</strong></td><td><strong><code>wave6_pm3_v2_competitor_arena</code></strong> / <strong><code>wave6_d4_trained_epistemic_grpo</code></strong></td><td><strong><code>WAVE8_ADJUDICATED_PRIMARY</code> (<code>M1+M4</code> / <code>M3</code>)</strong></td><td><code>05442a849c19</code> / <code>f20433dce33c</code></td><td class="num">17218.5 / 6889.8</td><td class="num best">3 / 3 (100%)</td></tr>
+            <tr><td><strong>Part VI</strong></td><td><strong><code>wave6_d5_grpc_interceptor_gateway</code></strong></td><td><strong><code>WAVE8_ADJUDICATED_PRIMARY</code> (<code>M2</code> <code>43,040</code>-q gRPC)</strong></td><td><code>cba30b931812</code></td><td class="num">198.6</td><td class="num best">Manifest</td></tr>
+            <tr><td><strong>Part VII</strong></td><td><strong><code>wave11_d6_opensearch_pgvector_qdrant</code></strong> / <strong><code>wave11_d7_live_zep_graphiti_arena</code></strong></td><td><strong><code>WAVE12_ADJUDICATED_PRIMARY</code> (<code>L1</code> / <code>L2</code>)</strong></td><td><code>0578d56b715d</code> / <code>d6a12534fa7c</code></td><td class="num">1253.0 / live</td><td class="num best">2 / 2 (100%)</td></tr>
+            <tr><td><strong>Part VII</strong></td><td><strong><code>wave11_d8_compliance_copilot</code></strong> / <strong><code>wave11_d9_fast_extractor_and_u_grpo</code></strong></td><td><strong><code>WAVE12_ADJUDICATED_PRIMARY</code> (<code>L3</code> / <code>L4</code>)</strong></td><td><code>7395d687c54f</code> / <code>c41fae097f76</code></td><td class="num">floor / 4092.5</td><td class="num best">6 / 6 (100%)</td></tr>
+            <tr><td><strong>Part VII</strong></td><td><strong><code>wave11_d10_5m_real_cutover_and_70b_scale</code></strong></td><td><strong><code>WAVE12_ADJUDICATED_PRIMARY</code> (<code>L5</code> <code>9.47M</code> + <code>70B</code>)</strong></td><td><code>e50b87460387</code></td><td class="num">3894.0</td><td class="num best">2 / 2 (100%)</td></tr>
+            <tr><td><strong>Part VIII</strong></td><td><strong><code>wave14_d11_pm6_takedown_carryforward</code> + <code>/formal</code></strong></td><td><strong><code>WAVE15_ADJUDICATED_PRIMARY</code> (<code>D11/PM-6</code> Mixed + Lean 4)</strong></td><td><code>7248d05a02ba</code></td><td class="num">live</td><td class="num best">2 / 2 (100%)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer>
+      <strong>ChelatedAI Research &middot; Doctoral Whitepaper v7.0 Presentation</strong> &middot;
+      Verified Registry <code>6ef7eba4f414</code> (<code>46/46</code> Bundles, <code>61/61</code> Side Hashes) &middot; WCAG AAA Accent Palette (<code>--warm: #7d2f0a</code>, 8.36:1) &middot;
+      Zero-JS Static Tables &amp; 12 Inline SVGs + Progressive ARIA Tabs + Print-Visible Pre-Release Banner.
+    </footer>
+  </main>
+
+  <script>
+    (function () {
+      const tablist = document.querySelector('[role="tablist"]');
+      if (!tablist) return;
+      const tabs = Array.from(tablist.querySelectorAll('[role="tab"]'));
+      const panels = tabs.map((t) => document.getElementById(t.getAttribute('aria-controls')));
+      document.documentElement.classList.add('js-tabs-active');
+      function activate(idx, focusTab) {
+        tabs.forEach((t, i) => {
+          const sel = i === idx;
+          t.setAttribute('aria-selected', sel ? 'true' : 'false');
+          t.setAttribute('tabindex', sel ? '0' : '-1');
+          if (panels[i]) panels[i].hidden = !sel;
+        });
+        if (focusTab) tabs[idx].focus();
+      }
+      tabs.forEach((t, i) => {
+        t.addEventListener('click', () => activate(i, false));
+        t.addEventListener('keydown', (e) => {
+          if (e.key === 'ArrowRight') { e.preventDefault(); activate((i + 1) % tabs.length, true); }
+          else if (e.key === 'ArrowLeft') { e.preventDefault(); activate((i - 1 + tabs.length) % tabs.length, true); }
+          else if (e.key === 'Home') { e.preventDefault(); activate(0, true); }
+          else if (e.key === 'End') { e.preventDefault(); activate(tabs.length - 1, true); }
+        });
+      });
+      activate(0, false);
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PM-4 Blind Human Audit Grader — Zero-Leak Offline Tool</title>
+  <style>
+    :root {
+      --bg: #0b0f17;
+      --surface: #121826;
+      --surface-2: #192234;
+      --border: #26324a;
+      --text: #e6edf7;
+      --muted: #93a4be;
+      --accent: #38bdf8;
+      --green: #22c55e;
+      --green-bg: rgba(34, 197, 94, 0.14);
+      --red: #ef4444;
+      --red-bg: rgba(239, 68, 68, 0.14);
+      --amber: #f59e0b;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      --sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+    header {
+      background: linear-gradient(180deg, #111827 0%, #0b0f17 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .badge {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+    }
+    .badge-safe {
+      background: var(--green-bg);
+      color: var(--green);
+      border-color: rgba(34, 197, 94, 0.35);
+    }
+    h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+    }
+    .subtitle {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .header-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    button, .btn-file {
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.14s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    button:hover:not(:disabled), .btn-file:hover {
+      border-color: var(--accent);
+      background: #1f2b42;
+    }
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .btn-primary {
+      background: #0284c7;
+      border-color: #38bdf8;
+      color: #fff;
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: #0369a1;
+    }
+    .btn-yes {
+      background: rgba(34, 197, 94, 0.16);
+      border-color: var(--green);
+      color: #86efac;
+      padding: 12px 24px;
+      font-size: 15px;
+    }
+    .btn-yes:hover, .btn-yes.active {
+      background: var(--green);
+      color: #052e16;
+    }
+    .btn-no {
+      background: rgba(239, 68, 68, 0.16);
+      border-color: var(--red);
+      color: #fca5a5;
+      padding: 12px 24px;
+      font-size: 15px;
+    }
+    .btn-no:hover, .btn-no.active {
+      background: var(--red);
+      color: #450a0a;
+    }
+    main {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 20px 24px 48px;
+    }
+    .dropzone {
+      border: 2px dashed var(--border);
+      border-radius: 14px;
+      background: var(--surface);
+      padding: 44px 24px;
+      text-align: center;
+      transition: border-color 0.15s, background 0.15s;
+      margin-bottom: 20px;
+    }
+    .dropzone.dragover {
+      border-color: var(--accent);
+      background: rgba(56, 189, 248, 0.08);
+    }
+    .dropzone h2 {
+      margin: 0 0 8px;
+      font-size: 20px;
+    }
+    .dropzone p {
+      margin: 0 auto 18px;
+      max-width: 620px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .drop-actions {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .hidden { display: none !important; }
+    .progress-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 18px;
+      margin-bottom: 18px;
+    }
+    .progress-top {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+      font-size: 13px;
+    }
+    .stat-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+    .pill {
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+    }
+    .pill.yes { color: #86efac; border-color: rgba(34, 197, 94, 0.4); }
+    .pill.no { color: #fca5a5; border-color: rgba(239, 68, 68, 0.4); }
+    .pill.rem { color: #fcd34d; border-color: rgba(245, 158, 11, 0.4); }
+    .bar-track {
+      width: 100%;
+      height: 10px;
+      background: #0b1220;
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #0ea5e9, #22c55e);
+      transition: width 0.2s ease;
+    }
+    .workspace {
+      display: grid;
+      grid-template-columns: 1fr 270px;
+      gap: 18px;
+      align-items: start;
+    }
+    @media (max-width: 900px) {
+      .workspace { grid-template-columns: 1fr; }
+    }
+    .item-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+    }
+    .item-meta {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      padding-bottom: 14px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .item-idx {
+      font-family: var(--mono);
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .meta-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .meta-tag {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+    .field-block {
+      margin-bottom: 14px;
+    }
+    .field-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .field-box {
+      background: #0d1422;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 13px 15px;
+      font-size: 15px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .field-box.gold {
+      border-left: 4px solid var(--green);
+      background: rgba(34, 197, 94, 0.05);
+    }
+    .field-box.response {
+      border-left: 4px solid var(--accent);
+      background: rgba(56, 189, 248, 0.05);
+    }
+    .field-box.question {
+      border-left: 4px solid var(--amber);
+      font-size: 14px;
+      color: #dbeafe;
+    }
+    .notes-input {
+      width: 100%;
+      background: #0d1422;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-family: var(--sans);
+      font-size: 13px;
+    }
+    .notes-input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .grade-controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-top: 18px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+    .grade-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .nav-buttons {
+      display: flex;
+      gap: 8px;
+    }
+    kbd {
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+    }
+    .sidebar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+    }
+    .sidebar h3 {
+      margin: 0 0 10px;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+    .filter-row {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .filter-btn {
+      padding: 4px 8px;
+      font-size: 11px;
+      border-radius: 6px;
+    }
+    .filter-btn.active {
+      border-color: var(--accent);
+      background: rgba(56, 189, 248, 0.18);
+      color: #fff;
+    }
+    .minimap {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 5px;
+      max-height: 360px;
+      overflow-y: auto;
+      padding-right: 2px;
+    }
+    .cell {
+      font-family: var(--mono);
+      font-size: 11px;
+      text-align: center;
+      padding: 6px 0;
+      border-radius: 6px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .cell.yes {
+      background: var(--green-bg);
+      border-color: rgba(34, 197, 94, 0.45);
+      color: #86efac;
+    }
+    .cell.no {
+      background: var(--red-bg);
+      border-color: rgba(239, 68, 68, 0.45);
+      color: #fca5a5;
+    }
+    .cell.current {
+      outline: 2px solid var(--accent);
+      color: #fff;
+      font-weight: 700;
+    }
+    .rubric-box {
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 10px;
+      background: #0d1422;
+      border: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .rubric-box strong { color: var(--text); }
+    .rubric-box ul { margin: 6px 0 0; padding-left: 16px; }
+    .rubric-box li { margin-bottom: 4px; }
+    .cli-hint {
+      margin-top: 16px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: #0d1422;
+      border: 1px solid var(--border);
+      font-family: var(--mono);
+      font-size: 12px;
+      color: #93c5fd;
+      overflow-x: auto;
+    }
+    .toast {
+      position: fixed;
+      bottom: 18px;
+      right: 18px;
+      background: #0f172a;
+      border: 1px solid var(--accent);
+      color: var(--text);
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <span class="badge">PM-4 AUDIT</span>
+      <span class="badge badge-safe">100% OFFLINE · ZERO-LEAK</span>
+      <div>
+        <h1>PM-4 Blind Human Audit Grader</h1>
+        <div class="subtitle">1-key blind grading for <code>pm4_human_audit_100_blind_sheet.csv</code> · Auto-saved locally in browser</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <label class="btn-file" for="csvFileInput">Load CSV</label>
+      <input id="csvFileInput" type="file" accept=".csv,text/csv" class="hidden" />
+      <button id="btnJumpUngraded" disabled>Next Ungraded <kbd>N</kbd></button>
+      <button id="btnReset" disabled>Reset Grades</button>
+      <button id="btnDownload" class="btn-primary" disabled>Download Completed CSV</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="dropzone" class="dropzone">
+      <h2>Drop <code>pm4_human_audit_100_blind_sheet.csv</code> Here</h2>
+      <p>
+        Strictly offline, blind-only grading interface. No network calls, no hidden answer keys, and zero
+        external dependencies. Your progress auto-saves to <code>localStorage</code> after every keypress.
+      </p>
+      <div class="drop-actions">
+        <label class="btn-file btn-primary" for="csvFileInput">Select Blind Sheet CSV</label>
+        <button id="btnLoadDemo" type="button">Try Synthetic 3-Item Demo</button>
+      </div>
+    </section>
+
+    <section id="graderApp" class="hidden">
+      <div class="progress-card">
+        <div class="progress-top">
+          <div>
+            <strong id="fileNameLabel">pm4_human_audit_100_blind_sheet.csv</strong>
+            <span id="saveStatus" style="margin-left:10px;color:var(--muted);font-size:12px;">Auto-saved</span>
+          </div>
+          <div class="stat-pills">
+            <span class="pill" id="statTotal">0 / 0 Graded</span>
+            <span class="pill yes" id="statYes">YES: 0</span>
+            <span class="pill no" id="statNo">NO: 0</span>
+            <span class="pill rem" id="statRem">Left: 0</span>
+          </div>
+        </div>
+        <div class="bar-track"><div id="barFill" class="bar-fill"></div></div>
+      </div>
+
+      <div class="workspace">
+        <article class="item-card">
+          <div class="item-meta">
+            <div class="item-idx" id="itemIdxDisplay">Item 1 / 100</div>
+            <div class="meta-tags">
+              <span class="meta-tag" id="tagAuditId">audit_id: —</span>
+              <span class="meta-tag" id="tagDataset">dataset: —</span>
+              <span class="meta-tag" id="tagQid">qid: —</span>
+              <span class="meta-tag" id="tagCurrentGrade">status: UNGRADED</span>
+            </div>
+          </div>
+
+          <div class="field-block">
+            <div class="field-label">Question / Blind Audit Prompt</div>
+            <div class="field-box question" id="questionText">—</div>
+          </div>
+
+          <div class="field-block">
+            <div class="field-label">Gold Reference</div>
+            <div class="field-box gold" id="goldRefText">—</div>
+          </div>
+
+          <div class="field-block">
+            <div class="field-label">Model Response</div>
+            <div class="field-box response" id="modelRespText">—</div>
+          </div>
+
+          <div class="field-block">
+            <div class="field-label">Optional Auditor Notes (preserved in CSV export)</div>
+            <input
+              id="notesInput"
+              class="notes-input"
+              type="text"
+              placeholder="Optional note (keyboard shortcuts pause while typing here)..."
+            />
+          </div>
+
+          <div class="grade-controls">
+            <div class="grade-buttons">
+              <button id="btnYes" class="btn-yes" type="button">Correct (YES) <kbd>1</kbd></button>
+              <button id="btnNo" class="btn-no" type="button">Incorrect (NO) <kbd>0</kbd></button>
+            </div>
+            <div class="nav-buttons">
+              <button id="btnPrev" type="button">Previous <kbd>Backspace</kbd></button>
+              <button id="btnNext" type="button">Next <kbd>→</kbd></button>
+            </div>
+          </div>
+
+          <div class="cli-hint">
+            When finished, click <strong>Download Completed CSV</strong> and run:<br />
+            <code>python scripts/score_pm4_human_audit.py --blind-sheet pm4_human_audit_100_blind_sheet.csv --sealed-key &lt;PATH_TO_KEY&gt;</code>
+          </div>
+        </article>
+
+        <aside class="sidebar">
+          <h3>Items Minimap (1–100)</h3>
+          <div class="filter-row">
+            <button class="filter-btn active" data-filter="all" type="button">All</button>
+            <button class="filter-btn" data-filter="ungraded" type="button">Ungraded</button>
+            <button class="filter-btn" data-filter="yes" type="button">YES</button>
+            <button class="filter-btn" data-filter="no" type="button">NO</button>
+          </div>
+          <div id="minimap" class="minimap"></div>
+
+          <div class="rubric-box">
+            <strong>Symmetric Grading Rubric (v8 Parity)</strong>
+            <ul>
+              <li><strong>UNANSWERABLE / Abstention:</strong> YES only if model explicitly abstains or states the asked detail was not mentioned (without guessing a false value).</li>
+              <li><strong>Core Fact &amp; Lists:</strong> YES if model conveys the exact core fact/entity without contradiction (concise extra context OK; multi-item lists must cover all required items).</li>
+              <li><strong>Dates / Numbers:</strong> Equivalent formats (<code>4</code> = <code>four</code>, <code>Oct 2023</code> = <code>October, 2023</code>) are YES; vague relative phrases (<code>next month</code>, <code>last weekend</code>) without calendar date are NO.</li>
+              <li><strong>Preference / Recommendation:</strong> YES if the candidate response clearly follows and reflects the user's stated preference/constraint in the reference answer without contradicting it.</li>
+            </ul>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast">Saved</div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const STORAGE_PREFIX = "chelated_pm4_blind_grader_v1::";
+      let headers = [];
+      let rows = [];
+      let currentIdx = 0;
+      let currentFileName = "pm4_human_audit_100_blind_sheet.csv";
+      let storageKey = "";
+      let activeFilter = "all";
+
+      const $ = (id) => document.getElementById(id);
+
+      function showToast(msg) {
+        const t = $("toast");
+        t.textContent = msg;
+        t.classList.add("show");
+        clearTimeout(showToast._timer);
+        showToast._timer = setTimeout(() => t.classList.remove("show"), 1800);
+      }
+
+      // RFC-4180 compliant CSV parser supporting quoted fields, embedded commas, and newlines.
+      function parseCSV(text) {
+        const clean = text.replace(/^\uFEFF/, "");
+        const parsed = [];
+        let row = [];
+        let field = "";
+        let inQuotes = false;
+
+        for (let i = 0; i < clean.length; i++) {
+          const ch = clean[i];
+          const next = clean[i + 1];
+          if (inQuotes) {
+            if (ch === '"' && next === '"') {
+              field += '"';
+              i++;
+            } else if (ch === '"') {
+              inQuotes = false;
+            } else {
+              field += ch;
+            }
+          } else {
+            if (ch === '"') {
+              inQuotes = true;
+            } else if (ch === ",") {
+              row.push(field);
+              field = "";
+            } else if (ch === "\r" && next === "\n") {
+              row.push(field);
+              parsed.push(row);
+              row = [];
+              field = "";
+              i++;
+            } else if (ch === "\n" || ch === "\r") {
+              row.push(field);
+              parsed.push(row);
+              row = [];
+              field = "";
+            } else {
+              field += ch;
+            }
+          }
+        }
+        if (field.length > 0 || row.length > 0) {
+          row.push(field);
+          parsed.push(row);
+        }
+        return parsed.filter((r) => r.some((cell) => cell.trim() !== ""));
+      }
+
+      function escapeCSVCell(val) {
+        const s = String(val ?? "");
+        if (/[",\r\n]/.test(s)) {
+          return '"' + s.replace(/"/g, '""') + '"';
+        }
+        return s;
+      }
+
+      function serializeCSV(hdrs, dataRows) {
+        const lines = [hdrs.map(escapeCSVCell).join(",")];
+        for (const r of dataRows) {
+          lines.push(hdrs.map((h) => escapeCSVCell(r[h] ?? "")).join(","));
+        }
+        return lines.join("\n") + "\n";
+      }
+
+      const RUBRIC_SIGNATURE = "pm4_rubric_v8_parity";
+
+      function fnv1aHex(str) {
+        let h = 2166136261;
+        for (let i = 0; i < str.length; i++) {
+          h ^= str.charCodeAt(i);
+          h = Math.imul(h, 16777619);
+        }
+        return (h >>> 0).toString(16).padStart(8, "0");
+      }
+
+      function getRowQuestion(r) {
+        return pickField(r, ["question", "query", "prompt"], "");
+      }
+
+      function getRowGold(r) {
+        return pickField(r, ["reference_answer", "gold_reference", "gold_answer", "gold"], "");
+      }
+
+      function getRowResp(r) {
+        return pickField(r, ["candidate_answer", "model_response", "model_prediction", "pred_raw", "pred"], "");
+      }
+
+      function rowBindingKey(r, fallbackIdx) {
+        const idPart = pickField(r, ["audit_id", "item_id"], `ROW_${fallbackIdx}`);
+        const contentHash = fnv1aHex(
+          `${RUBRIC_SIGNATURE}||${getRowQuestion(r).trim()}||${getRowGold(r).trim()}||${getRowResp(r).trim()}`
+        );
+        return `${idPart}::${contentHash}`;
+      }
+
+      function computeSignature(hdrs, dataRows) {
+        const canonicalKeys = dataRows.map((r, i) => rowBindingKey(r, i)).sort().join("|");
+        return fnv1aHex(hdrs.join("|") + "::" + dataRows.length + "::" + canonicalKeys);
+      }
+
+      function getGradeCol() {
+        for (const c of ["human_yes_or_no", "human_grade", "grade"]) {
+          if (headers.includes(c)) return c;
+        }
+        headers.push("human_yes_or_no");
+        return "human_yes_or_no";
+      }
+
+      function getNotesCol() {
+        for (const c of ["notes", "human_notes"]) {
+          if (headers.includes(c)) return c;
+        }
+        headers.push("notes");
+        return "notes";
+      }
+
+      function normalizeGrade(raw) {
+        const v = String(raw ?? "").trim().toUpperCase();
+        if (v === "YES" || v === "1") return "YES";
+        if (v === "NO" || v === "0") return "NO";
+        return "";
+      }
+
+      function saveToStorage() {
+        if (!storageKey) return;
+        const gCol = getGradeCol();
+        const nCol = getNotesCol();
+        const byKey = {};
+        rows.forEach((r, i) => {
+          const k = rowBindingKey(r, i);
+          byKey[k] = { grade: normalizeGrade(r[gCol]), notes: r[nCol] ?? "" };
+        });
+        const currentKey = rows[currentIdx] ? rowBindingKey(rows[currentIdx], currentIdx) : "";
+        const payload = {
+          schema: "id_content_bound_v2",
+          currentKey,
+          savedAt: new Date().toISOString(),
+          items: byKey,
+        };
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(payload));
+          $("saveStatus").textContent = "Auto-saved " + new Date().toLocaleTimeString();
+        } catch (err) {
+          $("saveStatus").textContent = "Local storage unavailable";
+        }
+      }
+
+      function loadFromStorage() {
+        if (!storageKey) return false;
+        try {
+          const raw = localStorage.getItem(storageKey);
+          if (!raw) return false;
+          const saved = JSON.parse(raw);
+          if (!saved || saved.schema !== "id_content_bound_v2" || typeof saved.items !== "object") return false;
+          const gCol = getGradeCol();
+          const nCol = getNotesCol();
+          let restoredAny = false;
+          for (let i = 0; i < rows.length; i++) {
+            const entry = saved.items[rowBindingKey(rows[i], i)];
+            if (!entry) continue;
+            if (!normalizeGrade(rows[i][gCol]) && normalizeGrade(entry.grade)) {
+              rows[i][gCol] = normalizeGrade(entry.grade);
+              restoredAny = true;
+            }
+            if (!rows[i][nCol] && entry.notes) {
+              rows[i][nCol] = entry.notes;
+              restoredAny = true;
+            }
+          }
+          if (saved.currentKey) {
+            const idx = rows.findIndex((r, i) => rowBindingKey(r, i) === saved.currentKey);
+            if (idx >= 0) currentIdx = idx;
+          }
+          return restoredAny;
+        } catch {
+          return false;
+        }
+      }
+
+      function loadCSVText(text, fileName) {
+        const matrix = parseCSV(text);
+        if (matrix.length < 2) {
+          alert("CSV appears empty or missing data rows.");
+          return;
+        }
+        headers = matrix[0].map((h) => h.trim());
+        const candidateRows = matrix.slice(1).map((cols) => {
+          const obj = {};
+          headers.forEach((h, i) => {
+            obj[h] = cols[i] ?? "";
+          });
+          return obj;
+        });
+        const missingQ = candidateRows.findIndex((r) => !getRowQuestion(r).trim());
+        if (missingQ >= 0) {
+          alert(`Fail-closed: Row ${missingQ + 1} is missing a required 'question'/'query' column value. Refusing placeholder substitution.`);
+          return;
+        }
+        rows = candidateRows;
+        const gCol = getGradeCol();
+        rows.forEach((r) => {
+          r[gCol] = normalizeGrade(r[gCol]);
+        });
+        getNotesCol();
+
+        currentFileName = fileName || "pm4_human_audit_100_blind_sheet.csv";
+        storageKey = STORAGE_PREFIX + computeSignature(headers, rows);
+        currentIdx = 0;
+        const restored = loadFromStorage();
+
+        // Jump to first ungraded item if not restored to a specific spot
+        if (!restored) {
+          const firstOpen = rows.findIndex((r) => !normalizeGrade(r[gCol]));
+          if (firstOpen >= 0) currentIdx = firstOpen;
+        }
+
+        $("dropzone").classList.add("hidden");
+        $("graderApp").classList.remove("hidden");
+        $("fileNameLabel").textContent = currentFileName;
+        $("btnDownload").disabled = false;
+        $("btnJumpUngraded").disabled = false;
+        $("btnReset").disabled = false;
+
+        renderAll();
+        showToast(restored ? `Loaded ${rows.length} items (restored saved progress)` : `Loaded ${rows.length} blind audit items`);
+      }
+
+      function pickField(row, candidates, fallback = "—") {
+        for (const k of candidates) {
+          if (k in row && String(row[k]).trim() !== "") return String(row[k]);
+        }
+        return fallback;
+      }
+
+      function renderAll() {
+        if (!rows.length) return;
+        const gCol = getGradeCol();
+        const nCol = getNotesCol();
+        const row = rows[currentIdx];
+        const grade = normalizeGrade(row[gCol]);
+
+        let yesCount = 0;
+        let noCount = 0;
+        for (const r of rows) {
+          const g = normalizeGrade(r[gCol]);
+          if (g === "YES") yesCount++;
+          else if (g === "NO") noCount++;
+        }
+        const graded = yesCount + noCount;
+        const left = rows.length - graded;
+        const pct = rows.length ? Math.round((graded / rows.length) * 100) : 0;
+
+        $("statTotal").textContent = `${graded} / ${rows.length} Graded (${pct}%)`;
+        $("statYes").textContent = `YES: ${yesCount}`;
+        $("statNo").textContent = `NO: ${noCount}`;
+        $("statRem").textContent = `Left: ${left}`;
+        $("barFill").style.width = `${pct}%`;
+
+        $("itemIdxDisplay").textContent = `Item ${currentIdx + 1} / ${rows.length}`;
+        const auditId = pickField(row, ["audit_id", "item_id"], `ITEM_${currentIdx + 1}`);
+        const contentDigest = fnv1aHex(`${getRowQuestion(row).trim()}||${getRowGold(row).trim()}||${getRowResp(row).trim()}`);
+        $("tagAuditId").textContent = `audit_id: ${auditId}`;
+        $("tagDataset").textContent = "dataset: BLINDED";
+        $("tagQid").textContent = `hash: ${contentDigest}`;
+        $("tagCurrentGrade").textContent = `status: ${grade || "UNGRADED"}`;
+
+        const questionVal = getRowQuestion(row);
+        const goldVal = getRowGold(row) || "(empty)";
+        const respVal = getRowResp(row) || "(empty)";
+
+        $("questionText").textContent = questionVal;
+        $("goldRefText").textContent = goldVal;
+        $("modelRespText").textContent = respVal;
+        $("notesInput").value = row[nCol] || "";
+
+        $("btnYes").classList.toggle("active", grade === "YES");
+        $("btnNo").classList.toggle("active", grade === "NO");
+        $("btnPrev").disabled = currentIdx === 0;
+        $("btnNext").disabled = currentIdx >= rows.length - 1;
+
+        renderMinimap(gCol);
+      }
+
+      function renderMinimap(gCol) {
+        const container = $("minimap");
+        container.innerHTML = "";
+        rows.forEach((r, idx) => {
+          const g = normalizeGrade(r[gCol]);
+          if (activeFilter === "ungraded" && g) return;
+          if (activeFilter === "yes" && g !== "YES") return;
+          if (activeFilter === "no" && g !== "NO") return;
+          const el = document.createElement("div");
+          el.className = "cell" + (g === "YES" ? " yes" : g === "NO" ? " no" : "") + (idx === currentIdx ? " current" : "");
+          el.textContent = String(idx + 1);
+          el.title = `Item ${idx + 1} (${r.audit_id || idx + 1}): ${g || "UNGRADED"}`;
+          el.addEventListener("click", () => {
+            currentIdx = idx;
+            saveToStorage();
+            renderAll();
+          });
+          container.appendChild(el);
+        });
+      }
+
+      function setGrade(val) {
+        if (!rows.length) return;
+        const gCol = getGradeCol();
+        rows[currentIdx][gCol] = val;
+        if (currentIdx < rows.length - 1) {
+          currentIdx++;
+        }
+        saveToStorage();
+        renderAll();
+      }
+
+      function jumpNextUngraded() {
+        const gCol = getGradeCol();
+        for (let offset = 1; offset <= rows.length; offset++) {
+          const idx = (currentIdx + offset) % rows.length;
+          if (!normalizeGrade(rows[idx][gCol])) {
+            currentIdx = idx;
+            saveToStorage();
+            renderAll();
+            return;
+          }
+        }
+        showToast("All items are graded! Ready to download CSV.");
+      }
+
+      function downloadCompletedCSV() {
+        const gCol = getGradeCol();
+        const ungraded = rows.filter((r) => !normalizeGrade(r[gCol])).length;
+        if (ungraded > 0) {
+          const ok = confirm(`${ungraded} item(s) are still ungraded. Download partial CSV anyway?`);
+          if (!ok) return;
+        }
+        const csvOut = serializeCSV(headers, rows);
+        const blob = new Blob([csvOut], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "pm4_human_audit_100_blind_sheet.csv";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast("Downloaded pm4_human_audit_100_blind_sheet.csv");
+      }
+
+      // Event bindings
+      $("csvFileInput").addEventListener("change", (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => loadCSVText(String(reader.result || ""), file.name);
+        reader.readAsText(file, "utf-8");
+        e.target.value = "";
+      });
+
+      const dz = $("dropzone");
+      ["dragenter", "dragover"].forEach((ev) => {
+        dz.addEventListener(ev, (e) => {
+          e.preventDefault();
+          dz.classList.add("dragover");
+        });
+      });
+      ["dragleave", "drop"].forEach((ev) => {
+        dz.addEventListener(ev, (e) => {
+          e.preventDefault();
+          dz.classList.remove("dragover");
+        });
+      });
+      dz.addEventListener("drop", (e) => {
+        const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => loadCSVText(String(reader.result || ""), file.name);
+        reader.readAsText(file, "utf-8");
+      });
+
+      $("btnLoadDemo").addEventListener("click", () => {
+        const sampleCSV = [
+          "audit_id,dataset,qid,reference_answer,candidate_answer,human_yes_or_no,notes",
+          'AUD_000,LoCoMo-300,demo_1,"October, 2023","Oct 2023",,',
+          'AUD_001,LoCoMo-300,demo_2,"UNANSWERABLE","Not mentioned in the conversation.",,',
+          'AUD_002,LongMemEval-S,demo_3,"25 minutes and 50 seconds (or 25:50)","25:50",,'
+        ].join("\n");
+        loadCSVText(sampleCSV, "demo_blind_sheet_sample.csv");
+      });
+
+      $("btnYes").addEventListener("click", () => setGrade("YES"));
+      $("btnNo").addEventListener("click", () => setGrade("NO"));
+      $("btnPrev").addEventListener("click", () => {
+        if (currentIdx > 0) {
+          currentIdx--;
+          saveToStorage();
+          renderAll();
+        }
+      });
+      $("btnNext").addEventListener("click", () => {
+        if (currentIdx < rows.length - 1) {
+          currentIdx++;
+          saveToStorage();
+          renderAll();
+        }
+      });
+      $("btnJumpUngraded").addEventListener("click", jumpNextUngraded);
+      $("btnDownload").addEventListener("click", downloadCompletedCSV);
+      $("btnReset").addEventListener("click", () => {
+        if (!confirm("Clear all grades and notes for this sheet?")) return;
+        const gCol = getGradeCol();
+        const nCol = getNotesCol();
+        rows.forEach((r) => {
+          r[gCol] = "";
+          r[nCol] = "";
+        });
+        currentIdx = 0;
+        if (storageKey) localStorage.removeItem(storageKey);
+        renderAll();
+        showToast("Cleared all grades");
+      });
+
+      $("notesInput").addEventListener("input", (e) => {
+        if (!rows.length) return;
+        rows[currentIdx][getNotesCol()] = e.target.value;
+        saveToStorage();
+      });
+
+      document.querySelectorAll(".filter-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".filter-btn").forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          activeFilter = btn.dataset.filter || "all";
+          renderMinimap(getGradeCol());
+        });
+      });
+
+      document.addEventListener("keydown", (e) => {
+        if (!rows.length) return;
+        const tag = (e.target && e.target.tagName) ? e.target.tagName.toUpperCase() : "";
+        if (tag === "INPUT" || tag === "TEXTAREA") return;
+        if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+        if (e.key === "1") {
+          e.preventDefault();
+          setGrade("YES");
+        } else if (e.key === "0") {
+          e.preventDefault();
+          setGrade("NO");
+        } else if (e.key === "Backspace" || e.key === "ArrowLeft") {
+          e.preventDefault();
+          if (currentIdx > 0) {
+            currentIdx--;
+            saveToStorage();
+            renderAll();
+          }
+        } else if (e.key === "ArrowRight") {
+          e.preventDefault();
+          if (currentIdx < rows.length - 1) {
+            currentIdx++;
+            saveToStorage();
+            renderAll();
+          }
+        } else if (e.key === "n" || e.key === "N") {
+          e.preventDefault();
+          jumpNextUngraded();
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

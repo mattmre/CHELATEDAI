@@ -1,0 +1,588 @@
+{
+  "calib_per_family": 10,
+  "calib_seed": 777001,
+  "cross_space_chosen": {
+    "attacker_groups": 20,
+    "cross_space": 0.15,
+    "fp": 0,
+    "possible_links": 110,
+    "root_anchored_groups": 20,
+    "tp": 110
+  },
+  "cross_space_grid": [
+    {
+      "attacker_groups": 20,
+      "cross_space": 0.1,
+      "fp": 0,
+      "possible_links": 110,
+      "root_anchored_groups": 20,
+      "tp": 110
+    },
+    {
+      "attacker_groups": 20,
+      "cross_space": 0.125,
+      "fp": 0,
+      "possible_links": 110,
+      "root_anchored_groups": 20,
+      "tp": 110
+    },
+    {
+      "attacker_groups": 20,
+      "cross_space": 0.15,
+      "fp": 0,
+      "possible_links": 110,
+      "root_anchored_groups": 20,
+      "tp": 110
+    },
+    {
+      "attacker_groups": 20,
+      "cross_space": 0.175,
+      "fp": 0,
+      "possible_links": 110,
+      "root_anchored_groups": 19,
+      "tp": 109
+    },
+    {
+      "attacker_groups": 20,
+      "cross_space": 0.2,
+      "fp": 0,
+      "possible_links": 110,
+      "root_anchored_groups": 19,
+      "tp": 109
+    },
+    {
+      "attacker_groups": 20,
+      "cross_space": 0.225,
+      "fp": 0,
+      "possible_links": 110,
+      "root_anchored_groups": 18,
+      "tp": 108
+    },
+    {
+      "attacker_groups": 20,
+      "cross_space": 0.25,
+      "fp": 0,
+      "possible_links": 110,
+      "root_anchored_groups": 18,
+      "tp": 108
+    },
+    {
+      "attacker_groups": 20,
+      "cross_space": 0.275,
+      "fp": 0,
+      "possible_links": 110,
+      "root_anchored_groups": 14,
+      "tp": 104
+    },
+    {
+      "attacker_groups": 20,
+      "cross_space": 0.3,
+      "fp": 0,
+      "possible_links": 110,
+      "root_anchored_groups": 12,
+      "tp": 102
+    },
+    {
+      "attacker_groups": 20,
+      "cross_space": 0.325,
+      "fp": 0,
+      "possible_links": 110,
+      "root_anchored_groups": 11,
+      "tp": 101
+    },
+    {
+      "attacker_groups": 20,
+      "cross_space": 0.35,
+      "fp": 0,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "cross_space": 0.375,
+      "fp": 0,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "cross_space": 0.4,
+      "fp": 0,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "cross_space": 0.425,
+      "fp": 0,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "cross_space": 0.45,
+      "fp": 0,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "cross_space": 0.475,
+      "fp": 0,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "cross_space": 0.5,
+      "fp": 0,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "cross_space": 0.525,
+      "fp": 0,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "cross_space": 0.55,
+      "fp": 0,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "cross_space": 0.575,
+      "fp": 0,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "cross_space": 0.6,
+      "fp": 0,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "cross_space": 0.625,
+      "fp": 0,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "cross_space": 0.65,
+      "fp": 0,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "cross_space": 0.675,
+      "fp": 0,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "cross_space": 0.7,
+      "fp": 0,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "cross_space": 0.725,
+      "fp": 0,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "cross_space": 0.75,
+      "fp": 0,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "cross_space": 0.775,
+      "fp": 0,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "cross_space": 0.8,
+      "fp": 0,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "cross_space": 0.825,
+      "fp": 0,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "cross_space": 0.85,
+      "fp": 0,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "cross_space": 0.875,
+      "fp": 0,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "cross_space": 0.9,
+      "fp": 0,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "cross_space": 0.925,
+      "fp": 0,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "cross_space": 0.95,
+      "fp": 0,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    }
+  ],
+  "in_space_chosen": {
+    "attacker_groups": 20,
+    "fp": 0,
+    "in_space": 0.575,
+    "possible_links": 110,
+    "root_anchored_groups": 10,
+    "tp": 100
+  },
+  "in_space_grid": [
+    {
+      "attacker_groups": 20,
+      "fp": 0,
+      "in_space": 0.1,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "fp": 0,
+      "in_space": 0.125,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "fp": 0,
+      "in_space": 0.15,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "fp": 0,
+      "in_space": 0.175,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "fp": 0,
+      "in_space": 0.2,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "fp": 0,
+      "in_space": 0.225,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "fp": 0,
+      "in_space": 0.25,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "fp": 0,
+      "in_space": 0.275,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "fp": 0,
+      "in_space": 0.3,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "fp": 0,
+      "in_space": 0.325,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "fp": 0,
+      "in_space": 0.35,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "fp": 0,
+      "in_space": 0.375,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "fp": 0,
+      "in_space": 0.4,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "fp": 0,
+      "in_space": 0.425,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "fp": 0,
+      "in_space": 0.45,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "fp": 0,
+      "in_space": 0.475,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "fp": 0,
+      "in_space": 0.5,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "fp": 0,
+      "in_space": 0.525,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "fp": 0,
+      "in_space": 0.55,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "fp": 0,
+      "in_space": 0.575,
+      "possible_links": 110,
+      "root_anchored_groups": 10,
+      "tp": 100
+    },
+    {
+      "attacker_groups": 20,
+      "fp": 0,
+      "in_space": 0.6,
+      "possible_links": 110,
+      "root_anchored_groups": 9,
+      "tp": 99
+    },
+    {
+      "attacker_groups": 20,
+      "fp": 0,
+      "in_space": 0.625,
+      "possible_links": 110,
+      "root_anchored_groups": 8,
+      "tp": 98
+    },
+    {
+      "attacker_groups": 20,
+      "fp": 0,
+      "in_space": 0.65,
+      "possible_links": 110,
+      "root_anchored_groups": 7,
+      "tp": 97
+    },
+    {
+      "attacker_groups": 20,
+      "fp": 0,
+      "in_space": 0.675,
+      "possible_links": 110,
+      "root_anchored_groups": 6,
+      "tp": 96
+    },
+    {
+      "attacker_groups": 20,
+      "fp": 0,
+      "in_space": 0.7,
+      "possible_links": 110,
+      "root_anchored_groups": 6,
+      "tp": 96
+    },
+    {
+      "attacker_groups": 20,
+      "fp": 0,
+      "in_space": 0.725,
+      "possible_links": 110,
+      "root_anchored_groups": 6,
+      "tp": 96
+    },
+    {
+      "attacker_groups": 20,
+      "fp": 0,
+      "in_space": 0.75,
+      "possible_links": 110,
+      "root_anchored_groups": 5,
+      "tp": 95
+    },
+    {
+      "attacker_groups": 20,
+      "fp": 0,
+      "in_space": 0.775,
+      "possible_links": 110,
+      "root_anchored_groups": 4,
+      "tp": 94
+    },
+    {
+      "attacker_groups": 20,
+      "fp": 0,
+      "in_space": 0.8,
+      "possible_links": 110,
+      "root_anchored_groups": 1,
+      "tp": 90
+    },
+    {
+      "attacker_groups": 20,
+      "fp": 0,
+      "in_space": 0.825,
+      "possible_links": 110,
+      "root_anchored_groups": 0,
+      "tp": 89
+    },
+    {
+      "attacker_groups": 20,
+      "fp": 0,
+      "in_space": 0.85,
+      "possible_links": 110,
+      "root_anchored_groups": 0,
+      "tp": 86
+    },
+    {
+      "attacker_groups": 20,
+      "fp": 0,
+      "in_space": 0.875,
+      "possible_links": 110,
+      "root_anchored_groups": 0,
+      "tp": 78
+    },
+    {
+      "attacker_groups": 20,
+      "fp": 0,
+      "in_space": 0.9,
+      "possible_links": 110,
+      "root_anchored_groups": 0,
+      "tp": 61
+    },
+    {
+      "attacker_groups": 20,
+      "fp": 0,
+      "in_space": 0.925,
+      "possible_links": 110,
+      "root_anchored_groups": 0,
+      "tp": 40
+    },
+    {
+      "attacker_groups": 20,
+      "fp": 0,
+      "in_space": 0.95,
+      "possible_links": 110,
+      "root_anchored_groups": 0,
+      "tp": 9
+    }
+  ],
+  "taus": {
+    "cross_space": 0.15,
+    "in_space": 0.575
+  }
+}

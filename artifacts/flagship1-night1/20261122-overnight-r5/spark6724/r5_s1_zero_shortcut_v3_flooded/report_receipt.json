@@ -1,0 +1,11 @@
+{
+  "artifact_hashes": {
+    "r5_s1_manifest.json": "c686357e459a33874e02c53c4d9906dacd460f2512a5106cb5ef900220827b69",
+    "r5_s1_zero_shortcut_v3_rows.csv": "165689b520a947985a310cd6a43b90d36eb35e80d61b2c9dad569ae6f1ddf08b"
+  },
+  "git_sha": "18973789615ecab1268a77ebd3c69a283607241c",
+  "manifest_path": "r5_s1_manifest.json",
+  "manifest_sha256": "c686357e459a33874e02c53c4d9906dacd460f2512a5106cb5ef900220827b69",
+  "schema_version": "r5_report_receipt_v1",
+  "wall_seconds": 91.89
+}

@@ -37,9 +37,9 @@ def dcg_at_k(r, k):
     return _dcg_at_k(r, k)
 
 
-def ndcg_at_k(r, k):
-    """Normalized Discounted Cumulative Gain at rank k."""
-    return _ndcg_at_k(r, k)
+def ndcg_at_k(ranked_ids, qrels, k=10, *, binary: bool = False):
+    """Normalized Discounted Cumulative Gain at rank k using all positive qrels."""
+    return _ndcg_at_k(ranked_ids, qrels, k, binary=binary)
 
 
 def find_keys(obj, target_keys):
@@ -121,8 +121,7 @@ def evaluate_standard_ndcg(engine, queries, qrels, k=10):
 
         mapped_preds = map_predicted_ids(engine, pred_ids)
         relevant_docs = qrels[q_id]
-        relevance = [1 if pid in relevant_docs else 0 for pid in mapped_preds]
-        score = ndcg_at_k(relevance, k)
+        score = ndcg_at_k(mapped_preds, relevant_docs, k, binary=True)
         ndcg_scores.append(score)
 
         query_stats.append({
@@ -157,8 +156,7 @@ def evaluate_recursive_ndcg(recursive_engine, engine, queries, qrels, k=10):
         pred_ids = trace.final_results[:k]
         mapped_preds = map_predicted_ids(engine, pred_ids)
         relevant_docs = qrels[q_id]
-        relevance = [1 if pid in relevant_docs else 0 for pid in mapped_preds]
-        score = ndcg_at_k(relevance, k)
+        score = ndcg_at_k(mapped_preds, relevant_docs, k, binary=True)
         ndcg_scores.append(score)
 
         query_stats.append({

@@ -1,0 +1,12 @@
+{
+  "artifact_hashes": {
+    "pm4_human_audit_100_sealed_key_with_qwen.json": "415c6f4c2dd8859eed766c4ab38229c70367f8c47a01e41d1ef0ec38ce6a8560",
+    "r5b_s4_manifest.json": "86739124c57934ce26ee317c7233246e929afed8f58c120c54f55e0ee12234c0",
+    "r5b_s4_pm4_2x2_matrix_rows.csv": "1b71ff4f0ea633c51fa9d42738c06225c1bb3ded68fea7d3ff8b9fa93ef4acc7"
+  },
+  "git_sha": "18973789615ecab1268a77ebd3c69a283607241c",
+  "manifest_path": "r5b_s4_manifest.json",
+  "manifest_sha256": "86739124c57934ce26ee317c7233246e929afed8f58c120c54f55e0ee12234c0",
+  "schema_version": "r5b_report_receipt_v1",
+  "wall_seconds": 1761.93
+}

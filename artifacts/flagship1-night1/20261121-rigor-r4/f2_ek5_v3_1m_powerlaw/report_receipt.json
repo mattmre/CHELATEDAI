@@ -1,0 +1,10 @@
+{
+  "artifact_hashes": {
+    "f2_ek5_v3_1m_manifest.json": "2941048ccbe39877de958eb44636cc5cd40722e5393c1d57ca5d92c39deca1a9"
+  },
+  "git_sha": "18973789615ecab1268a77ebd3c69a283607241c",
+  "manifest_path": "f2_ek5_v3_1m_manifest.json",
+  "manifest_sha256": "2941048ccbe39877de958eb44636cc5cd40722e5393c1d57ca5d92c39deca1a9",
+  "schema_version": "r4_report_receipt_v1",
+  "wall_seconds": 106.11
+}

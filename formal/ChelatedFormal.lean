@@ -1,0 +1,7 @@
+import ChelatedFormal.Spec
+import ChelatedFormal.Theorem1a_MonotoneIsometry
+import ChelatedFormal.Theorem1b_ProcrustesOptimality
+import ChelatedFormal.Theorem2_AdjointZeroMuPerturbation
+import ChelatedFormal.Theorem3_EK5_CyclicWFS
+import ChelatedFormal.Theorem4_AnchoredClippedEMA
+import ChelatedFormal.Statement

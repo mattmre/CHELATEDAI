@@ -5,19 +5,13 @@ from __future__ import annotations
 import statistics
 from typing import Dict, List, Optional, Tuple
 
-from benchmark_utils import ndcg_at_k as _relevance_ndcg_at_k
+from benchmark_utils import ndcg_at_k as _canonical_ndcg_at_k
 
 
 def ndcg_at_k(ranked_ids, relevant_ids, k=10) -> float:
-    """Compute binary NDCG@k from ranked document IDs and relevant document IDs."""
+    """Compute binary nDCG@k with IDCG from the complete positive-qrel set."""
 
-    if k < 1:
-        raise ValueError("k must be >= 1")
-    relevant_set = set(relevant_ids)
-    if not relevant_set:
-        return 0.0
-    relevance = [1.0 if doc_id in relevant_set else 0.0 for doc_id in list(ranked_ids)[:k]]
-    return float(_relevance_ndcg_at_k(relevance, k))
+    return float(_canonical_ndcg_at_k(ranked_ids, relevant_ids, k=k, binary=True))
 
 
 class RecoveryTracker:

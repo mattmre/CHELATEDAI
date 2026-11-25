@@ -1,0 +1,12 @@
+{
+  "artifact_sha256": {
+    "wave6_d2_3beir_manifest.json": "dcb84026a15c4863fb4c2a0028cd14387c3ffe0d3c0087c581f28d717943f547",
+    "wave6_d2_3beir_mode_b_p20_rows.csv": "2a4ff650536cb355f1006ed550bc9e683747df381d74746bdc96d30809f8c237"
+  },
+  "bundle_dir": "wave6_d2_4096d_3beir_complete",
+  "generated_at_utc": "2026-11-23T05:26:28.323431+00:00",
+  "git_sha": "5a9bd46f2eeae2522a4a8d81017edb3c2407f936",
+  "manifest": "wave6_d2_3beir_manifest.json",
+  "manifest_sha256": "dcb84026a15c4863fb4c2a0028cd14387c3ffe0d3c0087c581f28d717943f547",
+  "schema_version": "wave6_receipt_v1"
+}

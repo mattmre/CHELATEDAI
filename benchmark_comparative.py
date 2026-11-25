@@ -16,6 +16,9 @@ from dataclasses import dataclass, field, asdict
 from typing import Dict, Optional, Any, Callable
 from benchmark_utils import (
     ndcg_at_k,
+    mean_average_precision_at_k,
+    mean_reciprocal_rank,
+    recall_at_k,
     canonicalize_id,
     isolated_adapter_state,
     map_predicted_ids,
@@ -66,77 +69,9 @@ class BenchmarkResult:
     is_synthetic: bool = False
 
 
-def mean_average_precision_at_k(retrieved_ids, relevant_ids, k=10):
-    """
-    Mean Average Precision at rank k for a single query.
-
-    Args:
-        retrieved_ids: List of retrieved document IDs (ordered by rank)
-        relevant_ids: Set of relevant document IDs
-        k: Rank cutoff
-
-    Returns:
-        float: AP@k score
-    """
-    retrieved = retrieved_ids[:k]
-    relevant_set = set(relevant_ids)
-
-    if not relevant_set:
-        return 0.0
-
-    num_relevant = 0
-    sum_precision = 0.0
-
-    for i, doc_id in enumerate(retrieved):
-        if doc_id in relevant_set:
-            num_relevant += 1
-            sum_precision += num_relevant / (i + 1)
-
-    if num_relevant == 0:
-        return 0.0
-
-    return sum_precision / min(len(relevant_set), k)
-
-
-def mean_reciprocal_rank(retrieved_ids, relevant_ids):
-    """
-    Reciprocal Rank for a single query.
-
-    Args:
-        retrieved_ids: List of retrieved document IDs (ordered by rank)
-        relevant_ids: Set of relevant document IDs
-
-    Returns:
-        float: RR score (1/rank of first relevant result, or 0)
-    """
-    relevant_set = set(relevant_ids)
-
-    for i, doc_id in enumerate(retrieved_ids):
-        if doc_id in relevant_set:
-            return 1.0 / (i + 1)
-
-    return 0.0
-
-
-def recall_at_k(retrieved_ids, relevant_ids, k=10):
-    """
-    Recall at rank k for a single query.
-
-    Args:
-        retrieved_ids: List of retrieved document IDs (ordered by rank)
-        relevant_ids: Set of relevant document IDs
-        k: Rank cutoff
-
-    Returns:
-        float: Recall@k score
-    """
-    retrieved_set = set(retrieved_ids[:k])
-    relevant_set = set(relevant_ids)
-
-    if not relevant_set:
-        return 0.0
-
-    return len(retrieved_set & relevant_set) / len(relevant_set)
+# mean_average_precision_at_k, mean_reciprocal_rank, recall_at_k are imported
+# directly from benchmark_utils so all callers share one canonical contract.
+_CANONICAL_METRICS = (mean_average_precision_at_k, mean_reciprocal_rank, recall_at_k)
 
 
 # ===== Default Configurations =====
@@ -343,8 +278,7 @@ class ComparativeTestbed:
                 retrieved = list(corpus.keys())[:10]
                 retrieved = [str(d) for d in retrieved]
 
-                r = [1 if d in relevant_set else 0 for d in retrieved]
-                ndcg_scores.append(ndcg_at_k(r, 10))
+                ndcg_scores.append(ndcg_at_k(retrieved, relevant_set, 10, binary=True))
                 map_scores.append(mean_average_precision_at_k(retrieved, relevant_set, 10))
                 mrr_scores.append(mean_reciprocal_rank(retrieved, relevant_set))
                 recall_scores.append(recall_at_k(retrieved, relevant_set, 10))
@@ -366,9 +300,8 @@ class ComparativeTestbed:
                         elapsed = (time.perf_counter() - start) * 1000
 
                         retrieved = map_predicted_ids(engine, chel_top[:10])
-                        r = [1 if d in relevant_set else 0 for d in retrieved]
 
-                        ndcg_scores.append(ndcg_at_k(r, 10))
+                        ndcg_scores.append(ndcg_at_k(retrieved, relevant_set, 10, binary=True))
                         map_scores.append(mean_average_precision_at_k(retrieved, relevant_set, 10))
                         mrr_scores.append(mean_reciprocal_rank(retrieved, relevant_set))
                         recall_scores.append(recall_at_k(retrieved, relevant_set, 10))

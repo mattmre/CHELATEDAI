@@ -1,0 +1,722 @@
+{
+  "all_checks_pass": true,
+  "brutal_honesty": {
+    "broad_catch_swallowing_L11": "none; every except clause names its exception types and returns a typed error",
+    "disclosures": [
+      {
+        "id": "L4",
+        "what": "Vector side of hybrid retrieval is a hashed signed char-3gram vector (dim 512), not a neural encoder.",
+        "where": "demo_workbench/compliance_copilot_engine.py:506"
+      },
+      {
+        "id": "L3",
+        "what": "Arm 2 (overwrite policy) is an emulation of newest-record-wins, not a live product; arm 1 uses a real delete-by-id.",
+        "where": "demo_workbench/compliance_copilot_engine.py:650"
+      },
+      {
+        "id": "L4",
+        "what": "Receipt signing key is generated per process in memory; issued_at_us is the untrusted server clock. The sealed receipts here use a fixed public runner test key.",
+        "where": "demo_workbench/compliance_copilot_engine.py:1222"
+      },
+      {
+        "id": "L4",
+        "what": "Audience filtering (standard vs privileged role) is Copilot-layer policy outside the decision engine.",
+        "where": "demo_workbench/compliance_copilot_engine.py:756"
+      },
+      {
+        "id": "L5",
+        "what": "Warm-store p50/p95 is fixture-sized (tens of nodes), single machine, non-deterministic; it implies nothing about production scale.",
+        "where": "demo_workbench/compliance_copilot_engine.py:1160"
+      },
+      {
+        "id": "L4",
+        "what": "Custom-evidence injection reports oracle agreement only; no accuracy claim is made for user-supplied records.",
+        "where": "demo_workbench/compliance_copilot_engine.py:1023"
+      },
+      {
+        "id": "L5",
+        "what": "Smoke tier is FLOOR: real ThreadingHTTPServer on a loopback port plus in-process handler calls over synthetic fixtures. No ceiling-tier run against an external regulated corpus, a hardened deployment, or a trusted timestamp authority was performed.",
+        "where": "scripts/run_wave11_d8_compliance_copilot.py:http_smoke"
+      },
+      {
+        "id": "L1",
+        "what": "Integrated demo_workbench/server.py forwards /copilot and /api/v2/copilot/* and enforces Non-NDA-only responses under --public (403 on mode=nda even when a token is supplied).",
+        "where": "demo_workbench/server.py:dispatch_api_request"
+      },
+      {
+        "id": "L4",
+        "what": "NDA token is supplied by constructor argument or env CHELATED_COPILOT_NDA_TOKEN; the standalone CLI has no --nda-token flag.",
+        "where": "demo_workbench/compliance_copilot_engine.py:1584"
+      }
+    ],
+    "mocks_in_production_paths_L3": "none; the only mock is the seeded-leak positive control, applied in tests/runner only",
+    "stubs_L1": "none in the four delivered code files; server.py forwarder is intentionally not wired by this slice"
+  },
+  "bundle_id": "wave11_d8_compliance_copilot",
+  "checks": [
+    {
+      "check": "pattern list has exactly 56 entries",
+      "detail": 56,
+      "pass": true
+    },
+    {
+      "check": "HTML page: 0 forbidden-pattern hits",
+      "detail": [],
+      "pass": true
+    },
+    {
+      "check": "HTML page: no innerHTML / eval / document.write",
+      "detail": null,
+      "pass": true
+    },
+    {
+      "check": "non_nda sweep: every scenario x step x role returned 200",
+      "detail": {
+        "non_200": 0,
+        "responses": 20
+      },
+      "pass": true
+    },
+    {
+      "check": "non_nda sweep: 0 forbidden-pattern hits across all responses",
+      "detail": [],
+      "pass": true
+    },
+    {
+      "check": "control plane == authored ground truth on every step/role",
+      "detail": null,
+      "pass": true
+    },
+    {
+      "check": "independent solver agrees with kernel (0 mismatches)",
+      "detail": {
+        "mismatches": 0,
+        "nodes_checked": 178
+      },
+      "pass": true
+    },
+    {
+      "check": "control plane: all judged questions correct",
+      "detail": {
+        "abstained": 1,
+        "correct": 12,
+        "forbidden_text": 0,
+        "judged": 12,
+        "stale_unflagged": 0
+      },
+      "pass": true
+    },
+    {
+      "check": "control plane: 0 unflagged stale and 0 erased-text exposures",
+      "detail": {
+        "abstained": 1,
+        "correct": 12,
+        "forbidden_text": 0,
+        "judged": 12,
+        "stale_unflagged": 0
+      },
+      "pass": true
+    },
+    {
+      "check": "baselines expose withdrawn content (non-vacuous comparison)",
+      "detail": {
+        "baseline_rag": 17,
+        "overwrite_policy": 15
+      },
+      "pass": true
+    },
+    {
+      "check": "nda mode: internal block served on every step with the right token",
+      "detail": {
+        "ok": 10,
+        "total": 10
+      },
+      "pass": true
+    },
+    {
+      "check": "nda mode: 403 without token, with wrong token, and when no token is configured",
+      "detail": {
+        "no_token": 403,
+        "unconfigured": 403,
+        "wrong": 403
+      },
+      "pass": true
+    },
+    {
+      "check": "error payloads: expected statuses, uniform shape",
+      "detail": [
+        {
+          "case": "unknown_scenario",
+          "expected": 422,
+          "status": 422
+        },
+        {
+          "case": "step_out_of_range",
+          "expected": 422,
+          "status": 422
+        },
+        {
+          "case": "bad_role",
+          "expected": 422,
+          "status": 422
+        },
+        {
+          "case": "nda_without_token",
+          "expected": 403,
+          "status": 403
+        },
+        {
+          "case": "unknown_path",
+          "expected": 404,
+          "status": 404
+        },
+        {
+          "case": "invalid_json",
+          "expected": 400,
+          "status": 400
+        },
+        {
+          "case": "oversize_body",
+          "expected": 413,
+          "status": 413
+        },
+        {
+          "case": "forbidden_user_text",
+          "expected": 422,
+          "status": 422
+        },
+        {
+          "case": "receipt_without_retraction",
+          "expected": 422,
+          "status": 422
+        }
+      ],
+      "pass": true
+    },
+    {
+      "check": "error payloads: 0 forbidden-pattern hits (rejection never echoes the term)",
+      "detail": [],
+      "pass": true
+    },
+    {
+      "check": "positive control: scanner catches a seeded leak",
+      "detail": 2,
+      "pass": true
+    },
+    {
+      "check": "positive control: server fails closed (500) and does not echo the leaked term",
+      "detail": 500,
+      "pass": true
+    },
+    {
+      "check": "scoreboard consistent with sweep",
+      "detail": null,
+      "pass": true
+    },
+    {
+      "check": "receipt w1/2: issued (200) and clean",
+      "detail": 200,
+      "pass": true
+    },
+    {
+      "check": "receipt w1/2: verifies (hash, Ed25519, key, chain link, ledger)",
+      "detail": {
+        "chain_link_ok": true,
+        "hash_ok": true,
+        "key_ok": true,
+        "signature_ok": true
+      },
+      "pass": true
+    },
+    {
+      "check": "receipt w2/2: issued (200) and clean",
+      "detail": 200,
+      "pass": true
+    },
+    {
+      "check": "receipt w2/2: verifies (hash, Ed25519, key, chain link, ledger)",
+      "detail": {
+        "chain_link_ok": true,
+        "hash_ok": true,
+        "key_ok": true,
+        "signature_ok": true
+      },
+      "pass": true
+    },
+    {
+      "check": "receipt w3/2: issued (200) and clean",
+      "detail": 200,
+      "pass": true
+    },
+    {
+      "check": "receipt w3/2: verifies (hash, Ed25519, key, chain link, ledger)",
+      "detail": {
+        "chain_link_ok": true,
+        "hash_ok": true,
+        "key_ok": true,
+        "signature_ok": true
+      },
+      "pass": true
+    },
+    {
+      "check": "ledger hash chain intact",
+      "detail": {
+        "head_hash": "820705ef47fc9f714ca171034bdfa4bd19820f8db528fbc1a25d0d893feafb77",
+        "intact": true,
+        "length": 3
+      },
+      "pass": true
+    },
+    {
+      "check": "tamper case: edited payload rejected",
+      "detail": {
+        "chain_link_ok": true,
+        "hash_ok": false,
+        "key_ok": true,
+        "signature_ok": false
+      },
+      "pass": true
+    },
+    {
+      "check": "tamper case: edited ledger entry breaks the chain at that seq",
+      "detail": {
+        "first_bad_seq": 2,
+        "intact": false,
+        "length": 3
+      },
+      "pass": true
+    },
+    {
+      "check": "receipt payloads carry integers only (no floats, no wall-clock latency)",
+      "detail": null,
+      "pass": true
+    },
+    {
+      "check": "undo w1: compensating event, history preserved",
+      "detail": 200,
+      "pass": true
+    },
+    {
+      "check": "undo w3: compensating event, history preserved",
+      "detail": 200,
+      "pass": true
+    },
+    {
+      "check": "undo w2: irreversible erasure refused (422)",
+      "detail": 422,
+      "pass": true
+    },
+    {
+      "check": "custom injection: oracle agrees and withdrawal propagates through the copy",
+      "detail": {
+        "a": "Withdrawn",
+        "b": "Withdrawn",
+        "n": "Current"
+      },
+      "pass": true
+    },
+    {
+      "check": "custom injection: equal-authority dispute abstains",
+      "detail": null,
+      "pass": true
+    },
+    {
+      "check": "custom injection: replacement cycle rejected (422)",
+      "detail": 422,
+      "pass": true
+    },
+    {
+      "check": "benchmark ran (warm store; non-deterministic; excluded from receipts)",
+      "detail": null,
+      "pass": true
+    },
+    {
+      "check": "http smoke: receipt issued over HTTP verifies over HTTP",
+      "detail": null,
+      "pass": true
+    },
+    {
+      "check": "http smoke: every request returned its expected status",
+      "detail": [],
+      "pass": true
+    },
+    {
+      "check": "http smoke: no Access-Control-* header on any response (same-origin only)",
+      "detail": null,
+      "pass": true
+    },
+    {
+      "check": "http smoke: 0 forbidden-pattern hits in non_nda HTTP bodies (page, API, errors)",
+      "detail": [],
+      "pass": true
+    }
+  ],
+  "checks_failed": [],
+  "checks_total": 38,
+  "deterministic": {
+    "actions": {
+      "inject": {
+        "cycle_status": 422,
+        "dispute_disputed_count": 2,
+        "states": {
+          "a": "Withdrawn",
+          "b": "Withdrawn",
+          "n": "Current"
+        }
+      },
+      "undo": [
+        {
+          "scenario": "w1",
+          "status": 200
+        },
+        {
+          "scenario": "w3",
+          "status": 200
+        },
+        {
+          "scenario": "w2",
+          "status": 422
+        }
+      ]
+    },
+    "error_and_leak_controls": {
+      "error_cases": [
+        {
+          "case": "unknown_scenario",
+          "expected": 422,
+          "status": 422
+        },
+        {
+          "case": "step_out_of_range",
+          "expected": 422,
+          "status": 422
+        },
+        {
+          "case": "bad_role",
+          "expected": 422,
+          "status": 422
+        },
+        {
+          "case": "nda_without_token",
+          "expected": 403,
+          "status": 403
+        },
+        {
+          "case": "unknown_path",
+          "expected": 404,
+          "status": 404
+        },
+        {
+          "case": "invalid_json",
+          "expected": 400,
+          "status": 400
+        },
+        {
+          "case": "oversize_body",
+          "expected": 413,
+          "status": 413
+        },
+        {
+          "case": "forbidden_user_text",
+          "expected": 422,
+          "status": 422
+        },
+        {
+          "case": "receipt_without_retraction",
+          "expected": 422,
+          "status": 422
+        }
+      ],
+      "seeded_leak_patterns_hit": 2,
+      "seeded_server_status": 500
+    },
+    "files_sha256": {
+      "demo_workbench/compliance_copilot.html": "00e43cdcaabedf2410d9c2a302e14e81a934a6fe43fe12680dd254199850a632",
+      "demo_workbench/compliance_copilot_engine.py": "b54dadb51e1f54576f39e22808fa9c7cd9209fe3de86bf62139eded10b13dfd0"
+    },
+    "forbidden_pattern_count": 56,
+    "http_smoke": {
+      "requests": [
+        {
+          "cors_headers": false,
+          "expected": 200,
+          "request": "GET /copilot",
+          "status": 200
+        },
+        {
+          "cors_headers": false,
+          "expected": 200,
+          "request": "GET /api/v2/copilot/health",
+          "status": 200
+        },
+        {
+          "cors_headers": false,
+          "expected": 200,
+          "request": "GET /api/v2/copilot/scenarios",
+          "status": 200
+        },
+        {
+          "cors_headers": false,
+          "expected": 200,
+          "request": "GET /api/v2/copilot/step",
+          "status": 200
+        },
+        {
+          "cors_headers": false,
+          "expected": 200,
+          "request": "GET /api/v2/copilot/step",
+          "status": 200
+        },
+        {
+          "cors_headers": false,
+          "expected": 200,
+          "request": "GET /api/v2/copilot/scoreboard",
+          "status": 200
+        },
+        {
+          "cors_headers": false,
+          "expected": 200,
+          "request": "POST /api/v2/copilot/receipt",
+          "status": 200
+        },
+        {
+          "cors_headers": false,
+          "expected": 200,
+          "request": "GET /api/v2/copilot/ledger",
+          "status": 200
+        },
+        {
+          "cors_headers": false,
+          "expected": 403,
+          "request": "GET /api/v2/copilot/step",
+          "status": 403
+        },
+        {
+          "cors_headers": false,
+          "expected": 200,
+          "request": "GET /api/v2/copilot/step",
+          "status": 200
+        },
+        {
+          "cors_headers": false,
+          "expected": 405,
+          "request": "OPTIONS /api/v2/copilot/step",
+          "status": 405
+        },
+        {
+          "cors_headers": false,
+          "expected": 404,
+          "request": "GET /api/v2/copilot/missing",
+          "status": 404
+        },
+        {
+          "cors_headers": false,
+          "expected": 200,
+          "request": "POST /api/v2/copilot/verify-receipt",
+          "status": 200
+        }
+      ],
+      "tier": "floor"
+    },
+    "nda_sweep": {
+      "gate_statuses": {
+        "no_token": 403,
+        "token_not_configured": 403,
+        "wrong_token": 403
+      },
+      "steps_total": 10,
+      "steps_with_internal_block": 10
+    },
+    "non_nda_sweep": {
+      "oracle": {
+        "mismatches": 0,
+        "nodes_checked": 178
+      },
+      "per_arm_totals_standard_role": {
+        "baseline_rag": {
+          "abstained": 0,
+          "correct": 9,
+          "forbidden_text": 18,
+          "judged": 12,
+          "stale_unflagged": 17
+        },
+        "lineage_control": {
+          "abstained": 1,
+          "correct": 12,
+          "forbidden_text": 0,
+          "judged": 12,
+          "stale_unflagged": 0
+        },
+        "overwrite_policy": {
+          "abstained": 0,
+          "correct": 10,
+          "forbidden_text": 19,
+          "judged": 12,
+          "stale_unflagged": 15
+        }
+      },
+      "responses_scanned": 20
+    },
+    "receipts": {
+      "head_hash": "820705ef47fc9f714ca171034bdfa4bd19820f8db528fbc1a25d0d893feafb77",
+      "ledger": {
+        "head_hash": "820705ef47fc9f714ca171034bdfa4bd19820f8db528fbc1a25d0d893feafb77",
+        "intact": true,
+        "length": 3
+      },
+      "receipts": [
+        {
+          "entry_hash": "a7e407c5a3886a7d735d1a373447a39ffffa6edd7e65d78e8631b2e0b00bd6b9",
+          "oracle_mismatches": 0,
+          "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "scenario": "w1",
+          "seq": 1,
+          "signature_b64": "n5W3G2eT6JBMdvbElXHNpTxJ7KZWU9g+clpzeuBAnH71mie4oEIS6AY7+XfKx9U1HXJWh1LOWabQvTmVzN4NCw==",
+          "step": 2,
+          "tombstone_count": 0,
+          "withdrawn_lineage": [
+            "w1_label",
+            "w1_pathway",
+            "w1_portal"
+          ]
+        },
+        {
+          "entry_hash": "746082f35b94c1988fabc05099911071d62c4b08477cb8bdce68c127bafe1db6",
+          "oracle_mismatches": 0,
+          "prev_hash": "a7e407c5a3886a7d735d1a373447a39ffffa6edd7e65d78e8631b2e0b00bd6b9",
+          "scenario": "w2",
+          "seq": 2,
+          "signature_b64": "6WVzEa6vKccjgr30YkdvLefAIyNBbVfHf450a/mtzFhiIZ6vJF/t2dowpK+/1NL/skP+z2ZJ33tzBHjDBE0SAA==",
+          "step": 2,
+          "tombstone_count": 3,
+          "withdrawn_lineage": [
+            "w2_profile",
+            "w2_summary",
+            "w2_ticket"
+          ]
+        },
+        {
+          "entry_hash": "820705ef47fc9f714ca171034bdfa4bd19820f8db528fbc1a25d0d893feafb77",
+          "oracle_mismatches": 0,
+          "prev_hash": "746082f35b94c1988fabc05099911071d62c4b08477cb8bdce68c127bafe1db6",
+          "scenario": "w3",
+          "seq": 3,
+          "signature_b64": "I15OMzRP+bl18JGliEXv9J7+Aj1Wsq0cyFuar2g5nPo8LBfomJGvtyniSwU7uIgfZgfCe+mTu3NZHuFqepexBA==",
+          "step": 2,
+          "tombstone_count": 0,
+          "withdrawn_lineage": [
+            "w3_10q",
+            "w3_deck",
+            "w3_note",
+            "w3_press"
+          ]
+        }
+      ],
+      "signing_key": {
+        "algorithm": "Ed25519",
+        "disclosure": "Runner-only fixed public test key so sealed receipts are reproducible; NOT the live server's ephemeral per-process key and carries no trust.",
+        "key_id": "b46071f35bb75f66",
+        "public_key_b64": "KMkePQc8+ssYEQjZKKHE8xFh+8h5v80eYutLxLmSCcY="
+      }
+    },
+    "retrieval": {
+      "dense_dim": 512,
+      "reader_policy": "One reader for all arms: take the best-ranked current record in the queried slot; otherwise the best-ranked current record about the same entity that carries a value; otherwise report no current evidence. Only the control plane may abstain (when the queried slot is in dispute).",
+      "rrf_k": 60,
+      "top_k": 5
+    },
+    "scenarios": {
+      "w1": {
+        "roles": [
+          "clinician",
+          "safety_investigator"
+        ],
+        "steps": 4,
+        "title": "Pediatric dose correction"
+      },
+      "w2": {
+        "roles": [
+          "support_agent",
+          "privacy_officer"
+        ],
+        "steps": 3,
+        "title": "Right-to-erasure order"
+      },
+      "w3": {
+        "roles": [
+          "analyst",
+          "compliance_auditor"
+        ],
+        "steps": 3,
+        "title": "Non-reliance and restatement"
+      }
+    },
+    "scoreboard": {
+      "arms": [
+        {
+          "arm_id": "baseline_rag",
+          "correct": 9,
+          "forbidden_text": 18,
+          "judged": 12,
+          "label": "Hybrid retrieval with delete-by-id",
+          "stale_unflagged": 17
+        },
+        {
+          "arm_id": "overwrite_policy",
+          "correct": 10,
+          "forbidden_text": 19,
+          "judged": 12,
+          "label": "Overwrite policy (emulation, not a live product)",
+          "stale_unflagged": 15
+        },
+        {
+          "arm_id": "lineage_control",
+          "correct": 12,
+          "forbidden_text": 0,
+          "judged": 12,
+          "label": "Chelated control plane",
+          "stale_unflagged": 0
+        }
+      ],
+      "cross_check": {
+        "mismatches": 0,
+        "nodes_checked": 89
+      }
+    }
+  },
+  "nondeterministic": {
+    "http_smoke_port_note": "ephemeral loopback port; not recorded",
+    "warm_benchmark": {
+      "deterministic": false,
+      "fixture_nodes_before": 11,
+      "full_fixture_rebuild_ms": 0.3405,
+      "incremental_update_ms": {
+        "p50": 0.0347,
+        "p95": 0.0378
+      },
+      "incremental_update_outer_ms": {
+        "p50": 0.0376,
+        "p95": 0.0409
+      },
+      "repeats": 30,
+      "scope": "Warm store, fixture-sized graph (tens of nodes), one child plus one retraction per repeat on one machine. It says nothing about production-scale graphs. The rebuild figure is shown separately and is not the update latency.",
+      "store_nodes_at_end": 71
+    }
+  },
+  "schema_version": "wave11_d8_copilot_manifest_v1",
+  "scratch": {
+    "contents": [
+      {
+        "bytes": 382384,
+        "file": "D:\\GITHUB\\CHELATEDAI-STAGE0-NIGHT1\\artifacts\\wave11_d8_compliance_copilot\\scratch\\raw_step_responses.json",
+        "sha256": "894fda3387019edd1ce6fc157af72f5187a805ee126a441ee21c0832954aebe3"
+      }
+    ],
+    "note": "Raw per-step responses; regenerable by re-running this script. Removal needs the full-path list, count and size shown to the owner first.",
+    "path": "D:\\GITHUB\\CHELATEDAI-STAGE0-NIGHT1\\artifacts\\wave11_d8_compliance_copilot\\scratch",
+    "removable": true,
+    "total_bytes": 382384
+  },
+  "smoke_tier": "floor",
+  "spec": "wave10-r1-synthesis-guardrails.md L3 (Compliance Copilot)"
+}

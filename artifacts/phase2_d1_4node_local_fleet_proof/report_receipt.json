@@ -1,0 +1,11 @@
+{
+  "artifact_hashes": {
+    "phase2_d1_4node_fleet_manifest.json": "ae356253d359a6d478fb9a4a5df4b2e11ff245298b86d946ca88c58cee5277d6",
+    "phase2_d1_4node_fleet_rows.csv": "c908d82f2a45bd0a666f7d5e118ab3f4fdf00772380ffe5b54b70b1de7abc3b5"
+  },
+  "bundle_id": "phase2_d1_4node_local_fleet_proof",
+  "git_sha": "0972b09f764873ec943b9fdd86382528881b8d04",
+  "manifest_file": "phase2_d1_4node_fleet_manifest.json",
+  "manifest_sha256": "ae356253d359a6d478fb9a4a5df4b2e11ff245298b86d946ca88c58cee5277d6",
+  "schema_version": "report_receipt_v4_0"
+}
