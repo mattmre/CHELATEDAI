@@ -220,10 +220,10 @@ def seal_receipts(svc: E.CopilotService, checks: Checks) -> Dict[str, Any]:
     checks.add("tamper case: edited payload rejected", not t_verdict["valid"] and not t_verdict["checks"]["hash_ok"], t_verdict["checks"])
     broken = copy.deepcopy(svc.ledger)
     broken[1]["payload"]["scenario_title"] = "edited"
-    saved = svc.ledger
-    svc.ledger = broken
+    saved = list(svc._ledgers["non_nda"])
+    svc._ledgers["non_nda"] = broken
     chain_broken = svc.verify_ledger()
-    svc.ledger = saved
+    svc._ledgers["non_nda"] = saved
     checks.add("tamper case: edited ledger entry breaks the chain at that seq", (not chain_broken["intact"]) and chain_broken["first_bad_seq"] == 2, chain_broken)
     floats = []
 
@@ -392,8 +392,8 @@ def main(argv: Optional[List[str]] = None) -> int:
          "where": f"demo_workbench/compliance_copilot_engine.py:{find_line(engine_path, 'def inject_evidence')}"},
         {"id": "L5", "what": "Smoke tier is FLOOR: real ThreadingHTTPServer on a loopback port plus in-process handler calls over synthetic fixtures. No ceiling-tier run against an external regulated corpus, a hardened deployment, or a trusted timestamp authority was performed.",
          "where": "scripts/run_wave11_d8_compliance_copilot.py:http_smoke"},
-        {"id": "L1", "what": "server.py forwarder is NOT wired by this slice (file ownership); the page is reachable only via the standalone server until the orchestrator adds the forwarder.",
-         "where": "demo_workbench/compliance_copilot_engine.py:handle_copilot_get"},
+        {"id": "L1", "what": "Integrated demo_workbench/server.py forwards /copilot and /api/v2/copilot/* and enforces Non-NDA-only responses under --public (403 on mode=nda even when a token is supplied).",
+         "where": "demo_workbench/server.py:dispatch_api_request"},
         {"id": "L4", "what": "NDA token is supplied by constructor argument or env CHELATED_COPILOT_NDA_TOKEN; the standalone CLI has no --nda-token flag.",
          "where": f"demo_workbench/compliance_copilot_engine.py:{find_line(engine_path, 'def main')}"},
     ]

@@ -235,12 +235,29 @@ class MeteredVllmOpenAIGenericClient(OpenAIGenericClient):
         props = schema.get("properties")
         return isinstance(props, dict) and len(props) == 0 and not schema.get("$defs")
 
+    @classmethod
+    def _cap_unbounded_arrays(cls, node: Any, max_items: int = 24) -> Any:
+        if isinstance(node, dict):
+            out = {k: cls._cap_unbounded_arrays(v, max_items) for k, v in node.items()}
+            if out.get("type") == "array" and "maxItems" not in out:
+                out["maxItems"] = max_items
+            return out
+        if isinstance(node, list):
+            return [cls._cap_unbounded_arrays(item, max_items) for item in node]
+        return node
+
     def _build_response_format(self, response_model: Optional[type[BaseModel]]) -> Dict[str, Any]:
         if response_model is None or self.structured_output_mode == "json_object":
             return {"type": "json_object"}
         if self._is_empty_object_model(response_model):
             return {"type": "json_object"}
-        return super()._build_response_format(response_model)
+        fmt = super()._build_response_format(response_model)
+        if fmt.get("type") == "json_schema" and isinstance(fmt.get("json_schema"), dict):
+            js = dict(fmt["json_schema"])
+            if "schema" in js:
+                js["schema"] = self._cap_unbounded_arrays(js["schema"], max_items=24)
+            return {**fmt, "json_schema": js}
+        return fmt
 
     def _append_schema(self, messages: Sequence[Message], response_model: Optional[type[BaseModel]]) -> None:
         if response_model is None or not messages:
@@ -317,6 +334,46 @@ class MeteredVllmOpenAIGenericClient(OpenAIGenericClient):
     def _copied_messages(messages: List[Dict[str, str]]) -> List[Dict[str, str]]:
         return [{"role": item["role"], "content": item["content"]} for item in messages]
 
+    @staticmethod
+    def _is_context_length_400(exc: BaseException) -> bool:
+        msg = str(exc).lower()
+        return any(
+            pat in msg
+            for pat in (
+                "maximum context length",
+                "context_length_exceeded",
+                "reduce the length",
+                "input_tokens",
+                "longer than the model",
+                "max_model_len",
+            )
+        )
+
+    @staticmethod
+    def _is_schema_unsupported_400(exc: BaseException) -> bool:
+        msg = str(exc).lower()
+        if MeteredVllmOpenAIGenericClient._is_context_length_400(exc):
+            return False
+        return any(
+            pat in msg
+            for pat in ("json_schema", "response_format", "guided_json", "structured", "grammar", "schema")
+        )
+
+    @staticmethod
+    def _trim_messages_for_context_overflow(
+        openai_messages: List[Dict[str, str]], target_char_reduction: int = 8000
+    ) -> List[Dict[str, str]]:
+        trimmed = MeteredVllmOpenAIGenericClient._copied_messages(openai_messages)
+        if not trimmed:
+            return trimmed
+        longest_idx = max(range(len(trimmed)), key=lambda i: len(trimmed[i]["content"]))
+        body = trimmed[longest_idx]["content"]
+        if len(body) > target_char_reduction + 2000:
+            keep_head = (len(body) - target_char_reduction) // 2
+            keep_tail = len(body) - target_char_reduction - keep_head
+            trimmed[longest_idx]["content"] = f"{body[:keep_head]}\n...[context-window-trimmed]...\n{body[-keep_tail:]}"
+        return trimmed
+
     async def _retry_after_validation_error(
         self,
         openai_messages: List[Dict[str, str]],
@@ -337,6 +394,7 @@ class MeteredVllmOpenAIGenericClient(OpenAIGenericClient):
         retry_messages = self._copied_messages(openai_messages)
         retry_messages[-1] = {"role": retry_messages[-1]["role"], "content": content}
         request_model = model or self.model or VLLM_MODEL
+        retry_extra = {"repetition_penalty": 1.05}
         try:
             retry_resp = await self.client.chat.completions.create(
                 model=request_model,
@@ -344,12 +402,25 @@ class MeteredVllmOpenAIGenericClient(OpenAIGenericClient):
                 temperature=0.0,
                 max_tokens=max_tokens,
                 response_format=retry_format,
+                extra_body=retry_extra,
             )
         except Exception as exc:
-            if (
+            if http_status(exc) == 400 and self._is_context_length_400(exc):
+                shrunk_tokens = max(512, min(max_tokens // 2, 1024))
+                shrunk_msgs = self._trim_messages_for_context_overflow(retry_messages, 8000)
+                retry_resp = await self.client.chat.completions.create(
+                    model=request_model,
+                    messages=shrunk_msgs,
+                    temperature=0.0,
+                    max_tokens=shrunk_tokens,
+                    response_format=retry_format,
+                    extra_body=retry_extra,
+                )
+            elif (
                 http_status(exc) == 400
                 and retry_format.get("type") == "json_schema"
                 and not self._schema_fallback_locked
+                and self._is_schema_unsupported_400(exc)
             ):
                 self.schema_fallback_count += 1
                 self.structured_output_mode = "json_object"
@@ -362,6 +433,7 @@ class MeteredVllmOpenAIGenericClient(OpenAIGenericClient):
                     temperature=0.0,
                     max_tokens=max_tokens,
                     response_format=retry_format,
+                    extra_body=retry_extra,
                 )
             else:
                 raise
@@ -373,7 +445,8 @@ class MeteredVllmOpenAIGenericClient(OpenAIGenericClient):
         parsed = json.loads(retry_repaired)
         if not isinstance(parsed, dict):
             raise RuntimeError(f"vLLM retry JSON object required, got {type(parsed).__name__}")
-        response_model.model_validate(parsed)
+        if not self._is_empty_object_model(response_model):
+            response_model.model_validate(parsed)
         return parsed
 
     async def _generate_response(
@@ -416,15 +489,39 @@ class MeteredVllmOpenAIGenericClient(OpenAIGenericClient):
                 response_format=req_format,
             )
         except Exception as exc:
-            if (
+            if http_status(exc) == 400 and self._is_context_length_400(exc):
+                shrunk_tokens = max(512, min(effective_max_tokens // 2, 1024))
+                try:
+                    response = await self.client.chat.completions.create(
+                        model=model or self.model or VLLM_MODEL,
+                        messages=openai_messages,
+                        temperature=0.0,
+                        max_tokens=shrunk_tokens,
+                        response_format=req_format,
+                    )
+                except Exception as exc2:
+                    if http_status(exc2) == 400 and self._is_context_length_400(exc2):
+                        shrunk_msgs = self._trim_messages_for_context_overflow(openai_messages, 8000)
+                        response = await self.client.chat.completions.create(
+                            model=model or self.model or VLLM_MODEL,
+                            messages=shrunk_msgs,
+                            temperature=0.0,
+                            max_tokens=shrunk_tokens,
+                            response_format=req_format,
+                        )
+                    else:
+                        raise
+            elif (
                 http_status(exc) == 400
                 and self.structured_output_mode == "json_schema"
                 and not self._schema_fallback_locked
+                and self._is_schema_unsupported_400(exc)
             ):
                 return await self._switch_to_json_object(
                     messages, response_model, effective_max_tokens, model_size, model
                 )
-            raise
+            else:
+                raise
         self._record_length_truncation(response)
         content = response.choices[0].message.content or ""
         if not str(content).strip():
@@ -439,57 +536,32 @@ class MeteredVllmOpenAIGenericClient(OpenAIGenericClient):
         except json.JSONDecodeError as exc:
             parse_error = exc
         object_ok = parse_error is None and isinstance(parsed, dict)
-        saw_schema_problem = (not object_ok) or n_rep > 0
         needs_validation_retry = False
-        if (
-            saw_schema_problem
-            and self.structured_output_mode == "json_schema"
-            and not self._schema_fallback_locked
-        ):
-            if object_ok:
-                self.schema_fallback_count += 1
-                self.structured_output_mode = "json_object"
-                if response_model is not None and not self._is_empty_object_model(response_model):
-                    try:
-                        response_model.model_validate(parsed)
-                    except ValidationError:
-                        logger.warning(
-                            "graphiti vLLM repaired JSON failed validation; retrying as json_object "
-                            "(schema_fallback_count=%s, json_repair_count=%s)",
-                            self.schema_fallback_count,
-                            self.json_repair_count,
-                        )
-                        needs_validation_retry = True
-                    else:
-                        logger.warning(
-                            "graphiti vLLM kept repaired JSON and locked json_object "
-                            "(schema_fallback_count=%s, json_repair_count=%s)",
-                            self.schema_fallback_count,
-                            self.json_repair_count,
-                        )
-                        return parsed
-                else:
-                    logger.warning(
-                        "graphiti vLLM kept repaired JSON and locked json_object "
-                        "(schema_fallback_count=%s, json_repair_count=%s)",
-                        self.schema_fallback_count,
-                        self.json_repair_count,
-                    )
-                    return parsed
-            else:
-                return await self._switch_to_json_object(
-                    messages, response_model, effective_max_tokens, model_size, model
+        if not object_ok:
+            if response_model is not None:
+                logger.warning(
+                    "graphiti vLLM output failed JSON object parse; retrying without dropping structured mode "
+                    "(mode=%s, length_truncation_count=%s, json_repair_count=%s)",
+                    self.structured_output_mode,
+                    self.length_truncation_count,
+                    self.json_repair_count,
                 )
-        if not needs_validation_retry:
-            if parse_error is not None:
+                needs_validation_retry = True
+            elif parse_error is not None:
                 raise parse_error
-            if not isinstance(parsed, dict):
+            else:
                 raise RuntimeError(f"vLLM JSON object required, got {type(parsed).__name__}")
-            if response_model is not None and not self._is_empty_object_model(response_model):
-                try:
-                    response_model.model_validate(parsed)
-                except ValidationError:
-                    needs_validation_retry = True
+        elif response_model is not None and not self._is_empty_object_model(response_model):
+            try:
+                response_model.model_validate(parsed)
+            except ValidationError:
+                logger.warning(
+                    "graphiti vLLM parsed JSON failed Pydantic validation; retrying "
+                    "(mode=%s, json_repair_count=%s)",
+                    self.structured_output_mode,
+                    self.json_repair_count,
+                )
+                needs_validation_retry = True
         if needs_validation_retry and response_model is not None:
             parsed = await self._retry_after_validation_error(
                 openai_messages,
@@ -1017,18 +1089,23 @@ def apply_horizon_grades(
     graded_settled: Mapping[str, Mapping[str, Any]],
     graded_delta0: Mapping[str, Mapping[str, Any]],
 ) -> Dict[str, Any]:
+    pre_existing_arm_failure = {arm: bool(slot.get("arm_failure")) for arm, slot in row["arms"].items()}
     for arm, grade in graded_settled.items():
         slot = row["arms"][arm]
         slot["judge_settled"] = dict(grade)
         slot["correct_settled"] = bool(grade.get("correct"))
         audit = slot.get("graph_audit_settled") or {}
-        if audit.get("status") == "ARM_FAILURE" or slot.get("arm_failure"):
+        if audit.get("status") == "ARM_FAILURE" or pre_existing_arm_failure.get(arm):
             slot["arm_failure"] = True
             slot["correct_settled"] = False
     for arm, grade in graded_delta0.items():
         slot = row["arms"][arm]
         slot["judge_delta0s"] = dict(grade)
         slot["correct_delta0s"] = bool(grade.get("correct"))
+        audit_d0 = slot.get("graph_audit_delta0") or {}
+        if audit_d0.get("status") == "ARM_FAILURE" or pre_existing_arm_failure.get(arm):
+            slot["arm_failure"] = True
+            slot["correct_delta0s"] = False
     return row
 
 
@@ -1044,18 +1121,30 @@ def _quantile(values: Sequence[float], q: float) -> Optional[float]:
     return float(np.quantile(np.asarray(values, dtype=np.float64), q))
 
 
+def _horizon_read_tokens(slot: Mapping[str, Any], horizon: str, kind: str) -> float:
+    key = f"read_{kind}_tokens_{'delta0s' if horizon == 'delta0' else 'settled'}"
+    if key in slot and slot[key] is not None:
+        return float(slot[key])
+    return float(slot.get(f"read_{kind}_tokens", 0.0))
+
+
 def summarize_suite_b(rows: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
     """Descriptive temporal accuracy and token burn. Not pooled with Suite A and not a Holm family."""
     arms: Dict[str, Any] = {}
     for arm in ARENA_ARMS:
+        failed_ids = [str(row.get("item_id", "")) for row in rows if row["arms"][arm].get("arm_failure")]
         arms[arm] = {
             "n": len(rows),
+            "arm_failure_count": len(failed_ids),
+            "arm_failure_item_ids": failed_ids,
             "temporal_accuracy_settled": _mean([1.0 if row["arms"][arm]["correct_settled"] else 0.0 for row in rows]),
             "temporal_accuracy_delta0s": _mean([1.0 if row["arms"][arm]["correct_delta0s"] else 0.0 for row in rows]),
             "mean_write_prompt_tokens": _mean([float(row["arms"][arm]["write_prompt_tokens"]) for row in rows]),
             "mean_write_completion_tokens": _mean([float(row["arms"][arm]["write_completion_tokens"]) for row in rows]),
-            "mean_read_prompt_tokens": _mean([float(row["arms"][arm]["read_prompt_tokens"]) for row in rows]),
-            "mean_read_completion_tokens": _mean([float(row["arms"][arm]["read_completion_tokens"]) for row in rows]),
+            "mean_read_prompt_tokens": _mean([_horizon_read_tokens(row["arms"][arm], "settled", "prompt") for row in rows]),
+            "mean_read_completion_tokens": _mean([_horizon_read_tokens(row["arms"][arm], "settled", "completion") for row in rows]),
+            "mean_read_prompt_tokens_delta0s": _mean([_horizon_read_tokens(row["arms"][arm], "delta0", "prompt") for row in rows]),
+            "mean_read_completion_tokens_delta0s": _mean([_horizon_read_tokens(row["arms"][arm], "delta0", "completion") for row in rows]),
         }
     return {
         "suite": "Suite_B_LongMemEval_S_Knowledge_Update_N20",
@@ -1148,10 +1237,18 @@ def suite_a_horizon_inference(
             "accuracy": _mean(list(score_maps[arm].values())),
             "write_ack_p50_ms": _quantile([float(row["arms"][arm]["write_ack_ms"]) for row in rows], 0.50),
             "consolidation_bg_mean_ms": _mean([float(row["arms"][arm]["consolidation_bg_ms"]) for row in rows]),
+            "end_to_end_write_plus_bg_mean_ms": _mean(
+                [float(row["arms"][arm]["write_ack_ms"]) + float(row["arms"][arm]["consolidation_bg_ms"]) for row in rows]
+            ),
+            "write_clock_disclosure": (
+                "write_ack_p50_ms measures post-extraction EK5+index ack; synchronous LLM claim extraction is reported in consolidation_bg_mean_ms and summed in end_to_end_write_plus_bg_mean_ms"
+                if arm == ARM_CHELATED
+                else "write_ack_p50_ms measures ingestion call return; consolidation_bg_mean_ms measures post-write settle wait"
+            ),
             "mean_write_prompt_tokens": _mean([float(row["arms"][arm]["write_prompt_tokens"]) for row in rows]),
             "mean_write_completion_tokens": _mean([float(row["arms"][arm]["write_completion_tokens"]) for row in rows]),
-            "mean_read_prompt_tokens": _mean([float(row["arms"][arm]["read_prompt_tokens"]) for row in rows]),
-            "mean_read_completion_tokens": _mean([float(row["arms"][arm]["read_completion_tokens"]) for row in rows]),
+            "mean_read_prompt_tokens": _mean([_horizon_read_tokens(row["arms"][arm], horizon, "prompt") for row in rows]),
+            "mean_read_completion_tokens": _mean([_horizon_read_tokens(row["arms"][arm], horizon, "completion") for row in rows]),
             "arm_failure_count": int(sum(1 for row in rows if row["arms"][arm].get("arm_failure"))),
         }
     return {

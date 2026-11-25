@@ -116,6 +116,14 @@ def docker_run_argv() -> List[str]:
     ]
 
 
+def redacted_docker_run_argv() -> List[str]:
+    """Redact ephemeral loopback Neo4j benchmark password before writing public manifests."""
+    return [
+        f"NEO4J_AUTH={NEO4J_USER}/<REDACTED>" if item.startswith("NEO4J_AUTH=") else item
+        for item in docker_run_argv()
+    ]
+
+
 def assert_docker_argv_safe(argv: Sequence[str]) -> None:
     if not argv or argv[0] != "docker":
         raise RuntimeError("refusing a non-docker argv")
@@ -237,6 +245,28 @@ def _apply_stale(slot: Dict[str, Any], stale_values: Sequence[str], horizon: str
         slot["stale_answer_settled"] = flags["stale_answer"]
 
 
+def _read_pair_per_horizon(
+    endpoint: str,
+    model: str,
+    system: str,
+    question: str,
+    delta0_context: str,
+    settled_context: str,
+) -> Tuple[str, str, int, int, int, int]:
+    user_delta0 = f"Records:\n{delta0_context}\n\nQuestion: {question}\nAnswer:"
+    user_settled = f"Records:\n{settled_context}\n\nQuestion: {question}\nAnswer:"
+    if delta0_context == settled_context:
+        answer, prompt, completion, _wall = call_nemotron_reader(endpoint, model, system, user_delta0, max_tokens=128)
+        return answer, answer, int(prompt), int(completion), int(prompt), int(completion)
+    answer_d, prompt_d, completion_d, _wall_d = call_nemotron_reader(
+        endpoint, model, system, user_delta0, max_tokens=128
+    )
+    answer_s, prompt_s, completion_s, _wall_s = call_nemotron_reader(
+        endpoint, model, system, user_settled, max_tokens=128
+    )
+    return answer_d, answer_s, int(prompt_d), int(completion_d), int(prompt_s), int(completion_s)
+
+
 def _read_pair(
     endpoint: str,
     model: str,
@@ -245,18 +275,10 @@ def _read_pair(
     delta0_context: str,
     settled_context: str,
 ) -> Tuple[str, str, int, int]:
-    user_delta0 = f"Records:\n{delta0_context}\n\nQuestion: {question}\nAnswer:"
-    user_settled = f"Records:\n{settled_context}\n\nQuestion: {question}\nAnswer:"
-    if delta0_context == settled_context:
-        answer, prompt, completion, _wall = call_nemotron_reader(endpoint, model, system, user_delta0, max_tokens=128)
-        return answer, answer, int(prompt), int(completion)
-    answer_d, prompt_d, completion_d, _wall_d = call_nemotron_reader(
-        endpoint, model, system, user_delta0, max_tokens=128
+    ans_d, ans_s, _pd, _cd, ps, cs = _read_pair_per_horizon(
+        endpoint, model, system, question, delta0_context, settled_context
     )
-    answer_s, prompt_s, completion_s, _wall_s = call_nemotron_reader(
-        endpoint, model, system, user_settled, max_tokens=128
-    )
-    return answer_d, answer_s, int(prompt_d) + int(prompt_s), int(completion_d) + int(completion_s)
+    return ans_d, ans_s, ps, cs
 
 
 def load_jsonl_rows(path: Path) -> List[Dict[str, Any]]:
@@ -354,7 +376,7 @@ def build_manifest(
         "http_publish": f"127.0.0.1:{NEO4J_HTTP_PORT}",
         "neo4j_image": NEO4J_IMAGE,
         "neo4j_database": COMMUNITY_DATABASE,
-        "docker_run_argv": docker_run_argv(),
+        "docker_run_argv": redacted_docker_run_argv(),
         "docker_rm_argv": list(DOCKER_RM_ARGV),
         "graphiti_core": GRAPHITI_VERSION,
         "mem0ai": MEM0_VERSION,
@@ -371,6 +393,7 @@ def build_manifest(
         "suite_a_n": SUITE_A_N,
         "suite_b_n": SUITE_B_N,
         "suite_b_pooled": False,
+        "suite_b_episode_granularity": "per_session_graphiti_8k_mem0_16k_standalone_retraction",
         "horizons": ["delta0", "settled"],
         "primary_score": "settled_accuracy",
         "n_bootstrap": N_BOOTSTRAP,
@@ -394,10 +417,17 @@ def emit_wave11_artifacts(output_dir: Path, manifest: Mapping[str, Any]) -> Dict
     output_dir.mkdir(parents=True, exist_ok=True)
     manifest_path = output_dir / "wave11_d7_zep_graphiti_manifest.json"
     digest = write_json_atomic(manifest_path, dict(manifest))
+    artifact_hashes: Dict[str, str] = {manifest_path.name: digest}
+    for sidecar_name in ("suite_a.jsonl", "suite_b.jsonl"):
+        sidecar_path = output_dir / sidecar_name
+        if sidecar_path.is_file():
+            artifact_hashes[sidecar_name] = hashlib.sha256(sidecar_path.read_bytes()).hexdigest()
     receipt = {
         "schema_version": "wave11_d7_live_zep_graphiti_receipt_v1",
+        "manifest_file": manifest_path.name,
         "manifest_path": str(manifest_path),
         "manifest_sha256": digest,
+        "artifact_hashes": artifact_hashes,
         "suite_a_n": SUITE_A_N,
         "suite_b_n": SUITE_B_N,
         "horizons": ["delta0", "settled"],
@@ -626,15 +656,19 @@ async def _graphiti_documents_slot(
     snap = llm.token_snapshot()
     delta0_ctx = str(raced["delta0"]["context"])
     settled_ctx = str(raced["settled"]["context"])
-    answer_d, answer_s, read_prompt, read_completion = _read_pair(
+    answer_d, answer_s, pd0, cd0, ps, cs = _read_pair_per_horizon(
         endpoint, model, reader_system, query, delta0_ctx, settled_ctx
     )
     slot["pred_delta0s"] = answer_d
     slot["pred"] = answer_s
     slot["write_prompt_tokens"] = int(snap["write_prompt_tokens"])
     slot["write_completion_tokens"] = int(snap["write_completion_tokens"])
-    slot["read_prompt_tokens"] = read_prompt
-    slot["read_completion_tokens"] = read_completion
+    slot["read_prompt_tokens"] = ps
+    slot["read_completion_tokens"] = cs
+    slot["read_prompt_tokens_delta0s"] = pd0
+    slot["read_completion_tokens_delta0s"] = cd0
+    slot["read_prompt_tokens_settled"] = ps
+    slot["read_completion_tokens_settled"] = cs
     slot["write_ack_ms"] = float(raced["write_ack_ms"])
     slot["consolidation_bg_ms"] = float(raced["consolidation_bg_ms"])
     slot["task_done_at_delta0"] = bool(raced["task_done_at_delta0"])
@@ -696,15 +730,19 @@ async def _mem0_texts_slot(
             close_live_mem0(memory, qpath)
     delta0_ctx = str(raced["delta0"])
     settled_ctx = str(raced["settled"])
-    answer_d, answer_s, read_prompt, read_completion = _read_pair(
+    answer_d, answer_s, pd0, cd0, ps, cs = _read_pair_per_horizon(
         endpoint, model, reader_system, query, delta0_ctx, settled_ctx
     )
     slot["pred_delta0s"] = answer_d
     slot["pred"] = answer_s
     slot["write_prompt_tokens"] = int(usage["write_prompt_tokens"])
     slot["write_completion_tokens"] = int(usage["write_completion_tokens"])
-    slot["read_prompt_tokens"] = read_prompt
-    slot["read_completion_tokens"] = read_completion
+    slot["read_prompt_tokens"] = ps
+    slot["read_completion_tokens"] = cs
+    slot["read_prompt_tokens_delta0s"] = pd0
+    slot["read_completion_tokens_delta0s"] = cd0
+    slot["read_prompt_tokens_settled"] = ps
+    slot["read_completion_tokens_settled"] = cs
     slot["write_ack_ms"] = float(raced["write_ack_ms"])
     slot["consolidation_bg_ms"] = float(raced["consolidation_bg_ms"])
     slot["task_done_at_delta0"] = bool(raced["task_done_at_delta0"])
@@ -725,6 +763,87 @@ def _message_episode_parts(message: Mapping[str, Any]) -> Tuple[str, str, str, f
     stamp = datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y/%m/%d %H:%M")
     body = f"[{stamp}] {message['role']}: {message['content']}"
     return (f"{message['session_id']}:{stamp}", body, "longmemeval", ts)
+
+
+def group_prior_messages_into_session_episodes(
+    prior: Sequence[Mapping[str, Any]],
+    *,
+    max_chars: int = 8000,
+) -> List[Dict[str, Any]]:
+    """Group ordered conversational turns by contiguous ``session_id`` (capped at ``max_chars``).
+
+    Preserves 100% of turns in chronological order and exact per-session ``reference_time``
+    without exploding a 50-session haystack into ~500 isolated single-turn episodes.
+    """
+    if max_chars < 256:
+        raise ValueError("max_chars must be >= 256")
+    episodes: List[Dict[str, Any]] = []
+    cur_sid: Optional[str] = None
+    cur_ts: float = 0.0
+    cur_lines: List[str] = []
+    cur_chars = 0
+    part_idx = 0
+
+    def _flush() -> None:
+        nonlocal cur_lines, cur_chars, part_idx
+        if not cur_lines or cur_sid is None:
+            return
+        from datetime import datetime, timezone
+
+        stamp = datetime.fromtimestamp(cur_ts, tz=timezone.utc).strftime("%Y/%m/%d %H:%M")
+        episodes.append(
+            {
+                "name": f"{cur_sid}:p{part_idx}:{stamp}",
+                "body": "\n".join(cur_lines),
+                "source": "longmemeval",
+                "ts": cur_ts,
+                "session_id": cur_sid,
+            }
+        )
+        cur_lines = []
+        cur_chars = 0
+        part_idx += 1
+
+    for message in prior:
+        sid = str(message["session_id"])
+        _name, line, _src, ts = _message_episode_parts(message)
+        if cur_sid is not None and sid != cur_sid:
+            _flush()
+            cur_sid = None
+            part_idx = 0
+        if cur_sid is None:
+            cur_sid = sid
+            cur_ts = ts
+        elif cur_lines and cur_chars + len(line) + 1 > max_chars:
+            _flush()
+            cur_ts = ts
+        cur_lines.append(line)
+        cur_chars += len(line) + (1 if len(cur_lines) > 1 else 0)
+    _flush()
+    return episodes
+
+
+def chunk_prior_message_lines(lines: Sequence[str], *, max_chars: int = 16000) -> List[str]:
+    """Pack dated conversational lines into chronological chunks without dropping or splitting turns."""
+    if max_chars < 256:
+        raise ValueError("max_chars must be >= 256")
+    chunks: List[str] = []
+    cur: List[str] = []
+    cur_len = 0
+    for line in lines:
+        if cur and cur_len + len(line) + 1 > max_chars:
+            chunks.append("\n".join(cur))
+            cur = []
+            cur_len = 0
+        cur.append(line)
+        cur_len += len(line) + (1 if len(cur) > 1 else 0)
+    if cur:
+        chunks.append("\n".join(cur))
+    return chunks
+
+
+def _session_episode_parts(ep: Mapping[str, Any]) -> Tuple[str, str, str, float]:
+    return (str(ep["name"]), str(ep["body"]), str(ep["source"]), float(ep["ts"]))
 
 
 async def run_suite_a_case(
@@ -845,6 +964,9 @@ async def run_suite_b_case(
     except Exception as exc:
         _mark_arm_failure(slot, exc)
     arms[ARM_CHELATED] = slot
+    prior_session_episodes = group_prior_messages_into_session_episodes(prior, max_chars=8000)
+    ret_name, ret_body, ret_src, ret_ts = _message_episode_parts(retraction)
+    retraction_episode = {"name": ret_name, "body": ret_body, "source": ret_src, "ts": ret_ts, "session_id": str(retraction["session_id"])}
     arms[ARM_GRAPHITI] = await _graphiti_documents_slot(
         stack["graphiti"],
         stack["driver"],
@@ -852,19 +974,20 @@ async def run_suite_b_case(
         gid=gid,
         query=query,
         stale_values=[],
-        prior=prior,
-        retraction=retraction,
-        body_of=_message_episode_parts,
+        prior=prior_session_episodes,
+        retraction=retraction_episode,
+        body_of=_session_episode_parts,
         endpoint=endpoint,
         model=model,
         reader_system=CONVERSATIONAL_READER_SYSTEM,
     )
-    retraction_body = _message_episode_parts(retraction)[1]
+    retraction_body = ret_body
+    prior_mem0_chunks = chunk_prior_message_lines([_message_episode_parts(message)[1] for message in prior], max_chars=16000)
     arms[ARM_MEM0] = await _mem0_texts_slot(
         gid=gid,
         query=query,
         stale_values=[],
-        prior_texts=[_message_episode_parts(message)[1] for message in prior],
+        prior_texts=prior_mem0_chunks,
         retraction_text=retraction_body,
         scratch_dir=scratch_dir,
         endpoint=endpoint,

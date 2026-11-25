@@ -234,24 +234,28 @@ def test_fenced_and_think_json_are_counted_and_not_recalled() -> None:
     fake.chat.completions.script.append(_Resp(fenced, _Usage(2, 2)))
     assert _generate(metered) == {"ok": True}
     assert metered.json_repair_count == 1
-    assert metered.schema_fallback_count == 1
+    assert metered.schema_fallback_count == 0
     assert len(fake.chat.completions.calls) == 1
-    assert metered.structured_output_mode == "json_object"
+    assert metered.structured_output_mode == "json_schema"
 
     fake2, metered2 = _client()
     think = '<think>secret</think>\n```json\n{"ok": true}\n```'
     fake2.chat.completions.script.append(_Resp(think, _Usage(2, 2)))
     assert _generate(metered2) == {"ok": True}
     assert metered2.json_repair_count == 2
-    assert metered2.schema_fallback_count == 1
+    assert metered2.schema_fallback_count == 0
+    assert metered2.structured_output_mode == "json_schema"
     assert len(fake2.chat.completions.calls) == 1
 
 
 def test_reset_keeps_schema_counts_and_refuses_other_base_urls() -> None:
     fake, metered = _client()
-    fake.chat.completions.script.append(_Resp('```json\n{"ok": true}\n```', _Usage(3, 1)))
+    fake.chat.completions.script.extend(
+        [_HTTP400(), _Resp('```json\n{"ok": true}\n```', _Usage(3, 1))]
+    )
     _generate(metered)
     assert metered.schema_fallback_count == 1
+    assert metered.json_repair_count == 1
     metered.reset_counters(phase="write")
     assert metered.schema_fallback_count == 1
     assert metered.json_repair_count == 1
@@ -940,11 +944,52 @@ def test_complete_checkpoint_emits_receipt_without_docker(tmp_path: Path, monkey
     assert receipt["suite_a_n"] == 60
 
 
-def test_repaired_wrong_fields_retry_as_json_object_with_schema() -> None:
-    fake, metered = _client()
+def test_repaired_wrong_fields_retry_and_array_maxitems_cap() -> None:
+    class _ArrModel(BaseModel):
+        episode_indices: List[int]
+
+    fake_arr, metered_arr = _client()
+    rf = metered_arr._build_response_format(_ArrModel)
+    assert rf["type"] == "json_schema"
+    assert rf["json_schema"]["schema"]["properties"]["episode_indices"]["maxItems"] == 24
+
+    # In json_schema mode, repaired wrong-field JSON validates, fails, and retries while preserving json_schema
+    fake_js, metered_js = _client()
     fenced = '```json\n{"wrong": 1}\n```'
+    fake_js.chat.completions.script.extend(
+        [
+            _Resp(fenced, _Usage(4, 2)),
+            _Resp('{"ok": true}', _Usage(5, 1)),
+        ]
+    )
+    assert _generate(metered_js) == {"ok": True}
+    assert metered_js.structured_output_mode == "json_schema"
+    assert metered_js.validation_retry_count == 1
+    assert metered_js.schema_fallback_count == 0
+    assert metered_js.json_repair_count == 1
+    assert fake_js.chat.completions.calls[1]["response_format"]["type"] == "json_schema"
+    assert fake_js.chat.completions.calls[1]["extra_body"]["repetition_penalty"] == 1.05
+
+    # Length-truncated unparseable JSON retries in json_schema mode instead of globally dropping to json_object
+    fake_tr, metered_tr = _client()
+    fake_tr.chat.completions.script.extend(
+        [
+            _Resp('{"ok": ', _Usage(4, 2), finish_reason="length"),
+            _Resp('{"ok": true}', _Usage(5, 1), finish_reason="stop"),
+        ]
+    )
+    assert _generate(metered_tr) == {"ok": True}
+    assert metered_tr.structured_output_mode == "json_schema"
+    assert metered_tr.schema_fallback_count == 0
+    assert metered_tr.length_truncation_count == 1
+    assert metered_tr.validation_retry_count == 1
+    assert fake_tr.chat.completions.calls[1]["response_format"]["type"] == "json_schema"
+
+    # After HTTP 400 fallback to json_object, repaired wrong-field JSON injects model_json_schema() on retry
+    fake, metered = _client()
     fake.chat.completions.script.extend(
         [
+            _HTTP400(),
             _Resp(fenced, _Usage(4, 2)),
             _Resp('{"ok": true}', _Usage(5, 1)),
         ]
@@ -954,13 +999,12 @@ def test_repaired_wrong_fields_retry_as_json_object_with_schema() -> None:
     assert metered.validation_retry_count == 1
     assert metered.schema_fallback_count == 1
     assert metered.json_repair_count == 1
-    assert len(fake.chat.completions.calls) == 2
+    assert len(fake.chat.completions.calls) == 3
     assert fake.chat.completions.calls[0]["response_format"]["type"] == "json_schema"
     assert fake.chat.completions.calls[1]["response_format"] == {"type": "json_object"}
+    assert fake.chat.completions.calls[2]["response_format"] == {"type": "json_object"}
     schema_text = json.dumps(_OkModel.model_json_schema())
-    initial = fake.chat.completions.calls[0]["messages"][-1]["content"]
-    retry_content = fake.chat.completions.calls[1]["messages"][-1]["content"]
-    assert schema_text not in initial
+    retry_content = fake.chat.completions.calls[2]["messages"][-1]["content"]
     assert schema_text in retry_content
     assert "never output '$defs'" in retry_content
     assert "NOT the JSON Schema" in retry_content
@@ -1053,6 +1097,29 @@ def test_validation_retry_http_400_switches_to_json_object_with_schema() -> None
     assert schema_text not in first_retry
     assert schema_text in fallback
     assert "never output '$defs'" in fallback
+
+
+def test_suite_b_session_episode_grouping_preserves_all_turns_and_timestamps() -> None:
+    prior = [
+        {"session_id": "s1", "role": "user", "content": "hello there", "ts": 1700000000.0},
+        {"session_id": "s1", "role": "assistant", "content": "hi user", "ts": 1700000000.001},
+        {"session_id": "echo_sess_0", "role": "user", "content": "echo fact", "ts": 1700003600.0},
+        {"session_id": "s2", "role": "user", "content": "a" * 300, "ts": 1700086400.0},
+        {"session_id": "s2", "role": "assistant", "content": "b" * 300, "ts": 1700086400.001},
+    ]
+    grouped = runner.group_prior_messages_into_session_episodes(prior, max_chars=450)
+    # s1 grouped into 1 episode; echo_sess_0 stays separate; s2 splits cleanly across 2 parts (< 450 chars)
+    assert [g["session_id"] for g in grouped] == ["s1", "echo_sess_0", "s2", "s2"]
+    assert grouped[0]["ts"] == 1700000000.0
+    assert grouped[1]["ts"] == 1700003600.0
+    assert grouped[2]["ts"] == 1700086400.0
+    reconstructed = "\n".join(g["body"] for g in grouped)
+    expected_lines = [runner._message_episode_parts(m)[1] for m in prior]
+    assert reconstructed == "\n".join(expected_lines)
+
+    chunks = runner.chunk_prior_message_lines(expected_lines, max_chars=500)
+    assert "\n".join(chunks) == "\n".join(expected_lines)
+    assert len(chunks) == 2
 
 
 def test_owned_sources_have_no_silent_except_pass() -> None:

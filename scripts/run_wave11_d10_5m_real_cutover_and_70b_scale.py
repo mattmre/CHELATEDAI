@@ -14,7 +14,7 @@ Enforces every Wave-10 Panel-of-Experts `L5` guardrail (`Fable 5.2`, `Carbon 4`,
        chunks (`0` full-matrix float64 allocation!).
      - Exact binary ratios: `8 B/doc` sidecar vs `1024-d` float32 (`4,096 B/doc` = `512.0x` exact)
        and `4096-d` float32 (`16,384 B/doc` = `2,048.0x` exact).
-     - Explicit FAISS index factory disclosure (`IndexHNSWSQ` `QT_fp16` `M=16` `METRIC_INNER_PRODUCT`),
+     - Explicit FAISS index factory disclosure (`IndexHNSWSQ` `QT_fp16` `M=32` `efSearch=512` `METRIC_INNER_PRODUCT`),
        sampled exact-Flat recall verification, peak RSS gate (`<= 44 GiB`), `EK5 v3` packed epoch
        admission fence (`0.00%` stale resurrection), and `del` + `malloc_trim(0)` cleanup.
   3. Single-Locked `unsloth/Llama-3.3-70B-Instruct-bnb-4bit` (`4-bit NF4` Disclosed Everywhere):
@@ -233,6 +233,24 @@ def mem_available_gib() -> float:
                     raise ValueError(f"Unexpected MemAvailable unit: {unit!r}")
                 return int(kib) / (1024 ** 2)
     raise RuntimeError("MemAvailable is missing from /proc/meminfo")
+
+
+def _resolve_hf_device_map(required_gib: float) -> Any:
+    """Place directly on `cuda:0` on Linux UMA (DGX Spark GB10) when `/proc/meminfo` `MemAvailable`
+    suffices, avoiding `accelerate` `device_map='auto'` false disk offload caused by file page cache.
+    """
+    meminfo = Path("/proc/meminfo")
+    if sys.platform.startswith("linux") and meminfo.is_file():
+        try:
+            for line in meminfo.read_text(encoding="utf-8").splitlines():
+                if line.startswith("MemAvailable:"):
+                    kib = int(line.split()[1])
+                    if (kib / (1024 ** 2)) >= float(required_gib):
+                        return {"": 0}
+                    break
+        except OSError:
+            pass
+    return "auto"
 
 
 def rss_gib() -> float:
@@ -983,14 +1001,14 @@ def cmd_run_part_a_cutover(args: argparse.Namespace) -> None:
     nat_mu_d, nat_norms_f32, nat_rd_f32 = compute_chunked_zeromu_csls_sidecar(nat_mm, q_dev_1024)
     sidecar_build_s = time.perf_counter() - t_sc
 
-    # 6. Build FAISS `IndexHNSWSQ(d, QT_fp16, M=16, METRIC_INNER_PRODUCT)` on BOTH standalone 8.84M MSMARCO & 9.47M Merged!
+    # 6. Build FAISS `IndexHNSWSQ(d, QT_fp16, M=32, METRIC_INNER_PRODUCT)` on BOTH standalone 8.84M MSMARCO & 9.47M Merged!
     faiss.omp_set_num_threads(min(16, os.cpu_count() or 8))
-    faiss_factory_desc = "IndexHNSWSQ(QT_fp16, M=16, efConstruction=64, efSearch=128, METRIC_INNER_PRODUCT)"
+    faiss_factory_desc = "IndexHNSWSQ(QT_fp16, M=32, efConstruction=128, efSearch=512, METRIC_INNER_PRODUCT)"
 
     def _build_hnsw_sq_fp16(mm_src: np.ndarray, n_rows: int, dim: int) -> Any:
-        idx = faiss.IndexHNSWSQ(dim, faiss.ScalarQuantizer.QT_fp16, 16, faiss.METRIC_INNER_PRODUCT)
-        idx.hnsw.efConstruction = 64
-        idx.hnsw.efSearch = 128
+        idx = faiss.IndexHNSWSQ(dim, faiss.ScalarQuantizer.QT_fp16, 32, faiss.METRIC_INNER_PRODUCT)
+        idx.hnsw.efConstruction = 128
+        idx.hnsw.efSearch = 512
         # Train SQ fp16 (trivial min/max) on first chunk
         train_slice = np.asarray(mm_src[: min(n_rows, CHUNK_ROWS)], dtype=np.float32)
         idx.train(train_slice)
@@ -1222,7 +1240,9 @@ def cmd_run_part_a_cutover(args: argparse.Namespace) -> None:
         require_fenced_top10(oracle_hits, qid)
         admitted_recalls.append(len(set(fnc).intersection(oracle_hits)) / 10.0)
     fenced_admitted_recall_at_10 = float(np.mean(admitted_recalls))
-    assert fenced_admitted_recall_at_10 > 0.0, "Fenced ANN returned no exact admitted top-10 hits in the oracle sample"
+    assert fenced_admitted_recall_at_10 >= FLAT_ORACLE_RECALL_FLOOR, (
+        f"Fenced ANN recall@10 {fenced_admitted_recall_at_10:.4f} is below {FLAT_ORACLE_RECALL_FLOOR}"
+    )
 
     # Release FAISS native heap (`L5`)
     del idx_leg, idx_nat, leg_mm, nat_mm
@@ -1466,7 +1486,7 @@ def cmd_run_part_b_70b_sweep(args: argparse.Namespace) -> None:
         if tok.pad_token_id is None:
             tok.pad_token = tok.eos_token
         _dt_kw = {"dtype": torch.bfloat16} if _tf_major >= 5 else {"torch_dtype": torch.bfloat16}
-        mdl = AutoModelForCausalLM.from_pretrained(model_repo, device_map="auto", **_dt_kw)
+        mdl = AutoModelForCausalLM.from_pretrained(model_repo, device_map=_resolve_hf_device_map(18.0), **_dt_kw)
         mdl.eval()
         n_params = sum(int(p.numel()) for p in mdl.parameters())
         preds, lat_ms = _suite_a_reader_predictions(
@@ -1533,7 +1553,7 @@ def cmd_run_part_b_70b_sweep(args: argparse.Namespace) -> None:
         )
         tok = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-7B-Instruct")
         dtype_kw = {"dtype": torch.bfloat16} if _tf_major >= 5 else {"torch_dtype": torch.bfloat16}
-        model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen2.5-7B-Instruct", device_map="auto", **dtype_kw)
+        model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen2.5-7B-Instruct", device_map=_resolve_hf_device_map(18.0), **dtype_kw)
         model.eval()
 
         def _qwen_judge_fn(system_prompt: str, user_prompt: str) -> str:
@@ -1586,6 +1606,13 @@ def cmd_run_part_b_70b_sweep(args: argparse.Namespace) -> None:
                 )
                 for arm, grade in grades.items():
                     scores[arm][cid] = float(grade["correct"])
+        judge_qwen = None
+        _qwen_judge_fn = None
+        model = None
+        tok = None
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        release_native_heap()
 
     # Finish and grade the smaller arms before risking the 70B CUDA context.
     _grade_arms(
@@ -1596,13 +1623,78 @@ def cmd_run_part_b_70b_sweep(args: argparse.Namespace) -> None:
     torch.cuda.empty_cache()
 
     def _eval_70b_readers() -> Tuple[Dict[str, Dict[str, str]], Dict[str, Any]]:
+        dmap = _resolve_hf_device_map(42.0)
+        if dmap != "auto" and os.environ.get("CHELATED_70B_SUBPROCESS", "1") == "1":
+            import subprocess as _sp
+            import tempfile as _tf_mod
+
+            with _tf_mod.TemporaryDirectory(prefix="d10_70b_sub_") as sub_dir:
+                in_json = Path(sub_dir) / "in.json"
+                out_json = Path(sub_dir) / "out.json"
+                in_json.write_text(
+                    json.dumps(
+                        {
+                            "model_id": LOCKED_70B_MODEL_ID,
+                            "cases": list(cases),
+                            "bare_k5_ctx": dict(bare_k5_ctx),
+                            "bare_k17_ctx": dict(bare_k17_ctx),
+                            "chelated_ctx": dict(chelated_ctx),
+                            "chelated_decisions": dict(chelated_decisions),
+                            "nemotron_extract_mean_ms_per_case": float(nemotron_extract_mean_ms_per_case),
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                worker_code = (
+                    "import json, os, sys, time, numpy as np, torch, transformers as tf\n"
+                    "os.environ['HF_DEACTIVATE_ASYNC_LOAD'] = '1'\n"
+                    "sys.path.insert(0, os.getcwd())\n"
+                    "from scripts.run_wave11_d10_5m_real_cutover_and_70b_scale import _suite_a_reader_predictions, GIB, "
+                    "BARE_70B_K5_ARM, BARE_70B_K17_ARM, CHELATED_70B_ARM\n"
+                    "from transformers import AutoModelForCausalLM, AutoTokenizer\n"
+                    "d = json.loads(open(sys.argv[1], encoding='utf-8').read())\n"
+                    "torch.cuda.reset_peak_memory_stats()\n"
+                    "tok = AutoTokenizer.from_pretrained(d['model_id'])\n"
+                    "if tok.pad_token_id is None: tok.pad_token = tok.eos_token\n"
+                    "t0 = time.perf_counter()\n"
+                    "dt_kw = {'dtype': torch.bfloat16} if int(str(tf.__version__).split('.')[0]) >= 5 else {'torch_dtype': torch.bfloat16}\n"
+                    "mdl = AutoModelForCausalLM.from_pretrained(d['model_id'], device_map={'': 0}, low_cpu_mem_usage=True, **dt_kw)\n"
+                    "mdl.eval()\n"
+                    "load_s = time.perf_counter() - t0\n"
+                    "preds, mean_lat = {}, {}\n"
+                    "for arm, cmap, dec in ((BARE_70B_K5_ARM, d['bare_k5_ctx'], None), "
+                    "(BARE_70B_K17_ARM, d['bare_k17_ctx'], None), (CHELATED_70B_ARM, d['chelated_ctx'], d['chelated_decisions'])):\n"
+                    "    print(f'[D10-B-sub] Evaluating {arm}...', flush=True)\n"
+                    "    p, lms = _suite_a_reader_predictions(d['cases'], cmap, tok, mdl, torch.inference_mode, gated_decisions=dec)\n"
+                    "    preds[arm] = p; mean_lat[arm] = float(np.mean(lms))\n"
+                    "peak_gib = float(torch.cuda.max_memory_allocated()) / GIB\n"
+                    "open(sys.argv[2], 'w', encoding='utf-8').write(json.dumps({'preds': preds, 'meta': {"
+                    "'load_seconds': round(load_s, 2), 'peak_cuda_allocated_gib': round(peak_gib, 3), "
+                    "'mean_query_ms_k5': round(mean_lat[BARE_70B_K5_ARM], 2), "
+                    "'mean_query_ms_k17': round(mean_lat[BARE_70B_K17_ARM], 2), "
+                    "'mean_query_ms_chelated': round(mean_lat[CHELATED_70B_ARM], 2), "
+                    "'mean_reader_plus_extraction_ms_per_case_chelated': round(mean_lat[CHELATED_70B_ARM] + d['nemotron_extract_mean_ms_per_case'], 2)}}))\n"
+                )
+                proc = _sp.run([sys.executable, "-u", "-c", worker_code, str(in_json), str(out_json)], check=False)
+                if proc.returncode != 0 or not out_json.is_file():
+                    raise MemoryError(
+                        f"CUDA out of memory / Linux UMA OOM killer (subprocess rc={proc.returncode}) loading {LOCKED_70B_MODEL_ID}"
+                    )
+                res_obj = json.loads(out_json.read_text(encoding="utf-8"))
+                return res_obj["preds"], res_obj["meta"]
+
         if torch.cuda.is_available():
             torch.cuda.reset_peak_memory_stats()
         tok = AutoTokenizer.from_pretrained(LOCKED_70B_MODEL_ID)
         if tok.pad_token_id is None:
             tok.pad_token = tok.eos_token
         t_load = time.perf_counter()
-        model = AutoModelForCausalLM.from_pretrained(LOCKED_70B_MODEL_ID, device_map="auto")
+        _70b_kw: Dict[str, Any] = {"device_map": dmap}
+        if dmap != "auto":
+            os.environ.setdefault("HF_DEACTIVATE_ASYNC_LOAD", "1")
+            _70b_kw["low_cpu_mem_usage"] = True
+            _70b_kw.update({"dtype": torch.bfloat16} if _tf_major >= 5 else {"torch_dtype": torch.bfloat16})
+        model = AutoModelForCausalLM.from_pretrained(LOCKED_70B_MODEL_ID, **_70b_kw)
         model.eval()
         load_seconds = time.perf_counter() - t_load
         preds = {}
@@ -1618,6 +1710,10 @@ def cmd_run_part_b_70b_sweep(args: argparse.Namespace) -> None:
             )
             mean_lat_ms[arm] = float(np.mean(lat_ms))
         peak_cuda_gib = float(torch.cuda.max_memory_allocated()) / GIB if torch.cuda.is_available() else 0.0
+        del model, tok
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        release_native_heap()
         return preds, {
             "load_seconds": round(load_seconds, 2),
             "peak_cuda_allocated_gib": round(peak_cuda_gib, 3),
@@ -1804,14 +1900,70 @@ def _write_summary_bytes_atomic(path: Path, data: bytes) -> None:
             tmp_path.unlink(missing_ok=True)
 
 
+def compute_part_a_multiplicity_and_loss_disclosure(part_a: Mapping[str, Any]) -> Dict[str, Any]:
+    """Compute Holm-Bonferroni step-down across all Part A domain x challenger contrasts and surface all Chelated losses."""
+    raw_p: Dict[str, float] = {}
+    losses: List[Dict[str, Any]] = []
+    dom_res = part_a.get("evaluations_by_corpus") or part_a.get("domain_evaluation_results") or {}
+    for dom_name, dom_block in sorted(dom_res.items()):
+        contrasts = (dom_block or {}).get("contrasts") or {}
+        for cname, cstats in sorted(contrasts.items()):
+            key = f"{dom_name}::{cname}"
+            if isinstance(cstats, Mapping) and "p_value_two_sided" in cstats:
+                raw_p[key] = float(cstats["p_value_two_sided"])
+                delta = float(cstats.get("mean_delta", 0.0))
+                ci_lo = float(cstats.get("lcb_975", cstats.get("ci95_low", 0.0)))
+                ci_hi = float(cstats.get("ucb_975", cstats.get("ci95_high", 0.0)))
+                if delta < 0.0:
+                    losses.append(
+                        {
+                            "contrast": key,
+                            "mean_delta_ndcg_at_10": round(delta, 5),
+                            "ci95_low": round(ci_lo, 5),
+                            "ci95_high": round(ci_hi, 5),
+                            "statistically_significant_loss": bool(ci_hi < 0.0),
+                        }
+                    )
+        rec = (dom_block or {}).get("means_recall_at_10") or {}
+        chel_r = rec.get("Chelated_ZeroMu_CSLS_8B")
+        if chel_r is not None:
+            for other_arm, other_r in sorted(rec.items()):
+                if other_arm != "Chelated_ZeroMu_CSLS_8B" and float(other_r) > float(chel_r):
+                    losses.append(
+                        {
+                            "contrast": f"{dom_name}::recall_at_10_vs_{other_arm}",
+                            "chelated_recall_at_10": round(float(chel_r), 5),
+                            "challenger_recall_at_10": round(float(other_r), 5),
+                            "mean_delta_recall_at_10": round(float(chel_r) - float(other_r), 5),
+                        }
+                    )
+    holm = holm_bonferroni_stepdown(raw_p) if raw_p else {}
+    for row in losses:
+        cname = row.get("contrast", "")
+        if cname in holm and row.get("mean_delta_ndcg_at_10", 0.0) < 0.0:
+            row["holm_adjusted_p"] = float(holm[cname]["holm_adjusted_p"])
+            row["statistically_significant_holm_005_loss"] = bool(holm[cname]["reject_null_at_alpha"])
+    return {
+        "n_contrasts_in_family": len(raw_p),
+        "holm_bonferroni_24_contrasts": holm,
+        "disclosed_chelated_point_or_ci_losses": losses,
+    }
+
+
 def cmd_assemble_manifest(args: argparse.Namespace) -> None:
     out_dir = Path(args.output_dir)
-    part_a_path = Path(args.part_a_json)
-    part_b_path = Path(args.part_b_json)
+    part_a_path = Path(args.part_a_json) if args.part_a_json else (out_dir / PART_A_SUMMARY)
+    part_b_path = Path(args.part_b_json) if args.part_b_json else (out_dir / PART_B_SUMMARY)
     part_a_bytes = part_a_path.read_bytes()
     part_b_bytes = part_b_path.read_bytes()
     part_a = json.loads(part_a_bytes)
     part_b = json.loads(part_b_bytes)
+    fence_block = part_a.get("retraction_fence_9_47m_proof") or part_a.get("ek5_retraction_fence_9_47m")
+    if isinstance(fence_block, Mapping) and "fenced_admitted_recall_at_10" in fence_block:
+        fenced_rec = float(fence_block.get("fenced_admitted_recall_at_10", 0.0))
+        if fenced_rec < FLAT_ORACLE_RECALL_FLOOR:
+            raise RuntimeError(f"Part A fenced_admitted_recall_at_10 {fenced_rec:.4f} < {FLAT_ORACLE_RECALL_FLOOR}")
+    part_a_multiplicity = compute_part_a_multiplicity_and_loss_disclosure(part_a)
     input_part_a_sha256 = sha256_bytes(part_a_bytes)
     input_part_b_sha256 = sha256_bytes(part_b_bytes)
     input_hashes = {
@@ -1843,6 +1995,7 @@ def cmd_assemble_manifest(args: argparse.Namespace) -> None:
             "quantization_disclosure": LOCKED_70B_QUANT_DISCLOSURE,
         },
         **input_hashes,
+        "part_a_multiplicity_and_loss_disclosure": part_a_multiplicity,
         "part_a_real_corpus_cutover": part_a,
         "part_b_70b_frontier_scale_sweep": part_b,
     }
@@ -1850,6 +2003,8 @@ def cmd_assemble_manifest(args: argparse.Namespace) -> None:
     m_sha = write_json_atomic(mpath, manifest)
 
     receipt = {
+        "schema_version": "report_receipt_v4_0",
+        "status": "COMPLETED",
         "bundle_id": "wave11_d10_5m_real_cutover_and_70b_scale",
         "manifest_file": mpath.name,
         "manifest_sha256": m_sha,

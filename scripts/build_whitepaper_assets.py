@@ -363,6 +363,73 @@ def extract_key_metrics(bundles_by_id: Dict[str, Dict[str, Any]]) -> Dict[str, A
             "ek5_v3_retraction_and_epoch_pinned_fence": m.get("ek5_v3_retraction_and_epoch_pinned_fence"),
         }
 
+    if "wave11_d6_opensearch_pgvector_qdrant" in bundles_by_id and bundles_by_id["wave11_d6_opensearch_pgvector_qdrant"]["present"]:
+        m = bundles_by_id["wave11_d6_opensearch_pgvector_qdrant"]["_manifest_obj"]
+        obs["wave11_d6_opensearch_pgvector_qdrant"] = {
+            "wall_seconds": m.get("wall_seconds"),
+            "status": m.get("status"),
+            "failed_gates": m.get("failed_gates"),
+            "shortlist_policy": m.get("shortlist_policy"),
+        }
+
+    if "wave11_d7_live_zep_graphiti_arena" in bundles_by_id and bundles_by_id["wave11_d7_live_zep_graphiti_arena"]["present"]:
+        m = bundles_by_id["wave11_d7_live_zep_graphiti_arena"]["_manifest_obj"]
+        settled = (m.get("suite_a_inference") or {}).get("settled") or {}
+        obs["wave11_d7_live_zep_graphiti_arena"] = {
+            "evidence_tier": m.get("evidence_tier"),
+            "suite_a_settled_arms": settled.get("arms"),
+            "suite_a_settled_holm": settled.get("holm_bonferroni"),
+            "suite_b_descriptive": m.get("suite_b_descriptive"),
+        }
+
+    if "wave11_d8_compliance_copilot" in bundles_by_id and bundles_by_id["wave11_d8_compliance_copilot"]["present"]:
+        m = bundles_by_id["wave11_d8_compliance_copilot"]["_manifest_obj"]
+        det = m.get("deterministic") or {}
+        obs["wave11_d8_compliance_copilot"] = {
+            "all_checks_pass": m.get("all_checks_pass"),
+            "checks_total": m.get("checks_total"),
+            "forbidden_pattern_count": det.get("forbidden_pattern_count"),
+            "scoreboard": det.get("scoreboard"),
+            "ledger": (det.get("receipts") or {}).get("ledger"),
+        }
+
+    if "wave11_d9_fast_extractor_and_u_grpo" in bundles_by_id and bundles_by_id["wave11_d9_fast_extractor_and_u_grpo"]["present"]:
+        m = bundles_by_id["wave11_d9_fast_extractor_and_u_grpo"]["_manifest_obj"]
+        obs["wave11_d9_fast_extractor_and_u_grpo"] = {
+            "part_a_suite_a_n60": (m.get("part_a_fast_edge_extractor") or {}).get("suite_a_evaluation_n60"),
+            "part_a_gate_diagnostics": m.get("part_a_gate_diagnostics"),
+            "part_b_hypothesis_summary": m.get("part_b_hypothesis_summary"),
+        }
+
+    if "wave11_d10_5m_real_cutover_and_70b_scale" in bundles_by_id and bundles_by_id["wave11_d10_5m_real_cutover_and_70b_scale"]["present"]:
+        m = bundles_by_id["wave11_d10_5m_real_cutover_and_70b_scale"]["_manifest_obj"]
+        pa = m.get("part_a_real_corpus_cutover") or {}
+        pb = m.get("part_b_70b_frontier_scale_sweep") or {}
+        obs["wave11_d10_5m_real_cutover_and_70b_scale"] = {
+            "wall_seconds": m.get("wall_seconds"),
+            "part_a_total_real_documents_merged": pa.get("total_real_documents_merged"),
+            "part_a_synthetic_vector_fraction": pa.get("synthetic_vector_fraction"),
+            "part_a_retraction_fence": pa.get("retraction_fence_9_47m_proof"),
+            "part_a_multiplicity_and_loss_disclosure": m.get("part_a_multiplicity_and_loss_disclosure"),
+            "part_b_status": pb.get("status"),
+            "part_b_locked_70b_model": pb.get("locked_frontier_70b_model"),
+            "part_b_arm_metrics": pb.get("arm_metrics"),
+            "part_b_holm_bonferroni_family": pb.get("holm_bonferroni_family"),
+        }
+
+    if "wave14_d11_pm6_takedown_carryforward" in bundles_by_id and bundles_by_id["wave14_d11_pm6_takedown_carryforward"]["present"]:
+        m = bundles_by_id["wave14_d11_pm6_takedown_carryforward"]["_manifest_obj"]
+        reanalysis_path = REPO_ROOT / "artifacts/wave14_d11_pm6_takedown_carryforward/pm6_posthoc_statistical_reanalysis.json"
+        reanalysis = json.loads(reanalysis_path.read_text(encoding="utf-8")) if reanalysis_path.is_file() else {}
+        obs["wave14_d11_pm6_takedown_carryforward"] = {
+            "execution_mode": m.get("execution_mode"),
+            "process_gates": m.get("gates"),
+            "empirical_test_targets": reanalysis.get("process_vs_empirical_gates", {}).get("empirical_test_targets"),
+            "holm_headline_findings": reanalysis.get("holm_bonferroni_family", {}).get("headline_findings"),
+            "copilot_receipts_v2_ref": m.get("copilot_receipts_v2_ref"),
+            "reanalysis_sha256": sha256_file(reanalysis_path) if reanalysis_path.is_file() else None,
+        }
+
     return obs
 
 
@@ -386,7 +453,7 @@ def build_registry(*, allow_gitignored_raw_missing: bool = False) -> Dict[str, A
     observations = extract_key_metrics(bundles_by_id)
     present_count = sum(1 for b in verified_bundles if b["present"])
     payload: Dict[str, Any] = {
-        "schema_version": "verified_registry_v5_0",
+        "schema_version": "verified_registry_v7_0",
         "release_status": spec["release_status"],
         "pristine_mirror": pristine,
         "part_iv_code_provenance": spec.get("part_iv_code_provenance", {}),
@@ -462,6 +529,9 @@ def validate_publication_documents(registry: Dict[str, Any]) -> Tuple[bool, List
             "272",
             "emulation (ours)",
             "live_opensearch_java_cluster_claimed",
+            "2610.26825",
+            "pm6_posthoc_statistical_reanalysis.json",
+            "63fe3e64",
         ):
             if req_tok not in doc:
                 errors.append(f"{label} missing Wave-4/Wave-8 mandatory citation/disclosure token '{req_tok}'")

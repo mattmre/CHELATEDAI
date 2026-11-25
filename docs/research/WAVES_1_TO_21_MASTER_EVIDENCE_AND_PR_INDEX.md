@@ -1,0 +1,116 @@
+# Master Multi-Wave Evidence, Architecture, & Complete `64/64` Honest Scorecard (`Waves 1–21`)
+
+> **Status (`2026-11-25`):** **`PRE-RELEASE / HUMAN AUDIT & CLEAN-RERUN GATES PENDING`**  
+> Base `v7.0` Registry (`#1–#46`): `docs/research/verified_registry.json` (`6ef7eba4f414`) · Complete `64/64` Machine Scorecard: `docs/research/COMPLETE_64_BUNDLE_EVIDENCE_SCORECARD.json` (`6a2a254b49e6`).  
+> Unqualified production release remains **BLOCKED (`PRE-RELEASE`)** pending **`PM-4b`** (`100`-item independent human grading of `pm4_human_audit_100_blind_sheet.csv`), **`PM-1b`** (`assignment_gates_pass = false`), and **`PM-6`** empirical benign false-refusal calibration (`6.25%/11.76% > 2.0%` target). Zero `Ship-Ready` claims are made anywhere in the repository, and per Brutal-Honesty Rulebook v3.3 (`L4` guard), `local-drycheck-pass` / `protocol-ready` / verifier `rc=0` cells are **never** counted as live confirmatory completions.
+
+---
+
+## 1. Stacked Branch & Pull Request Architecture (`mattmre/CHELATEDAI`)
+
+| Stack Layer | PR | Branch | Base Branch | Scope & Honest Verification Summary |
+|---|---|---|---|---|
+| **Layer 1 (`v6.0`)** | `#364` | `fix/stage0-metric-lineage-and-m1-ladder` (`tag: v6.0-wave13-sealed-20261125`) | `main` | **Parts I–VII (`Waves 1–13`, Bundles `#1–#45`, Registry `01738dbf94e6`):** Stage-0 `mlr-v1` Quarantine (`113/113`), Flagships #1 & #2, 4-Node Fleet (`D1–D5`), & Tier-1/2 Demos (`D6–D10`, including `D9` `2,104 ms > 1,500 ms` & `K4` GRPO null, `D10` `9.47M` `Quora -6.92 pp` Holm loss & `7B = 70B NF4` parity). Unanimous `2/2 APPROVED_FOR_V6_SEAL`. |
+| **Layer 2 (`v7.0`)** | `#365` | `feat/v7-formal-pm6` (merged into `fix/stage0-metric-lineage-and-m1-ladder`) | `fix/stage0-metric-lineage-and-m1-ladder` | **Part VIII (`Waves 14–15`, Bundle `#46` + `/formal`, Registry `6ef7eba4f414`):** Lean 4 `Spec.lean` `63fe3e644bde` (`68` theorems, `0 sorry/native_decide`, `nanoda_bin 0.4.32` `25,473` decls, `7,722`-ckpt conformance w/ `153` Pitfall-B reason diffs & incremental-deletions conformance-only) + Live `Demo D11 / PM-6` (`7248d05a02ba` + `pm6_posthoc_statistical_reanalysis.json`: **EMPIRICALLY MIXED** — beats `Arm 3` `+0.474/+0.476` AUROC & `DE` `+0.152`, `100%` Gate-1 `R4`, **FAILS `r5_benign_fpr_le_002` at `6.25%/11.76% > 2%`**, parity/loss vs `Arm 6/8` on EN `R3`, `15.6%/17.6%` `R2b` breach). |
+| **Layer 3 (`Post-v7.0`)** | `#366` | `pv7/w16-core` | `fix/stage0-metric-lineage-and-m1-ladder` (`v7.0`) | **Part IX (`Waves 16–21`, Additive Bundles `#47–#64`, Spine `32693f54e0ce`):** Declarative `registry.d`/`routes.d`/`verifiers.d` loaders (`18/18` offline verifiers `rc=0`) + honest breakdown: `3` synthetic/emulated `live-pass` (`#48`, `#57`, `#61`), `1` observational `live-shadow-pass` (`#53`), `1` `verified-mixed` (`#58` clustered win / scattered `-720 B` loss vs floor), `1` `stage1-replay-pass` whose **live vLLM worker run FAILED** (`#62` `overall_pass=false`, `0/1,680` on-time jobs), `10` `local-drycheck-pass` synthetic/smoke fixtures (`#47, #49–#52, #54–#56, #59, #60`), and `2` `protocol-ready` open DEV scorers (`#63, #64`). |
+
+---
+
+## 2. Honest `64/64` Classification Breakdown (`0` Vacated IDs, `0` Partial-as-Complete Inflation)
+
+| Evidence Classification | Count | Bundle Ordinals / IDs |
+|---|---:|---|
+| `diagnostic-or-baseline-sealed` | **7** | `#13` (`f2_ek5_v2_1m`), `#14` (`f2_unified_zs_locomo`), `#15` (`f1_4096_ood`), `#19` (`r5_s1_zs_v3_pre_c4v4`), `#23` (`r5_s1_pm2_dense_oov_probe`), `#25` (`r5b_s2_pm3_mem0_default_probe`), `#32` (`phase2_d1_4node_local_fleet_proof`) |
+| `falsifier-negative` | **1** | `#10` (`iq01`) |
+| `live-pass` | **3** | `#48` (`pv7_48-t6a-engine-closure`), `#57` (`pv7_57-t2b-cartridge-array`), `#61` (`pv7_61-t1-fabric-dpu-leo`) |
+| `live-shadow-pass` | **1** | `#53` (`pv7_53-t3d-pm6-shadow`) |
+| `local-drycheck-pass` | **10** | `#47` (`pv7_47-w16-core-spine`), `#49` (`pv7_49-t6d-sdk-coldstart`), `#50` (`pv7_50-t3a-zero-write-ni`), `#51` (`pv7_51-t3b-beam-memory`), `#52` (`pv7_52-t3c-qscci-singleton`), `#54` (`pv7_54-t6b-12domain-4hop`), `#55` (`pv7_55-t6c-wild-revisions`), `#56` (`pv7_56-t2a-disk-moe`), `#59` (`pv7_59-t2d-sub1gib-iq04`), `#60` (`pv7_60-t2e-ssd-kv-repos`) |
+| `protocol-ready` | **2** | `#63` (`pv7_63-t5a-partner-search`), `#64` (`pv7_64-t5b-partner-records`) |
+| `stage1-replay-pass-live-worker-FAILED` | **1** | `#62` (`pv7_62-t4-pooled-workers`) |
+| `superseded-historical` | **1** | `#11` (`f2_longmemeval`) |
+| `verified-mixed` | **1** | `#58` (`pv7_58-t2c-cold-osd-9m`) |
+| `verified-mixed-latency-miss-and-grpo-null` | **1** | `#44` (`wave11_d9_fast_extractor_and_u_grpo`) |
+| `verified-mixed-needs-review` | **1** | `#3` (`s3`) |
+| `verified-mixed-r5-fpr-failed` | **1** | `#46` (`wave14_d11_pm6_takedown_carryforward`) |
+| `verified-mixed-with-quora-loss` | **1** | `#45` (`wave11_d10_5m_real_cutover_and_70b_scale`) |
+| `verified-partial` | **1** | `#24` (`r5b_s1b_pm2_hybrid_coupled`) |
+| `verified-scoped-open-gate` | **1** | `#36` (`wave6_pm1b_v4_reranked_sota`) |
+| `verified-sealed` | **31** | `#1` (`s1`), `#2` (`s2`), `#4` (`spherical`), `#5` (`precipitated`), `#6` (`f1_expanded`), `#7` (`f1_conformal_4hop`), `#8` (`f2_iq04`), `#9` (`f2_hard`), `#12` (`f2_longmemeval_v2`), `#16` (`f1_r4_comprehensive`), `#17` (`f2_ek5_v3_1m_powerlaw`), `#18` (`f2_r4_zero_shortcut_v2_and_locomo`), `#20` (`r5b_s1_zs_v3_pm1a_closure`), `#21` (`r5_s2_locomo_300_em4`), `#22` (`r5_s3_longmemeval_n500`), `#26` (`r5b_s2b_pm3_steelmanned_mem0`), `#27` (`r5b_s4_pm4_cross_family_2x2`), `#28` (`r6_pm1b_conversational_sota`), `#29` (`r6_pm2_labelfree_closure`), `#30` (`r6_pm3_fair_rawtext_n100`), `#31` (`r6_pm4_conversational_kappa_n200`), `#33` (`phase2_wave2_d1v2_and_d2_1m`), `#34` (`phase2_d2_qdrant_hnsw_csls_backfill`), `#35` (`phase2_d3_multiagent_poisoning`), `#37` (`wave6_d2_4096d_3beir_complete`), `#38` (`wave6_pm3_v2_competitor_arena`), `#39` (`wave6_d4_trained_epistemic_grpo`), `#40` (`wave6_d5_grpc_interceptor_gateway`), `#41` (`wave11_d6_opensearch_pgvector_qdrant`), `#42` (`wave11_d7_live_zep_graphiti_arena`), `#43` (`wave11_d8_compliance_copilot`) |
+
+---
+
+## 3. Part IX (`Bundles #47–#64`, Waves 16–21) Honest Per-Bundle Evidence Scorecard
+
+| # | Fragment | Design Tier | Registry `status` | Honest `evidence_tier` | Verified Scope & Mandatory Brutal-Honesty Disclosures |
+|---:|---|---|---|---|---|
+| **`#47`** | `47-w16-core-spine.json` | `T0` | `verified-pass` | **`local-drycheck-pass`** | **scope:** Local deterministic drycheck of the W16 spine core (A/A calibration, synthetic identical-arm receipt).; **synthetic:** Receipt host is pv7-w16-local-drycheck-synthetic-identical-arms: both arms are identical by construction, so nothing here is a measured effect.; **tuning:** Rejection thresholds were calibrated on this synthetic A/A data; they are not independently validated on a wild corpus.; **sla:** No latency or SLA claim; no wall-clock performance was measured on target hardware.; **not_verified:** Live hardware, wild-corpus and cross-model behaviour are not exercised. |
+| **`#48`** | `48-t6a-engine-closure.json` | `T2` | `protocol-ready` | **`live-pass`** | **scope:** Live run against three real engines (qdrant, opensearch, pgvector) on a deterministic synthetic fixture; 48_verifier recomputes hashes and per-cell pass flags from the committed receipt without contacting any server.; **synthetic:** Fixture pv7-b48-synthetic-gaussian-v1 (12000 x 128 Gaussian, 10000 queries, fixed seed); is_wild_corpus is false. Not a wild-corpus or production-distribution result.; **tuning:** recall/p95 limits (recall gap and 35 ms p95) are preregistered constants; engine index parameters were not swept per engine.; **sla:** Recorded latencies are from one host and one run and are only range-checked offline; the verifier cannot reproduce them.; **not_verified:** Server-side behaviour at scale, other engines/versions, and wild data. |
+| **`#49`** | `49-t6d-sdk-coldstart.json` | `T1` | `protocol-ready` | **`local-drycheck-pass`** | **scope:** Local deterministic smoke of the SDK cold-start gate (36/36 sessions); gate_report.json records mode=local-drycheck, execution=deterministic-local-smoke, live_model_calls=0.; **synthetic:** Family names are labels on deterministic fixtures, not live models.; **tuning:** Pass rule is preregistered; the Wilson upper bound 0.0964 is an uncertainty interval on 0/36 failures, not a measured failure rate.; **sla:** No latency or SLA claim.; **label_deviation:** Orchestrator label map listed #49 as live-pass; the committed evidence is a local drycheck with zero live model calls, so the tier is local-drycheck-pass. |
+| **`#50`** | `50-t3a-zero-write-ni.json` | `T1` | `protocol-ready` | **`local-drycheck-pass`** | **scope:** Local drycheck of the loft / zero-write non-interference probe; burn-ledger admission is the non-confirmatory local_drycheck_smoke path.; **synthetic:** Synthetic fixtures only.; **tuning:** Thresholds preregistered in the fragment; no wild-corpus validation.; **sla:** No latency or SLA claim.; **burn_clean_scope:** local_drycheck_smoke_partial_inventory (confirmatory_eligible=false). |
+| **`#51`** | `51-t3b-beam-memory.json` | `T3` | `protocol-ready` | **`local-drycheck-pass`** | **scope:** Local drycheck of the 128k beam-memory replay.; **synthetic:** Synthetic replay fixtures; token_length_est near 131072 is a label on a fixture, not a measured 128k-token run.; **tuning:** Preregistered constants; no wild-corpus validation.; **sla:** No latency or SLA claim.; **burn_clean_scope:** local_drycheck_smoke_partial_inventory (confirmatory_eligible=false). |
+| **`#52`** | `52-t3c-qscci-singleton.json` | `T3` | `protocol-ready` | **`local-drycheck-pass`** | **scope:** Local drycheck of the QSCCI singleton probe.; **synthetic:** Synthetic fixtures only.; **tuning:** Preregistered constants; no wild-corpus validation.; **sla:** No latency or SLA claim.; **burn_clean_scope:** local_drycheck_smoke_partial_inventory (confirmatory_eligible=false). |
+| **`#53`** | `53-t3d-pm6-shadow.json` | `T3` | `protocol-ready` | **`live-shadow-pass`** | **scope:** Observational run-live-shadow manifest (100 families, 100 byte-identical, 0 shadow flags) replayed from a committed public-domain shadow input.; **observational:** claim_level=observational-manifest; live_pm6_gateway_executed=false and report_emitted=false: the PM6 gateway itself was NOT executed, so this is not a live gateway pass.; **synthetic:** Public-domain shadow input; family and domain names are labels on that fixture.; **tuning:** No tuning; zero shadow flags is an observation, not a powered equivalence test.; **sla:** No latency or SLA claim.; **label_deviation:** Tier live-shadow-pass is kept per the label map but scoped strictly as observational; it must not be cited as a live PM6 gateway pass. |
+| **`#54`** | `54-t6b-12domain-4hop.json` | `T1` | `protocol-ready` | **`local-drycheck-pass`** | **scope:** Local drycheck of the 12-domain 4-hop gauntlet.; **synthetic:** Synthetic domain fixtures; domain names are labels.; **tuning:** Preregistered constants; no wild-corpus validation.; **sla:** No latency or SLA claim.; **burn_clean_scope:** local_drycheck_smoke_partial_inventory (confirmatory_eligible=false). |
+| **`#55`** | `55-t6c-wild-revisions.json` | `UNSPECIFIED` | `protocol-ready` | **`local-drycheck-pass`** | **scope:** Schema/local drycheck of the wild-revisions cohort rule.; **synthetic:** synthetic_labeled_wild: the fixture is labelled wild but is synthetic; superiority_is_wild_evidence is false.; **tuning:** Cohort rule and retirement trigger are preregistered; not validated on real revisions.; **sla:** No latency or SLA claim. |
+| **`#56`** | `56-t2a-disk-moe.json` | `T2` | `protocol-ready` | **`local-drycheck-pass`** | **scope:** Local drycheck of the disk-resident MoE appliance.; **ledger_admission:** The drycheck performs NO ledger admission: burn_clean_scope is local_drycheck_smoke_partial_inventory and nothing here is a confirmatory burn-ledger claim.; **synthetic:** Synthetic fixtures only.; **tuning:** Preregistered constants; no wild-corpus validation.; **sla:** No latency or SLA claim. |
+| **`#57`** | `57-t2b-cartridge-array.json` | `T2` | `protocol-ready` | **`live-pass`** | **scope:** Live cartridge-array run on a Linux cgroup host (6 GiB memory cage, swap 0); 57_verifier recomputes manifest/deterministic hashes, gate set and the zero-event Clopper-Pearson bound from the committed receipt.; **tier_note:** Physical cold-read tier as disclosed in the manifest (tier_disclosure); catalog of 1000 entries with 250 materialised payloads.; **synthetic:** Cartridge payloads and the revocation race workload are synthetic.; **tuning:** Race trial count (300) and the cage size are preregistered; the unguarded control shows the race is real.; **sla:** Swap/first-inference times and cgroup facts are recorded measurements range-checked only; not reproducible off the Spark host. |
+| **`#58`** | `58-t2c-cold-osd-9m.json` | `T2` | `protocol-ready` | **`verified-mixed`** | **scope:** Cold-OSD 9M scanner with a symmetric WAL codec shared by the incumbent and challenger paths; mixed verified/drycheck evidence.; **codec_symmetry:** Under the shared codec the clustered cases save +19,899 / +18,855 / +22,503 bytes; the scattered case is a 0-byte tie. Versus the floor row the scattered case is a verified -720 B loss; the as-built delta is +1,200 B.; **sector:** Costs are modelled on 512 B sectors; other sector sizes are not measured.; **statistics:** Zero-variance LCB is labelled as such: a zero-variance bound is not a confidence interval.; **synthetic:** Synthetic cold-OSD workload.; **sla:** No latency or SLA claim. |
+| **`#59`** | `59-t2d-sub1gib-iq04.json` | `T2` | `protocol-ready` | **`local-drycheck-pass`** | **scope:** Local drycheck of the sub-1GiB IQ04 appliance.; **burn_clean_scope:** local_drycheck_smoke_partial_inventory (confirmatory_eligible=false); regenerated receipts now record this scope.; **synthetic:** Synthetic fixtures only.; **tuning:** Preregistered constants; traced_peak_bytes varies run to run.; **sla:** No latency or SLA claim. |
+| **`#60`** | `60-t2e-ssd-kv-repos.json` | `T2` | `protocol-ready` | **`local-drycheck-pass`** | **scope:** Local drycheck of the SSD KV-repo cache, plus a fail-closed SSDKVCache.reload_persisted guard with negative unit tests.; **guard:** reload_persisted refuses a persisted block with no weight-bound contract_digest and a literal model_weights_sha256 that mismatches the active weights; it verifies contract_digest (which binds the weights SHA) rather than requiring a literal model_weights_sha256 key, and put() is unchanged.; **synthetic:** Synthetic tiny model and KV blocks.; **tuning:** No tuning.; **sla:** No latency or SLA claim. |
+| **`#61`** | `61-t1-fabric-dpu-leo.json` | `T2` | `protocol-ready` | **`live-pass`** | **scope:** Live-encoder fabric report (mode run-live-encoders) verified by recomputing receipt hashes, scoreboard/schedule digests, 16 gates and outcomes from the committed report.; **emulation:** Software emulation only; no P4/ASIC silicon in the loop and no orbital flight hardware (both flags false).; **encoders:** 3 of 5 encoders are live; 2 (enc_d, enc_e) are dry stand-ins (allow_dry_standin=true).; **synthetic:** Authored scenarios and authored arms 3/4; outcomes are informational, not a market comparison.; **tuning:** Gate thresholds are preregistered engine constants.; **sla:** No latency or SLA claim.; **source_drift:** network_orbital_engine.py has changed since the report was generated (reported by the verifier, not a failure). |
+| **`#62`** | `62-t4-pooled-workers.json` | `T2` | `protocol-ready` | **`stage1-replay-pass-live-worker-FAILED`** | **scope:** Stage-1 controlled replay passes offline (deterministic, 4 schedules x 24 templates at pool size 4).; **live_worker_outcome:** FAILED. The committed run-live-workers receipt (nemotron-lightning, 7842 live calls, 70 cells, 1680 jobs) has overall_pass=false and status=replay-fail: gates beats_full_restart_rebuild_jpm and sham_reopen_control_valid are false.; **sla:** All 1680 eligible jobs missed the 560 ms SLA (live worker latency ~3.7-7.9 s): on_time_cited_correct_jobs=0, so the full-restart comparator ties at 0.0 JPM and the primary interaction LCB is 0.; **label_deviation:** Orchestrator label map: stage1-replay-and-live-worker-pass. The live worker did NOT pass, so only stage1-replay-pass is claimed.; **synthetic:** Matter templates and arrival schedules are synthetic.; **tuning:** The 560 ms deadline and stall constants are preregistered; they were not retuned to rescue the live run. |
+| **`#63`** | `63-t5a-partner-search.json` | `T4` | `protocol-ready` | **`protocol-ready`** | **scope:** Partner search trial kit and charter are ready; no partner trial has been executed.; **synthetic:** Open DEV fixture only; no partner data.; **tuning:** None.; **sla:** No latency or SLA claim. |
+| **`#64`** | `64-t5b-partner-records.json` | `T4` | `protocol-ready` | **`protocol-ready`** | **scope:** Partner records trial kit and charter are ready; no partner trial has been executed.; **synthetic:** Open DEV fixture only; no partner data.; **tuning:** None.; **sla:** No latency or SLA claim. |
+
+---
+
+## 4. Parts I–VIII (`Bundles #1–#46`, Base `v7.0` Verified Registry `6ef7eba4f414`)
+
+| # | Part | Bundle ID | Honest `evidence_tier` | `manifest_sha256` (Prefix) |
+|---:|---|---|---|---|
+| `#1` | `PART_I_HISTORICAL` | `s1` | `verified-sealed` | `920af9de9a62` |
+| `#2` | `PART_I_HISTORICAL` | `s2` | `verified-sealed` | `19d8c5898c6a` |
+| `#3` | `PART_I_HISTORICAL` | `s3` | `verified-mixed-needs-review` | `b07e2dd27bcd` |
+| `#4` | `PART_I_HISTORICAL` | `spherical` | `verified-sealed` | `5dcc0b7685ea` |
+| `#5` | `PART_I_HISTORICAL` | `precipitated` | `verified-sealed` | `53e7cb6f7f91` |
+| `#6` | `PART_I_HISTORICAL` | `f1_expanded` | `verified-sealed` | `281ce6eab455` |
+| `#7` | `PART_I_HISTORICAL` | `f1_conformal_4hop` | `verified-sealed` | `78da59866ad6` |
+| `#8` | `PART_I_HISTORICAL` | `f2_iq04` | `verified-sealed` | `148d80bf3faa` |
+| `#9` | `PART_I_HISTORICAL` | `f2_hard` | `verified-sealed` | `f7960dd626f7` |
+| `#10` | `PART_I_HISTORICAL` | `iq01` | `falsifier-negative` | `7467ab068125` |
+| `#11` | `PART_I_HISTORICAL` | `f2_longmemeval` | `superseded-historical` | `d7245073f2a4` |
+| `#12` | `PART_I_HISTORICAL` | `f2_longmemeval_v2` | `verified-sealed` | `c14845a78c6f` |
+| `#13` | `PART_II_RIGOR_R3` | `f2_ek5_v2_1m` | `diagnostic-or-baseline-sealed` | `7f306adb7a55` |
+| `#14` | `PART_II_RIGOR_R3` | `f2_unified_zs_locomo` | `diagnostic-or-baseline-sealed` | `caf58b0f40f6` |
+| `#15` | `PART_II_RIGOR_R3` | `f1_4096_ood` | `diagnostic-or-baseline-sealed` | `ce81b9303150` |
+| `#16` | `PART_III_RIGOR_R4` | `f1_r4_comprehensive` | `verified-sealed` | `266ee0f902da` |
+| `#17` | `PART_III_RIGOR_R4` | `f2_ek5_v3_1m_powerlaw` | `verified-sealed` | `2941048ccbe3` |
+| `#18` | `PART_III_RIGOR_R4` | `f2_r4_zero_shortcut_v2_and_locomo` | `verified-sealed` | `2a3f4368366b` |
+| `#19` | `PART_IV_R5_GATE_CLOSURE` | `r5_s1_zs_v3_pre_c4v4` | `diagnostic-or-baseline-sealed` | `c686357e459a` |
+| `#20` | `PART_IV_R5_GATE_CLOSURE` | `r5b_s1_zs_v3_pm1a_closure` | `verified-sealed` | `f6fdabf529c4` |
+| `#21` | `PART_IV_R5_GATE_CLOSURE` | `r5_s2_locomo_300_em4` | `verified-sealed` | `b8702cc1dda3` |
+| `#22` | `PART_IV_R5_GATE_CLOSURE` | `r5_s3_longmemeval_n500` | `verified-sealed` | `94f75e051e37` |
+| `#23` | `PART_IV_R5_GATE_CLOSURE` | `r5_s1_pm2_dense_oov_probe` | `diagnostic-or-baseline-sealed` | `80503ba8eb98` |
+| `#24` | `PART_IV_R5_GATE_CLOSURE` | `r5b_s1b_pm2_hybrid_coupled` | `verified-partial` | `bfb921755911` |
+| `#25` | `PART_IV_R5_GATE_CLOSURE` | `r5b_s2_pm3_mem0_default_probe` | `diagnostic-or-baseline-sealed` | `0e1c10b7429f` |
+| `#26` | `PART_IV_R5_GATE_CLOSURE` | `r5b_s2b_pm3_steelmanned_mem0` | `verified-sealed` | `123bf2e023bd` |
+| `#27` | `PART_IV_R5_GATE_CLOSURE` | `r5b_s4_pm4_cross_family_2x2` | `verified-sealed` | `86739124c579` |
+| `#28` | `PART_V_PHASE2_AND_WAVE4_ADJUDICATION` | `r6_pm1b_conversational_sota` | `verified-sealed` | `54a9fc475fb9` |
+| `#29` | `PART_V_PHASE2_AND_WAVE4_ADJUDICATION` | `r6_pm2_labelfree_closure` | `verified-sealed` | `eaf3fbad25d0` |
+| `#30` | `PART_V_PHASE2_AND_WAVE4_ADJUDICATION` | `r6_pm3_fair_rawtext_n100` | `verified-sealed` | `168c48e71537` |
+| `#31` | `PART_V_PHASE2_AND_WAVE4_ADJUDICATION` | `r6_pm4_conversational_kappa_n200` | `verified-sealed` | `5c699f4e4b6e` |
+| `#32` | `PART_V_PHASE2_AND_WAVE4_ADJUDICATION` | `phase2_d1_4node_local_fleet_proof` | `diagnostic-or-baseline-sealed` | `ae356253d359` |
+| `#33` | `PART_V_PHASE2_AND_WAVE4_ADJUDICATION` | `phase2_wave2_d1v2_and_d2_1m` | `verified-sealed` | `908434685ea6` |
+| `#34` | `PART_V_PHASE2_AND_WAVE4_ADJUDICATION` | `phase2_d2_qdrant_hnsw_csls_backfill` | `verified-sealed` | `8edbc4df0e76` |
+| `#35` | `PART_V_PHASE2_AND_WAVE4_ADJUDICATION` | `phase2_d3_multiagent_poisoning` | `verified-sealed` | `fce71a605f64` |
+| `#36` | `PART_VI_WAVE6_CLOSURE_AND_GATEWAY` | `wave6_pm1b_v4_reranked_sota` | `verified-scoped-open-gate` | `5fcfab2b4c1c` |
+| `#37` | `PART_VI_WAVE6_CLOSURE_AND_GATEWAY` | `wave6_d2_4096d_3beir_complete` | `verified-sealed` | `dcb84026a15c` |
+| `#38` | `PART_VI_WAVE6_CLOSURE_AND_GATEWAY` | `wave6_pm3_v2_competitor_arena` | `verified-sealed` | `05442a849c19` |
+| `#39` | `PART_VI_WAVE6_CLOSURE_AND_GATEWAY` | `wave6_d4_trained_epistemic_grpo` | `verified-sealed` | `f20433dce33c` |
+| `#40` | `PART_VI_WAVE6_CLOSURE_AND_GATEWAY` | `wave6_d5_grpc_interceptor_gateway` | `verified-sealed` | `cba30b931812` |
+| `#41` | `PART_VII_TIER1_AND_TIER2_FLAGSHIPS` | `wave11_d6_opensearch_pgvector_qdrant` | `verified-sealed` | `0578d56b715d` |
+| `#42` | `PART_VII_TIER1_AND_TIER2_FLAGSHIPS` | `wave11_d7_live_zep_graphiti_arena` | `verified-sealed` | `d6a12534fa7c` |
+| `#43` | `PART_VII_TIER1_AND_TIER2_FLAGSHIPS` | `wave11_d8_compliance_copilot` | `verified-sealed` | `7395d687c54f` |
+| `#44` | `PART_VII_TIER1_AND_TIER2_FLAGSHIPS` | `wave11_d9_fast_extractor_and_u_grpo` | `verified-mixed-latency-miss-and-grpo-null` | `c41fae097f76` |
+| `#45` | `PART_VII_TIER1_AND_TIER2_FLAGSHIPS` | `wave11_d10_5m_real_cutover_and_70b_scale` | `verified-mixed-with-quora-loss` | `e50b87460387` |
+| `#46` | `PART_VIII_FORMAL_AND_PM6_TAKEDOWN` | `wave14_d11_pm6_takedown_carryforward` | `verified-mixed-r5-fpr-failed` | `7248d05a02ba` |

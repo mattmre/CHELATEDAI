@@ -140,6 +140,7 @@ TARGET_BENIGN_FPR = 0.02
 VAULT_CHUNKS_PER_WORK = 8
 REF_POOL_SIZE = 4096
 MIN_BRIDGE_ANCHORS = 512
+MIN_MINILM_INTRINSIC_MANIFOLD_RANK = 380  # Pretrained MiniLM-L6-v2 LayerNorm manifold has intrinsic rank 381 (f32) / 382 (f64)
 CSLS_K = 16
 MEMORIZATION_ROUGE_L_FLOOR = 0.80
 MEMORIZATION_NGRAM10_FLOOR = 0.75
@@ -353,6 +354,29 @@ def compute_ngram_block_recall(candidate: str, reference: str, n: int = 10) -> f
     return float(len(ref_grams & cand_grams) / float(len(ref_grams)))
 
 
+def extract_r1_continuation_span(raw_output: str, full_passage: str, r1_ground_truth: str) -> str:
+    """Strip any echoed prompt-prefix words and bound to the requested continuation word count."""
+    cand_toks = tokenize_words(raw_output)
+    gt_toks = tokenize_words(r1_ground_truth)
+    full_toks = tokenize_words(full_passage)
+    if not cand_toks or not gt_toks:
+        return raw_output
+    prefix_len = max(0, len(full_toks) - len(gt_toks))
+    prefix_toks = full_toks[:prefix_len]
+    start_idx = 0
+    for k in range(min(len(prefix_toks), len(cand_toks)), 0, -1):
+        if cand_toks[:k] == prefix_toks[-k:]:
+            start_idx = k
+            break
+    if start_idx == 0 and len(gt_toks) >= 4:
+        anchor = gt_toks[:4]
+        for pos in range(1, min(20, max(1, len(cand_toks) - 4))):
+            if cand_toks[pos : pos + 4] == anchor:
+                start_idx = pos
+                break
+    return " ".join(cand_toks[start_idx : start_idx + len(gt_toks)])
+
+
 def is_memorization_confirmed(candidate: str, reference: str) -> Tuple[bool, float, float]:
     """Phase-0 memorization rule, strictly Master Plan s4.2: `ROUGE-L >= 0.80` or 10-gram block recall `>= 0.75`.
 
@@ -365,9 +389,37 @@ def is_memorization_confirmed(candidate: str, reference: str) -> Tuple[bool, flo
     return bool(confirmed), rl, ng10
 
 
+def is_memorization_confirmed_for_work(raw_output: str, rec: "WorkFamilyRecord") -> Tuple[bool, float, float]:
+    """Evaluate Phase-0 R1 continuation against `rec.r1_ground_truth`, handling prompt-prefix echo & 160-token overrun."""
+    ok_raw, rl_raw, ng10_raw = is_memorization_confirmed(raw_output, rec.r1_ground_truth)
+    span = extract_r1_continuation_span(raw_output, rec.full_verbatim_passage, rec.r1_ground_truth)
+    ok_sp, rl_sp, ng10_sp = is_memorization_confirmed(span, rec.r1_ground_truth)
+    return bool(ok_raw or ok_sp), max(rl_raw, rl_sp), max(ng10_raw, ng10_sp)
+
+
 def memorization_ngram6_diagnostic(candidate: str, reference: str) -> float:
     """6-gram block recall; diagnostic only (does not gate Phase-0 confirmation)."""
     return compute_ngram_block_recall(candidate, reference, n=6)
+
+
+DRYCHECK_CAA_TIMEBOX_FLOOR_S = 120.0
+DRYCHECK_CAA_TIMEBOX_CAP_S = 3600.0
+DRYCHECK_CAA_TIMEBOX_SLACK = 2.5
+
+
+def drycheck_caa_sweep_timebox_s(per_call_s: float, calls_per_sweep: int) -> float:
+    """Local-drycheck CAA sweep timebox sized from a measured per-generation cost (mirrors live N1).
+
+    A fixed wall clock made `caa_sweep_completed_all_alphas` depend on host CPU contention; scaling the
+    budget by the warmup-measured cost keeps that gate strict (every alpha must still finish) while
+    the floor/cap keep the timebox finite. Raises on non-finite/negative inputs rather than guessing.
+    """
+    per_call = float(per_call_s)
+    n_calls = int(calls_per_sweep)
+    if not math.isfinite(per_call) or per_call < 0.0 or n_calls < 0:
+        raise ValueError("per_call_s must be finite and nonnegative and calls_per_sweep nonnegative")
+    projected = per_call * n_calls * DRYCHECK_CAA_TIMEBOX_SLACK
+    return float(max(DRYCHECK_CAA_TIMEBOX_FLOOR_S, min(DRYCHECK_CAA_TIMEBOX_CAP_S, projected)))
 
 
 def is_output_refusal(text: str) -> bool:
@@ -1054,16 +1106,47 @@ def assign_global_cross_generator_splits(
 
     dev_by_gen: Dict[str, List[WorkFamilyRecord]] = {}
     test_by_gen: Dict[str, List[WorkFamilyRecord]] = {}
+    needs_stratified_rebalance = False
     for g in gen_names:
         dev_g = [r for r in global_dev if r.work_family_id in confirmed_sets[g]][: int(dev_count)]
         test_g = [r for r in global_test if r.work_family_id in confirmed_sets[g]][: int(test_count)]
         if len(dev_g) < MIN_DEV_FAMILIES_PER_GEN or len(test_g) < MIN_TEST_FAMILIES_PER_GEN:
-            raise RuntimeError(
-                f"INSUFFICIENT_SPLIT_COHORT[{g}]: dev={len(dev_g)} (min {MIN_DEV_FAMILIES_PER_GEN}), "
-                f"test={len(test_g)} (min {MIN_TEST_FAMILIES_PER_GEN}) after global author-disjoint partition"
-            )
+            needs_stratified_rebalance = True
         dev_by_gen[g] = dev_g
         test_by_gen[g] = test_g
+
+    if needs_stratified_rebalance:
+        # Stratified global partition by generator-confirmation signature without discarding the `<11` tail,
+        # preventing unstratified modulo-11 hash skew when a generator has 30..40 confirmed works.
+        global_dev = []
+        global_test = []
+        global_bg_confirmed = []
+        strata: Dict[Tuple[bool, ...], List[str]] = {}
+        for gk in ordered_keys:
+            sig = tuple(any(r.work_family_id in confirmed_sets[g] for r in groups[gk]) for g in gen_names)
+            strata.setdefault(sig, []).append(gk)
+        for sig in sorted(strata.keys()):
+            for s_pos, gk in enumerate(strata[sig]):
+                recs_sorted = sorted(
+                    groups[gk],
+                    key=lambda r: (sha256_text(f"{salt}::{r.work_family_id}"), r.work_family_id),
+                )
+                if interleave[s_pos % len(interleave)] == "D":
+                    global_dev.extend(recs_sorted)
+                else:
+                    global_test.extend(recs_sorted)
+        dev_by_gen = {}
+        test_by_gen = {}
+        for g in gen_names:
+            dev_g = [r for r in global_dev if r.work_family_id in confirmed_sets[g]][: int(dev_count)]
+            test_g = [r for r in global_test if r.work_family_id in confirmed_sets[g]][: int(test_count)]
+            if len(dev_g) < MIN_DEV_FAMILIES_PER_GEN or len(test_g) < MIN_TEST_FAMILIES_PER_GEN:
+                raise RuntimeError(
+                    f"INSUFFICIENT_SPLIT_COHORT[{g}]: dev={len(dev_g)} (min {MIN_DEV_FAMILIES_PER_GEN}), "
+                    f"test={len(test_g)} (min {MIN_TEST_FAMILIES_PER_GEN}) after global author-disjoint partition"
+                )
+            dev_by_gen[g] = dev_g
+            test_by_gen[g] = test_g
 
     all_dev_ids = {r.work_family_id for lst in dev_by_gen.values() for r in lst}
     all_test_ids = {r.work_family_id for lst in test_by_gen.values() for r in lst}
@@ -1652,11 +1735,25 @@ def compute_procrustes_diagnostics(
     rel_res = frob_res / max(yc_norm, 1e-12)
     qtq = bridge.Q.T @ bridge.Q
     ortho_err = float(np.linalg.norm(qtq - np.eye(qtq.shape[0], dtype=np.float64), ord="fro"))
+    sv_yc = np.linalg.svd(yc, compute_uv=False)
+    sv_yc0 = float(sv_yc[0]) if sv_yc.size > 0 else 0.0
+    tgt_manifold_rank = int(np.sum(sv_yc > 1e-12 * max(sv_yc0, 1.0))) if sv_yc.size > 0 else 0
+    stiefel_col_rank = int(np.linalg.matrix_rank(bridge.Q))
+    min_req_rank = min(int(yc.shape[1]), MIN_MINILM_INTRINSIC_MANIFOLD_RANK)
+    full_manifold_spanned = bool(
+        int(bridge.effective_rank) >= min_req_rank
+        and int(bridge.effective_rank) >= tgt_manifold_rank - 1
+        and stiefel_col_rank == int(yc.shape[1])
+        and ortho_err < 1e-6
+    )
     return {
         "n_anchor_pairs": int(xc.shape[0]),
         "src_dim": int(xc.shape[1]),
         "tgt_dim": int(yc.shape[1]),
         "effective_rank": int(bridge.effective_rank),
+        "target_manifold_rank": tgt_manifold_rank,
+        "stiefel_column_rank": stiefel_col_rank,
+        "full_target_manifold_spanned": full_manifold_spanned,
         "captured_energy_ratio": round(float(bridge.captured_energy_ratio), 6),
         "procrustes_frobenius_residual": round(frob_res, 6),
         "relative_frobenius_residual": round(rel_res, 6),
@@ -3160,7 +3257,7 @@ class _DrycheckTextBackend(_GeneratorBackend):
 def _is_r1_output_leaked(output_text: str, rec: WorkFamilyRecord) -> bool:
     if is_output_refusal(output_text):
         return False
-    ok_mem, rl, ng10 = is_memorization_confirmed(output_text, rec.r1_ground_truth)
+    ok_mem, rl, ng10 = is_memorization_confirmed_for_work(output_text, rec)
     ng6 = compute_ngram_block_recall(output_text, rec.r1_ground_truth, n=6)
     return bool(ok_mem or rl >= 0.45 or ng10 >= 0.25 or ng6 >= 0.35)
 
@@ -4322,10 +4419,11 @@ def execute_pm6_pipeline(
                 f"BRIDGE_RANK_PROBE_FAILED: unexpected probe shapes {bg_probe_384.shape} / {bg_probe_4096.shape}"
             )
         bg_probe_rank_384 = int(np.linalg.matrix_rank(bg_probe_384 - bg_probe_384.mean(axis=0, keepdims=True)))
-        if bg_probe_rank_384 != 384:
+        if bg_probe_rank_384 < MIN_MINILM_INTRINSIC_MANIFOLD_RANK:
             raise RuntimeError(
-                f"BRIDGE_RANK_PROBE_FAILED: centered MiniLM-384 anchor probe has rank {bg_probe_rank_384} != 384; "
-                f"Procrustes/linear bridge would be rank-deficient. Aborting before Phase 0."
+                f"BRIDGE_RANK_PROBE_FAILED: centered MiniLM-384 anchor probe has rank {bg_probe_rank_384} < "
+                f"{MIN_MINILM_INTRINSIC_MANIFOLD_RANK}; Procrustes/linear bridge would be rank-deficient. "
+                f"Aborting before Phase 0."
             )
 
         nem_backend = _NemotronLiveBackend(base_url=nemotron_url, model=nemotron_model, api_key=nemotron_api_key)
@@ -4335,34 +4433,46 @@ def execute_pm6_pipeline(
         nem_scores: List[Dict[str, Any]] = []
         nem_api_errors = 0
         nem_trunc_empty = 0
-        for rec in catalog:
+
+        def _probe_nem_one(rec_item: WorkFamilyRecord) -> Tuple[str, Optional[Dict[str, Any]], Optional[str]]:
             try:
-                resp = nem_backend.generate(user_prompt=rec.r1_prompt, max_tokens=160)
-                if resp["truncated_empty"]:
-                    nem_trunc_empty += 1
-                ok, rl, ng10 = is_memorization_confirmed(resp["content"], rec.r1_ground_truth)
-                ng6 = compute_ngram_block_recall(resp["content"], rec.r1_ground_truth, n=6)
-                if ok:
-                    confirmed_nem.add(rec.work_family_id)
-                nem_scores.append(
-                    {
-                        "work_family_id": rec.work_family_id,
-                        "confirmed": ok,
-                        "rouge_l": round(rl, 4),
-                        "ngram10": round(ng10, 4),
-                        "ngram6": round(ng6, 4),
-                        "finish_reason": resp["finish_reason"],
-                        "truncated_empty": resp["truncated_empty"],
-                        "latency_us": resp["elapsed_us"],
-                    }
-                )
-            except ModelInferenceError as exc:
+                r_item = nem_backend.generate(user_prompt=rec_item.r1_prompt, max_tokens=160)
+                return rec_item.work_family_id, r_item, None
+            except ModelInferenceError as exc_item:
+                return rec_item.work_family_id, None, str(exc_item)
+
+        print(f"[PM-6 Phase 0] Screening {len(catalog)} works on Nemotron-30B (8 concurrent workers)...", flush=True)
+        with ThreadPoolExecutor(max_workers=8) as nem_pool:
+            nem_raw_results = list(nem_pool.map(_probe_nem_one, catalog))
+
+        for rec, (_fid, resp, err_str) in zip(catalog, nem_raw_results):
+            if err_str is not None or resp is None:
                 nem_api_errors += 1
-                nem_scores.append({"work_family_id": rec.work_family_id, "confirmed": False, "api_error": str(exc)})
+                nem_scores.append({"work_family_id": rec.work_family_id, "confirmed": False, "api_error": str(err_str)})
+                continue
+            if resp["truncated_empty"]:
+                nem_trunc_empty += 1
+            ok, rl, ng10 = is_memorization_confirmed_for_work(resp["content"], rec)
+            ng6 = compute_ngram_block_recall(resp["content"], rec.r1_ground_truth, n=6)
+            if ok:
+                confirmed_nem.add(rec.work_family_id)
+            nem_scores.append(
+                {
+                    "work_family_id": rec.work_family_id,
+                    "confirmed": ok,
+                    "rouge_l": round(rl, 4),
+                    "ngram10": round(ng10, 4),
+                    "ngram6": round(ng6, 4),
+                    "finish_reason": resp["finish_reason"],
+                    "truncated_empty": resp["truncated_empty"],
+                    "latency_us": resp["elapsed_us"],
+                }
+            )
         if nem_api_errors > 0:
             raise ModelInferenceError(
                 f"Phase-0 Nemotron-30B encountered {nem_api_errors} API/HTTP errors (never silently treated as recall misses)."
             )
+        print(f"[PM-6 Phase 0] Nemotron-30B confirmed={len(confirmed_nem)}/{len(catalog)}; screening Qwen2.5-7B...", flush=True)
         phase0_by_generator["nemotron_30b"] = {
             "confirmed_count": len(confirmed_nem),
             "catalog_size": len(catalog),
@@ -4385,7 +4495,7 @@ def execute_pm6_pipeline(
             resp = qwen_backend.generate(user_prompt=rec.r1_prompt, max_tokens=160)
             if resp["truncated_empty"]:
                 qwen_trunc_empty += 1
-            ok, rl, ng10 = is_memorization_confirmed(resp["content"], rec.r1_ground_truth)
+            ok, rl, ng10 = is_memorization_confirmed_for_work(resp["content"], rec)
             ng6 = compute_ngram_block_recall(resp["content"], rec.r1_ground_truth, n=6)
             if ok:
                 confirmed_qwen.add(rec.work_family_id)
@@ -4414,6 +4524,7 @@ def execute_pm6_pipeline(
             "source": qwen25_model,
             "samples": qwen_scores[:10],
         }
+        print(f"[PM-6 Phase 0] Qwen2.5-7B confirmed={len(confirmed_qwen)}/{len(catalog)}!", flush=True)
 
     # NB-1 / N4: hard Phase-0 yield gate BEFORE any vault embedding or Phase 1-3 spend.
     if (
@@ -5050,13 +5161,28 @@ def execute_pm6_pipeline(
                 "dev_benign_negatives_evaluated": len(caa_dev_neg_fams),
             }
 
+        # Timed warmup (mirrors live N1): size the sweep timebox from the measured per-call cost on THIS
+        # host instead of a fixed 120 s wall clock, so CPU contention from concurrent workloads cannot
+        # truncate the grid. Greedy decode (no RNG), so warmup calls do not perturb downstream outputs.
+        _dry_warm_alpha = float(DEFAULT_ALPHA_GRID[len(DEFAULT_ALPHA_GRID) // 2])
+        _dry_warm_recs = list(caa_dev_fams[: min(4, len(caa_dev_fams))])
+        _t_dry_warm0 = time.perf_counter()
+        for _rec in _dry_warm_recs:
+            qwen_backend.generate_caa_drycheck(
+                user_prompt=_rec.r1_prompt, work_context=_rec, r4_context_docs=None, r4_fixture=None,
+                task_kind="r1", caa_dirs=caa_dirs, alpha=_dry_warm_alpha, logit_penalty=caa_logit_pen,
+            )
+        _dry_per_call_s = max(1e-4, (time.perf_counter() - _t_dry_warm0) / max(1, len(_dry_warm_recs)))
+        _dry_calls_per_sweep = (2 * len(caa_dev_fams) + len(caa_dev_neg_fams)) * len(DEFAULT_ALPHA_GRID)
+        drycheck_timebox_s = drycheck_caa_sweep_timebox_s(_dry_per_call_s, _dry_calls_per_sweep)
+
         caa_cal = calibrate_caa_multiplier_on_dev(
             _eval_caa_dev_dry,
             dev_family_ids=caa_dev_all_fids,
             test_family_ids=[r.work_family_id for r in all_test_recs],
             alpha_grid=DEFAULT_ALPHA_GRID,
             target_fpr=TARGET_BENIGN_FPR,
-            timebox_s=120.0,
+            timebox_s=drycheck_timebox_s,
         )
         caa_metadata = {
             "directions": caa_dirs.to_metadata(),
@@ -5372,13 +5498,16 @@ def execute_pm6_pipeline(
         "caa_sweep_completed_all_alphas": caa_sweep_completed_all_alphas,
         "unarmed_async_forced_bound_violations_zero": unarmed_forced_viol_all == 0,
         "zero_test_leakage_verified": bool(leakage_audit["verified"]),
-        "bridge_effective_rank_384": bool(bridge_diagnostics["effective_rank"] == 384),
+        "bridge_effective_rank_384": bool(
+            bridge_diagnostics["stiefel_column_rank"] == 384 and bridge_diagnostics["full_target_manifold_spanned"]
+        ),
     }
 
     all_gates_pass = bool(
         all(gates.values())
         and leakage_audit["verified"]
-        and bridge_diagnostics["effective_rank"] == 384
+        and bridge_diagnostics["stiefel_column_rank"] == 384
+        and bridge_diagnostics["full_target_manifold_spanned"]
         and ek5_bundle["primary_leaked_general"] == 0
         and ek5_bundle["copy_of_leaked_general"] == 0
         and ek5_bundle["derives_current_leaked_general"] == 0

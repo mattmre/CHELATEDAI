@@ -786,13 +786,119 @@
       "unhashed_historical_raw_files": {},
       "verified_side_artifacts": {},
       "wall_seconds": 460.06
+    },
+    {
+      "dir": "artifacts/wave11_d6_opensearch_pgvector_qdrant",
+      "git_sha": "4fae0b77c6ae59213e24a12e89f5dd7b28405ca8",
+      "id": "wave11_d6_opensearch_pgvector_qdrant",
+      "manifest_file": "wave11_d6_multibackend_manifest.json",
+      "manifest_sha256": "0578d56b715d44dfa71d499217e61ccece91c291d60eefdbf9ff5bd59393612b",
+      "notes": "Wave-11 Tier-1 Demo D6 (L1, Spark #1 live Docker OpenSearch 3.9.0 :19200 + pgvector 0.8.7/PG17 :15432 + Qdrant 1.20.2 :16334 across SciFact 5,183 & FiQA2018 57,638): identical cross-engine nDCG@10 at 0% retraction (FiQA 4096->384 CSLS=0.3068 vs DEV_ZScore=0.2563 [+5.05 pp] & Raw=0.1962 [+11.06 pp]), and on SciFact 1.0000 admitted Recall@10 + 0.00% stale resurrection across 0/10/50/90% simulated stale-replica sweeps (vs 5-36% unmasked stale hits; raw-engine 0% stale is zero by allowlist construction). Mandatory Wave-12 disclosures: ANN produced initial shortlists only; certificate policy triggered exact_fallback_fraction=1.0 in 62/70 cells plus 8/70 pgvector_exact_vector4096 cells by design (70/70 exact scans, single-host single-run with no replicates -> no pure ANN latency claim), pgvector halfvec canary uses 2e-3 tolerance, FiQA has 0% retraction only (no oracle recall), and nDCG under >0% retraction is not recorded.",
+      "part": "PART_VII_TIER1_AND_TIER2_FLAGSHIPS",
+      "present": true,
+      "role": "WAVE12_ADJUDICATED_PRIMARY",
+      "status": "SHA256_VERIFIED",
+      "unhashed_historical_raw_files": {},
+      "verified_side_artifacts": {},
+      "wall_seconds": 1252.9780869750248
+    },
+    {
+      "dir": "artifacts/wave11_d7_live_zep_graphiti_arena",
+      "git_sha": "233052445b255f8081876c33f7d6d3055c3d983a",
+      "id": "wave11_d7_live_zep_graphiti_arena",
+      "manifest_file": "wave11_d7_zep_graphiti_manifest.json",
+      "manifest_sha256": "d6a12534fa7c0dd456ee2717220ec3b49c0ee7887989e5c5a001fd2b2a761440",
+      "notes": "Wave-11 Tier-1 Demo D7 (L2, Spark #1 live Neo4j 5.26 + graphiti-core 0.31.2 + mem0ai 2.2.1, single seed=42, single Nemotron reader, single Qwen2.5-7B blind cross-family judge): Primary settled Suite A (N=60) Chelated_v4=96.67% beats Live Graphiti=46.67% (+50.00 pp, Tango LCB95=+35.78 pp, Bonferroni-binomial CP95=+26.50 pp, Holm p<1e-4 [20k-resample floor]) and Live Mem0 infer=True=45.00% (+51.67 pp, Tango LCB95=+39.31 pp, Bonferroni-binomial CP95=+29.63 pp, Holm p<1e-4); delta0 secondary (96.67% vs 3.33%/10.00% pre-consolidation). Mandatory Wave-12 disclosures: Chelated end-to-end write+bg mean is slowest at 10,373 ms (synchronous 30B extraction + 144.6 ms EK5 ack) vs 7,524 ms Graphiti and 2,755 ms Mem0; Suite B (N=20 LME-S KU: 90% vs 60% Graphiti / 55% Mem0 settled, exact McNemar p=0.039 vs Mem0) is descriptive-only (inferential_claim=false, 0 LLM write tokens on raw messages with has_answer-selected retractions, not write-cost comparable); committed manifest lacks implementation_sha256 and was sealed post-run after Neo4j credential redaction.",
+      "part": "PART_VII_TIER1_AND_TIER2_FLAGSHIPS",
+      "present": true,
+      "role": "WAVE12_ADJUDICATED_PRIMARY",
+      "status": "SHA256_VERIFIED",
+      "unhashed_historical_raw_files": {},
+      "verified_side_artifacts": {
+        "suite_a.jsonl": "35bf134f52d69da8d45efc095271039bf0757b1775f61ee86e05df309c306ee3",
+        "suite_b.jsonl": "151e90c3a85df176628831913dc7356e28cc8e677aa76c5571c12dd400b1e7ac"
+      },
+      "wall_seconds": null
+    },
+    {
+      "dir": "artifacts/wave11_d8_compliance_copilot",
+      "git_sha": "",
+      "id": "wave11_d8_compliance_copilot",
+      "manifest_file": "wave11_d8_copilot_manifest.json",
+      "manifest_sha256": "7395d687c54f3711a0ebfbbbc0467e1c254128598a064e83fca58d469a7a154c",
+      "notes": "Wave-11 Tier-1 Demo D8 (L3, Compliance Copilot + Non-NDA Black-Box Mode, re-sealed at git_sha 4b1520cd after closing Sol 6.2 High's seal_receipts & --public NDA-routing blockers): 38/38 deterministic & loopback HTTP checks pass, 3/3 Ed25519-signed SHA-256 hash-chained retraction receipts replay byte-for-byte (head 820705ef47fc), 0/178 independent WFS oracle mismatches, 0/56 forbidden-pattern hits across HTML and all 20 scenario/step/role Non-NDA responses, and --public hard-blocks mode=nda (403) even when an NDA token is configured (manifest stubs_L1 string retains legacy slice wording). Mandatory Wave-12 disclosures: floor-tier synthetic fixture using FastBM25 + hashed signed 512-d char-3gram vectors + RRF(k=60), Arm-2 overwrite emulation, fixed public runner test key (ephemeral per-process key in live server), Copilot-layer audience filtering, and oracle-only custom injection.",
+      "part": "PART_VII_TIER1_AND_TIER2_FLAGSHIPS",
+      "present": true,
+      "role": "WAVE12_ADJUDICATED_PRIMARY",
+      "status": "SHA256_VERIFIED",
+      "unhashed_historical_raw_files": {},
+      "verified_side_artifacts": {},
+      "wall_seconds": null
+    },
+    {
+      "dir": "artifacts/wave11_d9_fast_extractor_and_u_grpo",
+      "git_sha": "f7a515db0e6aa6ec28a67d6c431a3d2a2b99bfc3",
+      "id": "wave11_d9_fast_extractor_and_u_grpo",
+      "manifest_file": "wave11_d9_extractor_grpo_manifest.json",
+      "manifest_sha256": "c41fae097f76b4cf4514886626e39a04adf5c5c6430b369fabb3e099ecfd3f7a",
+      "notes": "Wave-11 Tier-2 Demo D9 (L4, Spark #2 GB10): Part A DEV-selected Qwen2.5-0.5B-Instruct LoRA (1.35 GiB VRAM) achieves 96.67% (58/60) Suite A semantic accuracy & strict EM (+0.00 pp vs 30B extractor; +15.00 pp vs live Mem0 infer=True, boot LCB97.5=+6.67 pp, Tango LCB95=+8.08 pp, Holm p=0.0003, exact CP95=-0.74 pp; 100% JSON parse includes salvage/coercion) at 2,104.0 ms/case (4.60x faster than 30B 9,688.9 ms; 1,500 ms target missed -> latency_gate_not_met). Part B Protocol v2 (dr_grpo, 60 steps, seeds 137/2026/31415 w/ seed 42 retired as DEV-diagnostic, pre-eval selection_frozen.json 967dac7f24f1 procedural one-shot freeze, 10/10 5-way disjoint splits, eval_virgin_v2_scope=virgin_for_grpo_arm_only, fp32 merge GEMM logit diff 2.3e-3..4.2e-3 > 1e-4 amendment string w/ 100% argmax parity): primary EVAL_VIRGIN_V2 (N=120) 3-seed final@60 = 48.61% (u_fc=41.67%) vs SFT 7B = 50.00% (u_fc=42.50%), delta=-1.39 pp, CI95=[-7.50, +4.72 pp], Holm p=0.61825 (20k resamples vs 10k in amendment -> p=0.61450) -> honest null verdict 'K4 stands under Protocol v2' (lift is SFT-carried; any retune requires fresh Virgin V3); secondary Look #2 = 60.56% (u_fc=81.67% vs 85.00% SFT, det NI missed 81.67% vs 85.00%) and retrieval-conditioned D1 k=17 = 99.44%.",
+      "part": "PART_VII_TIER1_AND_TIER2_FLAGSHIPS",
+      "present": true,
+      "role": "WAVE12_ADJUDICATED_PRIMARY",
+      "status": "SHA256_VERIFIED",
+      "unhashed_historical_raw_files": {},
+      "verified_side_artifacts": {
+        "part_a_fast_extractor_results.json": "0af8333739c9b15ab965bc03360d70a65b843c6cab008ebf18f261456277ba82",
+        "part_b_u_grpo_results.json": "39d67413a161a8379d06f9408a0e5be413ea76071bfd731b68b86be2957e3690",
+        "selection_frozen.json": "967dac7f24f1e2addf12b0e84f622253483c662facde4315a1a12aa76784c88c",
+        "wave11_d9_part_a_suite_a_n60_rows.csv": "1d43b0cba79f7e1debf59167c441fcfe4950101528f93a7df25a0071295704ab",
+        "wave11_d9_part_b_eval_virgin_v2_n120_rows.csv": "299a4392d2674a113f8b38f803759293a926bb337d44f8b719bdebd27e2894ff",
+        "wave11_d9_part_b_eval_wave6_look2_n120_rows.csv": "7931778ce3e88db89ca4932030983bc19bf4c3af4e4b5ba3de9a4949b7190377"
+      },
+      "wall_seconds": null
+    },
+    {
+      "dir": "artifacts/wave11_d10_5m_real_cutover_and_70b_scale",
+      "git_sha": "2a922f29206739dd0664117262eb04af107a6f54",
+      "id": "wave11_d10_5m_real_cutover_and_70b_scale",
+      "manifest_file": "wave11_d10_scale_manifest.json",
+      "manifest_sha256": "e50b8746038755f16dc17d09ce15e13fe25c43c71131308477757f36500d9032",
+      "notes": "Wave-11 Tier-2 Demo D10 (L5, Spark #1 + Spark #2): Part A evaluates 9,465,539 merged 7-BEIR real vectors (1,891,457 = 19.98% upgraded 1024-d shard + 7,574,082 legacy 384-d shard; standalone 8,841,823 MSMARCO evaluated via admission mask on the shared 9.47M graph over the same 500 queries; 0.0% synthetic, 72.22 MiB 8 B/doc sidecar = 512.0x/2,048.0x smaller than 1024d/4096d f32, IndexHNSWSQ QT_fp16 M=32 efSearch=512, 0.984 50-query Flat-oracle recall@10, 3.64/4.46 ms dual-shard p50/p95, 0.0% fenced vs 100.0% unmasked stale leak on 200 retractions, 0.944 fenced admitted recall@10 on n=25); across 24 Holm contrasts: 9 significant wins at Holm p<=0.0012 (20k-resample floor), 12 n.s. positive (merged MSMARCO vs RRF +1.69 pp Holm p=0.0553 n.s.), 2 n.s. negative, and 1 statistically significant loss (merged_9_47m_quora vs RRF_k60: -6.92 pp, CI95=[-9.14, -4.75 pp], Holm p<=0.0012 floor) plus 6 Recall@10 point losses (not multiplicity-tested). Part B live Llama-3.3-70B-Instruct-bnb-4bit (4-bit NF4, 38.08 GiB) sweep on Suite A (N=60, fixed Nemotron-30B extractor 24.61s/case -> 24.75-26.60s/case e2e vs 3.26s Bare-70B k=5, 14 gate-decided / 46 reader-decided): Mid-7B+Chelated (14.28 GiB, 538 ms reader, 25.15s e2e) reaches 100.0% Nemotron judge / 98.33% strict EM, matching Chelated-70B (100%/98.33%, 26.60s e2e) and Bare-70B k=5 (100%/96.67%, 3.26s) & k=17 (100%/98.33%, 5.36s) at 0.00 pp delta (Tango CI95=[-6.02, +6.02 pp], Holm p=1.0; descriptive leads over Bare-30B 71.67% & Bare-7B 90.00% outside 2-contrast Holm family); Small-1.5B+Chelated (2.94 GiB, 148 ms reader, 24.75s e2e) hits 95.00% judge / 91.67% EM (-5.00 pp vs 70B k=5, Holm p=0.1929 n.s.); 176/180 (97.78%) inter-judge agreement (kappa=0.0 ceiling artifact).",
+      "part": "PART_VII_TIER1_AND_TIER2_FLAGSHIPS",
+      "present": true,
+      "role": "WAVE12_ADJUDICATED_PRIMARY",
+      "status": "SHA256_VERIFIED",
+      "unhashed_historical_raw_files": {},
+      "verified_side_artifacts": {
+        "part_a_cutover_summary.json": "166a44a5ec5e6462ef788ec1237acf7cca6e52e33beba0419df71827d9c3a88b",
+        "part_b_70b_sweep_summary.json": "e8d9906f7359b1c0912c85a31b2ad2b174012107047213a6f903ecdcfb18fd6f"
+      },
+      "wall_seconds": 3894.04
+    },
+    {
+      "dir": "artifacts/wave14_d11_pm6_takedown_carryforward",
+      "git_sha": "",
+      "id": "wave14_d11_pm6_takedown_carryforward",
+      "manifest_file": "wave14_d11_pm6_manifest.json",
+      "manifest_sha256": "7248d05a02ba4901aace9fd960c2a4d04d0046f83bcd1846426159e5cab9ffc8",
+      "notes": "Wave-14B Demo D11 / PM-6 (live Nemotron-30B + Qwen2.5-7B 9-arm inference-time takedown & 4096->384 governance carry-forward firewall; git_sha f357e4ba, 12 Ed25519 copilot_receipt_v2 entries head b214649ccadd, 0/56 Non-NDA hits, paired with post-hoc CPU addendum pm6_posthoc_statistical_reanalysis.json & NDA /formal Lean 4 Spec.lean 63fe3e64 + nanoda_bin 0.4.32 25,473 decls + 7,722-checkpoint conformance w/ 0 semantic diffs & 153 Pitfall-B pruning telemetry diffs): Empirically MIXED \u2014 manifest all_gates_pass=true checks 6 process-only gates, while empirical TEST r5_benign_fpr_le_002 FAILS on Arm 9 (6.25% [2/32, CP95<=18.39%] on Nemotron-30B & 11.76% [2/17, CP95<=32.62%] on Qwen2.5-7B; certifying <=2% at 0 errors requires N>=149). Verified Holm survivors (3/12 familywise alpha=0.05): Arm 9 beats lexical Arm 3 on R3-vs-R5 AUROC (+0.4736 Nemotron / +0.4758 Qwen, Holm p=0.0012 at 1e-4 bootstrap floor; Qwen R2 100% vs 41.18%), Gate-1 EK5 arms (4, 6, 8, 9) hit 100% (60/60) R4 enterprise derivative suppression vs 0-5% without Gate-1, and Phase-3 DE bridged 4096->384 detector beats monolingual MiniLM-384 (+0.1522 AUROC, Holm p=0.0290; ES +0.1003 raw p=0.0163 fails Holm p=0.1467; mu_lang vs mu_en null p=0.867/0.609). On English R3, Arm 9 shows parity/loss vs Arm 6 raw cosine (-0.0107/-0.0208 AUROC, -6.25/-11.76 pp R3) & Arm 8 linear bridge (-0.0039/-0.0138 AUROC) with higher R5 FPR. Mandatory D1-D11 disclosures: reduced-yield TEST N=17/32 on famous pre-1929 public-domain texts, single-template R5 benign prompts, OR(raw,span) Phase-0 confirmation & 4 pre-freeze aborts (f140e23b..f357e4ba) prior to 05:01 calibration freeze, bridge rank 382/384 (rel. residual 0.650, >=380 floor), R2b any-of-3 adaptive breach 15.63%/17.65% (CP95<=30.1%/39.6%), untuned Qwen-only CAA reference (Arm 7), hosted-gateway scope only (no unlearning/open-weights erasure), and MemT-1.0 (arXiv:2610.26825v5) cited accurately as an active recurrent-memory paper whose superposed state precludes selective retraction and whose _state_identity() omits weight hashes.",
+      "part": "PART_VIII_FORMAL_AND_PM6_TAKEDOWN",
+      "present": true,
+      "role": "WAVE15_ADJUDICATED_PRIMARY",
+      "status": "SHA256_VERIFIED",
+      "unhashed_historical_raw_files": {},
+      "verified_side_artifacts": {
+        "calibration_freeze_manifest.json": "70131a74faa63e68bc0491a11b08ce71559b3eacaa110bd068728eb179a5f492",
+        "copilot_receipts_v2.json": "569d3bd3d3309875191ed5156268dd48632b9914895d2e60214f9c4b923e17f5"
+      },
+      "wall_seconds": null
     }
   ],
   "counts": {
-    "bundles_present_verified": 40,
-    "bundles_total_spec": 40,
+    "bundles_present_verified": 46,
+    "bundles_total_spec": 46,
     "unhashed_historical_raw_files": 20,
-    "verified_side_artifacts": 49
+    "verified_side_artifacts": 61
   },
   "observations": {
     "f1_4096_ood": {
@@ -6171,6 +6277,827 @@
       "verdict": null,
       "wrong_space_blocks": null
     },
+    "wave11_d10_5m_real_cutover_and_70b_scale": {
+      "part_a_multiplicity_and_loss_disclosure": {
+        "disclosed_chelated_point_or_ci_losses": [
+          {
+            "challenger_recall_at_10": 0.228,
+            "chelated_recall_at_10": 0.198,
+            "contrast": "merged_9_47m_arguana::recall_at_10_vs_RRF_k60_ZeroMu",
+            "mean_delta_recall_at_10": -0.03
+          },
+          {
+            "ci95_high": 0.00674,
+            "ci95_low": -0.00941,
+            "contrast": "merged_9_47m_fiqa::chelated_minus_rrf_k60",
+            "holm_adjusted_p": 1.0,
+            "mean_delta_ndcg_at_10": -0.00123,
+            "statistically_significant_holm_005_loss": false,
+            "statistically_significant_loss": false
+          },
+          {
+            "ci95_high": 0.00111,
+            "ci95_low": -0.00269,
+            "contrast": "merged_9_47m_nfcorpus::chelated_minus_dev_zscore",
+            "holm_adjusted_p": 1.0,
+            "mean_delta_ndcg_at_10": -0.00079,
+            "statistically_significant_holm_005_loss": false,
+            "statistically_significant_loss": false
+          },
+          {
+            "challenger_recall_at_10": 0.01126,
+            "chelated_recall_at_10": 0.01064,
+            "contrast": "merged_9_47m_nfcorpus::recall_at_10_vs_DEV_ZScore_ZeroMu",
+            "mean_delta_recall_at_10": -0.00062
+          },
+          {
+            "challenger_recall_at_10": 0.01095,
+            "chelated_recall_at_10": 0.01064,
+            "contrast": "merged_9_47m_nfcorpus::recall_at_10_vs_Uncalibrated_Raw_Merge",
+            "mean_delta_recall_at_10": -0.00031
+          },
+          {
+            "ci95_high": -0.0475,
+            "ci95_low": -0.09138,
+            "contrast": "merged_9_47m_quora::chelated_minus_rrf_k60",
+            "holm_adjusted_p": 0.0012000000000000001,
+            "mean_delta_ndcg_at_10": -0.06919,
+            "statistically_significant_holm_005_loss": true,
+            "statistically_significant_loss": true
+          },
+          {
+            "challenger_recall_at_10": 0.73676,
+            "chelated_recall_at_10": 0.70716,
+            "contrast": "merged_9_47m_quora::recall_at_10_vs_RRF_k60_ZeroMu",
+            "mean_delta_recall_at_10": -0.0296
+          },
+          {
+            "challenger_recall_at_10": 0.11194,
+            "chelated_recall_at_10": 0.10917,
+            "contrast": "merged_9_47m_scifact::recall_at_10_vs_RRF_k60_ZeroMu",
+            "mean_delta_recall_at_10": -0.00277
+          },
+          {
+            "challenger_recall_at_10": 0.24433,
+            "chelated_recall_at_10": 0.24133,
+            "contrast": "msmarco_standalone_8_84m::recall_at_10_vs_RRF_k60_ZeroMu",
+            "mean_delta_recall_at_10": -0.003
+          }
+        ],
+        "holm_bonferroni_24_contrasts": {
+          "merged_9_47m_arguana::chelated_minus_dev_zscore": {
+            "family_size": 24,
+            "holm_adjusted_p": 1.0,
+            "rank": 24,
+            "raw_p": 0.89355,
+            "reject_null_at_alpha": false,
+            "step_alpha_threshold": 0.05
+          },
+          "merged_9_47m_arguana::chelated_minus_rrf_k60": {
+            "family_size": 24,
+            "holm_adjusted_p": 1.0,
+            "rank": 19,
+            "raw_p": 0.24634999999999999,
+            "reject_null_at_alpha": false,
+            "step_alpha_threshold": 0.008333333333333333
+          },
+          "merged_9_47m_arguana::chelated_minus_uncalibrated_raw": {
+            "family_size": 24,
+            "holm_adjusted_p": 1.0,
+            "rank": 17,
+            "raw_p": 0.21635,
+            "reject_null_at_alpha": false,
+            "step_alpha_threshold": 0.00625
+          },
+          "merged_9_47m_fiqa::chelated_minus_dev_zscore": {
+            "family_size": 24,
+            "holm_adjusted_p": 0.0012000000000000001,
+            "rank": 1,
+            "raw_p": 5e-05,
+            "reject_null_at_alpha": true,
+            "step_alpha_threshold": 0.0020833333333333333
+          },
+          "merged_9_47m_fiqa::chelated_minus_rrf_k60": {
+            "family_size": 24,
+            "holm_adjusted_p": 1.0,
+            "rank": 23,
+            "raw_p": 0.77205,
+            "reject_null_at_alpha": false,
+            "step_alpha_threshold": 0.025
+          },
+          "merged_9_47m_fiqa::chelated_minus_uncalibrated_raw": {
+            "family_size": 24,
+            "holm_adjusted_p": 0.0012000000000000001,
+            "rank": 2,
+            "raw_p": 5e-05,
+            "reject_null_at_alpha": true,
+            "step_alpha_threshold": 0.002173913043478261
+          },
+          "merged_9_47m_msmarco::chelated_minus_dev_zscore": {
+            "family_size": 24,
+            "holm_adjusted_p": 0.09035,
+            "rank": 12,
+            "raw_p": 0.00695,
+            "reject_null_at_alpha": false,
+            "step_alpha_threshold": 0.0038461538461538464
+          },
+          "merged_9_47m_msmarco::chelated_minus_rrf_k60": {
+            "family_size": 24,
+            "holm_adjusted_p": 0.055299999999999995,
+            "rank": 11,
+            "raw_p": 0.0039499999999999995,
+            "reject_null_at_alpha": false,
+            "step_alpha_threshold": 0.0035714285714285718
+          },
+          "merged_9_47m_msmarco::chelated_minus_uncalibrated_raw": {
+            "family_size": 24,
+            "holm_adjusted_p": 0.0012000000000000001,
+            "rank": 3,
+            "raw_p": 5e-05,
+            "reject_null_at_alpha": true,
+            "step_alpha_threshold": 0.002272727272727273
+          },
+          "merged_9_47m_nfcorpus::chelated_minus_dev_zscore": {
+            "family_size": 24,
+            "holm_adjusted_p": 1.0,
+            "rank": 20,
+            "raw_p": 0.40315,
+            "reject_null_at_alpha": false,
+            "step_alpha_threshold": 0.01
+          },
+          "merged_9_47m_nfcorpus::chelated_minus_rrf_k60": {
+            "family_size": 24,
+            "holm_adjusted_p": 0.20845000000000002,
+            "rank": 14,
+            "raw_p": 0.01895,
+            "reject_null_at_alpha": false,
+            "step_alpha_threshold": 0.004545454545454546
+          },
+          "merged_9_47m_nfcorpus::chelated_minus_uncalibrated_raw": {
+            "family_size": 24,
+            "holm_adjusted_p": 1.0,
+            "rank": 21,
+            "raw_p": 0.52155,
+            "reject_null_at_alpha": false,
+            "step_alpha_threshold": 0.0125
+          },
+          "merged_9_47m_quora::chelated_minus_dev_zscore": {
+            "family_size": 24,
+            "holm_adjusted_p": 0.0012000000000000001,
+            "rank": 4,
+            "raw_p": 5e-05,
+            "reject_null_at_alpha": true,
+            "step_alpha_threshold": 0.002380952380952381
+          },
+          "merged_9_47m_quora::chelated_minus_rrf_k60": {
+            "family_size": 24,
+            "holm_adjusted_p": 0.0012000000000000001,
+            "rank": 5,
+            "raw_p": 5e-05,
+            "reject_null_at_alpha": true,
+            "step_alpha_threshold": 0.0025
+          },
+          "merged_9_47m_quora::chelated_minus_uncalibrated_raw": {
+            "family_size": 24,
+            "holm_adjusted_p": 0.0012000000000000001,
+            "rank": 6,
+            "raw_p": 5e-05,
+            "reject_null_at_alpha": true,
+            "step_alpha_threshold": 0.002631578947368421
+          },
+          "merged_9_47m_scidocs::chelated_minus_dev_zscore": {
+            "family_size": 24,
+            "holm_adjusted_p": 0.09035,
+            "rank": 13,
+            "raw_p": 0.00695,
+            "reject_null_at_alpha": false,
+            "step_alpha_threshold": 0.004166666666666667
+          },
+          "merged_9_47m_scidocs::chelated_minus_rrf_k60": {
+            "family_size": 24,
+            "holm_adjusted_p": 0.0012000000000000001,
+            "rank": 7,
+            "raw_p": 5e-05,
+            "reject_null_at_alpha": true,
+            "step_alpha_threshold": 0.002777777777777778
+          },
+          "merged_9_47m_scidocs::chelated_minus_uncalibrated_raw": {
+            "family_size": 24,
+            "holm_adjusted_p": 0.3975,
+            "rank": 15,
+            "raw_p": 0.03975,
+            "reject_null_at_alpha": false,
+            "step_alpha_threshold": 0.005
+          },
+          "merged_9_47m_scifact::chelated_minus_dev_zscore": {
+            "family_size": 24,
+            "holm_adjusted_p": 0.50175,
+            "rank": 16,
+            "raw_p": 0.05575,
+            "reject_null_at_alpha": false,
+            "step_alpha_threshold": 0.005555555555555556
+          },
+          "merged_9_47m_scifact::chelated_minus_rrf_k60": {
+            "family_size": 24,
+            "holm_adjusted_p": 0.0012000000000000001,
+            "rank": 8,
+            "raw_p": 5e-05,
+            "reject_null_at_alpha": true,
+            "step_alpha_threshold": 0.0029411764705882353
+          },
+          "merged_9_47m_scifact::chelated_minus_uncalibrated_raw": {
+            "family_size": 24,
+            "holm_adjusted_p": 1.0,
+            "rank": 18,
+            "raw_p": 0.23255,
+            "reject_null_at_alpha": false,
+            "step_alpha_threshold": 0.0071428571428571435
+          },
+          "msmarco_standalone_8_84m::chelated_minus_dev_zscore": {
+            "family_size": 24,
+            "holm_adjusted_p": 1.0,
+            "rank": 22,
+            "raw_p": 0.62105,
+            "reject_null_at_alpha": false,
+            "step_alpha_threshold": 0.016666666666666666
+          },
+          "msmarco_standalone_8_84m::chelated_minus_rrf_k60": {
+            "family_size": 24,
+            "holm_adjusted_p": 0.0012000000000000001,
+            "rank": 9,
+            "raw_p": 5e-05,
+            "reject_null_at_alpha": true,
+            "step_alpha_threshold": 0.003125
+          },
+          "msmarco_standalone_8_84m::chelated_minus_uncalibrated_raw": {
+            "family_size": 24,
+            "holm_adjusted_p": 0.0012000000000000001,
+            "rank": 10,
+            "raw_p": 5e-05,
+            "reject_null_at_alpha": true,
+            "step_alpha_threshold": 0.0033333333333333335
+          }
+        },
+        "n_contrasts_in_family": 24
+      },
+      "part_a_retraction_fence": {
+        "chelated_fenced_stale_resurrection_rate": 0.0,
+        "fenced_admitted_recall_at_10": 0.944,
+        "fenced_admitted_recall_n_queries": 25,
+        "fenced_admitted_recall_query_ids": [
+          "msmarco:1000004",
+          "msmarco:1000319",
+          "msmarco:100046",
+          "msmarco:1000509",
+          "msmarco:1000519",
+          "msmarco:1000574",
+          "msmarco:1000585",
+          "msmarco:1000678",
+          "msmarco:1000681",
+          "msmarco:1000864",
+          "msmarco:1000906",
+          "msmarco:1001810",
+          "msmarco:1001999",
+          "msmarco:1002148",
+          "msmarco:1002330",
+          "msmarco:1002482",
+          "msmarco:100250",
+          "msmarco:1002716",
+          "msmarco:1002889",
+          "msmarco:1002997",
+          "msmarco:1003003",
+          "msmarco:1003006",
+          "msmarco:1003213",
+          "msmarco:1003277",
+          "msmarco:1003299"
+        ],
+        "fenced_leaks": 0,
+        "fill_at_10": 1.0,
+        "n_queries": 200,
+        "n_retracted_docs": 200,
+        "packed_bitset_bytes_total": 1183194,
+        "unmasked_leaks": 200,
+        "unmasked_stale_resurrection_rate": 1.0
+      },
+      "part_a_synthetic_vector_fraction": 0.0,
+      "part_a_total_real_documents_merged": 9465539,
+      "part_b_arm_metrics": {
+        "Bare_Llama_3_3_70B_4bit_FullContext_k17": {
+          "false_commit_rate_on_u": 0.0,
+          "nemotron_30b_cross_family_blind_acc": 1.0,
+          "qwen_7b_cross_family_blind_acc": 0.98333,
+          "stale_leak_rate": 0.0,
+          "strict_exact_match": 0.98333
+        },
+        "Bare_Llama_3_3_70B_4bit_HybridRAG_k5": {
+          "false_commit_rate_on_u": 0.0,
+          "nemotron_30b_cross_family_blind_acc": 1.0,
+          "qwen_7b_cross_family_blind_acc": 0.96667,
+          "stale_leak_rate": 0.0,
+          "strict_exact_match": 0.96667
+        },
+        "Bare_Nemotron_30B_NVFP4_HybridRAG_k5": {
+          "false_commit_rate_on_u": 1.0,
+          "nemotron_30b_cross_family_blind_acc": null,
+          "qwen_7b_cross_family_blind_acc": 0.73333,
+          "stale_leak_rate": 0.26667,
+          "strict_exact_match": 0.71667
+        },
+        "Bare_Qwen2_5_7B_bf16_HybridRAG_k5": {
+          "false_commit_rate_on_u": 0.0,
+          "nemotron_30b_cross_family_blind_acc": 0.9,
+          "qwen_7b_cross_family_blind_acc": null,
+          "stale_leak_rate": 0.01667,
+          "strict_exact_match": 0.9
+        },
+        "Llama_3_3_70B_4bit_Chelated": {
+          "false_commit_rate_on_u": 0.0,
+          "gate_decided_cases": {
+            "n_cases": 14,
+            "nemotron_30b_cross_family_blind_acc": 1.0,
+            "qwen_7b_cross_family_blind_acc": 0.92857,
+            "strict_exact_match": 0.92857
+          },
+          "label": "Llama-3.3-70B (4-bit NF4) Reader + Chelated (Nemotron-30B Extractor)",
+          "nemotron_30b_cross_family_blind_acc": 1.0,
+          "qwen_7b_cross_family_blind_acc": 0.98333,
+          "reader_decided_cases": {
+            "n_cases": 46,
+            "nemotron_30b_cross_family_blind_acc": 1.0,
+            "qwen_7b_cross_family_blind_acc": 1.0,
+            "strict_exact_match": 1.0
+          },
+          "stale_leak_rate": 0.0,
+          "strict_exact_match": 0.98333
+        },
+        "Mid_Qwen2_5_7B_Plus_Chelated_k5": {
+          "false_commit_rate_on_u": 0.0,
+          "gate_decided_cases": {
+            "n_cases": 14,
+            "nemotron_30b_cross_family_blind_acc": 1.0,
+            "qwen_7b_cross_family_blind_acc": null,
+            "strict_exact_match": 0.92857
+          },
+          "nemotron_30b_cross_family_blind_acc": 1.0,
+          "qwen_7b_cross_family_blind_acc": null,
+          "reader_decided_cases": {
+            "n_cases": 46,
+            "nemotron_30b_cross_family_blind_acc": 1.0,
+            "qwen_7b_cross_family_blind_acc": null,
+            "strict_exact_match": 1.0
+          },
+          "stale_leak_rate": 0.0,
+          "strict_exact_match": 0.98333
+        },
+        "Small_Qwen_Plus_Chelated_k5": {
+          "false_commit_rate_on_u": 0.13333,
+          "gate_decided_cases": {
+            "n_cases": 14,
+            "nemotron_30b_cross_family_blind_acc": 1.0,
+            "qwen_7b_cross_family_blind_acc": null,
+            "strict_exact_match": 0.92857
+          },
+          "nemotron_30b_cross_family_blind_acc": 0.95,
+          "qwen_7b_cross_family_blind_acc": null,
+          "reader_decided_cases": {
+            "n_cases": 46,
+            "nemotron_30b_cross_family_blind_acc": 0.93478,
+            "qwen_7b_cross_family_blind_acc": null,
+            "strict_exact_match": 0.91304
+          },
+          "stale_leak_rate": 0.05,
+          "strict_exact_match": 0.91667
+        }
+      },
+      "part_b_holm_bonferroni_family": {
+        "Mid_7B_Chelated_minus_Bare_Llama70B_4bit_k5": {
+          "family_size": 2,
+          "holm_adjusted_p": 1.0,
+          "rank": 2,
+          "raw_p": 1.0,
+          "reject_null_at_alpha": false,
+          "step_alpha_threshold": 0.05
+        },
+        "Small_Chelated_minus_Bare_Llama70B_4bit_k5": {
+          "family_size": 2,
+          "holm_adjusted_p": 0.1929,
+          "rank": 1,
+          "raw_p": 0.09645,
+          "reject_null_at_alpha": false,
+          "step_alpha_threshold": 0.025
+        }
+      },
+      "part_b_locked_70b_model": {
+        "load_seconds": 245.22,
+        "mean_query_ms_chelated": 1989.39,
+        "mean_query_ms_k17": 5361.28,
+        "mean_query_ms_k5": 3257.82,
+        "mean_reader_plus_extraction_ms_per_case_chelated": 26596.47,
+        "model_id": "unsloth/Llama-3.3-70B-Instruct-bnb-4bit",
+        "nominal_parameters_b": 70.6,
+        "peak_cuda_allocated_gib": 38.084,
+        "quantization": "4-bit NF4 (bitsandbytes Linear4bit, bfloat16 compute)"
+      },
+      "part_b_status": "COMPLETED",
+      "wall_seconds": 3894.04
+    },
+    "wave11_d6_opensearch_pgvector_qdrant": {
+      "failed_gates": [],
+      "shortlist_policy": {
+        "certificate": "verified exhaustion or exact dot-prefix bound for CSLS and r_q",
+        "ef_max": 512,
+        "exact_exhaustion_at_p_admit_lte": 0.15,
+        "k_os": 64,
+        "k_os_eff": "min(1024, ceil(4*k_os/max(p_admit,0.05)))",
+        "selection": "frozen L1 policy"
+      },
+      "status": "COMPLETED",
+      "wall_seconds": 1252.9780869750248
+    },
+    "wave11_d7_live_zep_graphiti_arena": {
+      "evidence_tier": "spark1-live",
+      "suite_a_settled_arms": {
+        "Chelated_v4_Stratified_WFS": {
+          "accuracy": 0.9666666666666667,
+          "arm_failure_count": 0,
+          "consolidation_bg_mean_ms": 10033.598886153291,
+          "end_to_end_write_plus_bg_mean_ms": 10373.314548002963,
+          "mean_read_completion_tokens": 7.55,
+          "mean_read_prompt_tokens": 170.5,
+          "mean_write_completion_tokens": 890.6,
+          "mean_write_prompt_tokens": 6882.666666666667,
+          "write_ack_p50_ms": 144.55159049248323,
+          "write_clock_disclosure": "write_ack_p50_ms measures post-extraction EK5+index ack; synchronous LLM claim extraction is reported in consolidation_bg_mean_ms and summed in end_to_end_write_plus_bg_mean_ms"
+        },
+        "Live_Graphiti_Zep_v0_31_2": {
+          "accuracy": 0.4666666666666667,
+          "arm_failure_count": 0,
+          "consolidation_bg_mean_ms": 7524.400253368852,
+          "end_to_end_write_plus_bg_mean_ms": 7524.410006220084,
+          "mean_read_completion_tokens": 17.6,
+          "mean_read_prompt_tokens": 771.2333333333333,
+          "mean_write_completion_tokens": 6688.75,
+          "mean_write_prompt_tokens": 85727.11666666667,
+          "write_ack_p50_ms": 0.008984017767943442,
+          "write_clock_disclosure": "write_ack_p50_ms measures ingestion call return; consolidation_bg_mean_ms measures post-write settle wait"
+        },
+        "Live_Mem0_v2_2_1_InferTrue": {
+          "accuracy": 0.45,
+          "arm_failure_count": 0,
+          "consolidation_bg_mean_ms": 2755.080621067706,
+          "end_to_end_write_plus_bg_mean_ms": 2755.0918736174935,
+          "mean_read_completion_tokens": 15.6,
+          "mean_read_prompt_tokens": 779.0,
+          "mean_write_completion_tokens": 1381.4,
+          "mean_write_prompt_tokens": 152482.88333333333,
+          "write_ack_p50_ms": 0.011543990694917738,
+          "write_clock_disclosure": "write_ack_p50_ms measures ingestion call return; consolidation_bg_mean_ms measures post-write settle wait"
+        }
+      },
+      "suite_a_settled_holm": {
+        "Chelated_v4_Stratified_WFS_minus_Live_Graphiti_Zep_v0_31_2": {
+          "family_size": 2,
+          "holm_adjusted_p": 0.0001,
+          "rank": 1,
+          "raw_p": 5e-05,
+          "reject_null_at_alpha": true,
+          "step_alpha_threshold": 0.025
+        },
+        "Chelated_v4_Stratified_WFS_minus_Live_Mem0_v2_2_1_InferTrue": {
+          "family_size": 2,
+          "holm_adjusted_p": 0.0001,
+          "rank": 2,
+          "raw_p": 5e-05,
+          "reject_null_at_alpha": true,
+          "step_alpha_threshold": 0.05
+        }
+      },
+      "suite_b_descriptive": {
+        "arms": {
+          "Chelated_v4_Stratified_WFS": {
+            "arm_failure_count": 0,
+            "arm_failure_item_ids": [],
+            "mean_read_completion_tokens": 9.3,
+            "mean_read_completion_tokens_delta0s": 9.3,
+            "mean_read_prompt_tokens": 1766.6,
+            "mean_read_prompt_tokens_delta0s": 1766.6,
+            "mean_write_completion_tokens": 0.0,
+            "mean_write_prompt_tokens": 0.0,
+            "n": 20,
+            "temporal_accuracy_delta0s": 0.9,
+            "temporal_accuracy_settled": 0.9
+          },
+          "Live_Graphiti_Zep_v0_31_2": {
+            "arm_failure_count": 0,
+            "arm_failure_item_ids": [],
+            "mean_read_completion_tokens": 28.45,
+            "mean_read_completion_tokens_delta0s": 28.2,
+            "mean_read_prompt_tokens": 925.35,
+            "mean_read_prompt_tokens_delta0s": 926.45,
+            "mean_write_completion_tokens": 202606.95,
+            "mean_write_prompt_tokens": 5650710.2,
+            "n": 20,
+            "temporal_accuracy_delta0s": 0.4,
+            "temporal_accuracy_settled": 0.6
+          },
+          "Live_Mem0_v2_2_1_InferTrue": {
+            "arm_failure_count": 0,
+            "arm_failure_item_ids": [],
+            "mean_read_completion_tokens": 13.3,
+            "mean_read_completion_tokens_delta0s": 13.3,
+            "mean_read_prompt_tokens": 649.25,
+            "mean_read_prompt_tokens_delta0s": 649.1,
+            "mean_write_completion_tokens": 22112.4,
+            "mean_write_prompt_tokens": 442395.8,
+            "n": 20,
+            "temporal_accuracy_delta0s": 0.3,
+            "temporal_accuracy_settled": 0.55
+          }
+        },
+        "holm_bonferroni": null,
+        "inferential_claim": false,
+        "label": "descriptive-only",
+        "n_items": 20,
+        "suite": "Suite_B_LongMemEval_S_Knowledge_Update_N20",
+        "unpooled": true
+      }
+    },
+    "wave11_d8_compliance_copilot": {
+      "all_checks_pass": true,
+      "checks_total": 38,
+      "forbidden_pattern_count": 56,
+      "ledger": {
+        "head_hash": "820705ef47fc9f714ca171034bdfa4bd19820f8db528fbc1a25d0d893feafb77",
+        "intact": true,
+        "length": 3
+      },
+      "scoreboard": {
+        "arms": [
+          {
+            "arm_id": "baseline_rag",
+            "correct": 9,
+            "forbidden_text": 18,
+            "judged": 12,
+            "label": "Hybrid retrieval with delete-by-id",
+            "stale_unflagged": 17
+          },
+          {
+            "arm_id": "overwrite_policy",
+            "correct": 10,
+            "forbidden_text": 19,
+            "judged": 12,
+            "label": "Overwrite policy (emulation, not a live product)",
+            "stale_unflagged": 15
+          },
+          {
+            "arm_id": "lineage_control",
+            "correct": 12,
+            "forbidden_text": 0,
+            "judged": 12,
+            "label": "Chelated control plane",
+            "stale_unflagged": 0
+          }
+        ],
+        "cross_check": {
+          "mismatches": 0,
+          "nodes_checked": 89
+        }
+      }
+    },
+    "wave11_d9_fast_extractor_and_u_grpo": {
+      "part_a_gate_diagnostics": {
+        "non_blocking_gate_variances": [
+          "part_a_ms_per_case_below_1500: latency_gate_not_met"
+        ],
+        "part_a_blocking_failed_gates": [],
+        "part_a_blocking_gates_passed": true,
+        "part_a_latency_disclosure": "latency gate not met (2104.0 ms vs 1500.0 ms gate; 4.6x faster than 30B)",
+        "part_a_latency_status": "latency_gate_not_met",
+        "part_a_latency_target_ms": 1500.0,
+        "part_a_ms_per_case_below_1500": false,
+        "part_a_ms_per_case_mean": 2104.008
+      },
+      "part_a_suite_a_n60": {
+        "blind_judge_family": "alibaba-qwen2.5",
+        "blind_judge_model": "Qwen/Qwen2.5-7B-Instruct",
+        "deterministic_frozen_d1_accuracy": 0.9667,
+        "deterministic_strict_exact_match": 0.9667,
+        "extraction_benchmark": {
+          "batch_size": 17,
+          "generate_calls": 60,
+          "json_valid_rate": 1.0,
+          "model_path": "/home/mattmre/chelated-night1/artifacts/wave11_d9_fast_extractor_and_u_grpo/_work/part_a/ckpt_qwen_qwen2_5_0_5b_instruct/merged_bf16",
+          "ms_per_case_mean": 2104.008,
+          "ms_per_case_p50": 2095.482,
+          "ms_per_case_p95": 2369.73,
+          "ms_per_doc_mean": 123.765,
+          "n_cases": 60,
+          "n_docs": 1020,
+          "peak_vram_mib": 1383.7,
+          "prompt_tokens_mean_per_case": 6502.6,
+          "tokens_generated": 48065,
+          "tokens_generated_mean_per_case": 801.08,
+          "tokens_generated_mean_per_doc": 47.12
+        },
+        "generator_family": "nvidia-nemotron",
+        "holm_bonferroni": {
+          "FastEdge_vs_Mem0_Live_InferTrue": {
+            "family_size": 2,
+            "holm_adjusted_p": 0.00030000000000000003,
+            "rank": 1,
+            "raw_p": 0.00015000000000000001,
+            "reject_null_at_alpha": true,
+            "step_alpha_threshold": 0.025
+          },
+          "FastEdge_vs_Wave6_30B_Extractor": {
+            "family_size": 2,
+            "holm_adjusted_p": 1.0,
+            "rank": 2,
+            "raw_p": 1.0,
+            "reject_null_at_alpha": false,
+            "step_alpha_threshold": 0.05
+          }
+        },
+        "l4_gates": {
+          "beats_mem0_lcb975_gt_0": true,
+          "json_valid_rate_ge_099": true,
+          "ms_per_case_below_1500": false,
+          "reload_parity_below_1e4": true
+        },
+        "n_cases": 60,
+        "paired_bootstrap_vs_mem0_live": {
+          "boot_std": 0.04606766303040923,
+          "clopper_pearson_lcb95": -0.007371932163934156,
+          "clopper_pearson_ucb95": 0.28277604501940806,
+          "lcb_95": 0.08333333333333333,
+          "lcb_975": 0.06666666666666667,
+          "mean_delta": 0.15,
+          "median_delta": 0.15,
+          "n01": 0.0,
+          "n10": 9.0,
+          "n_queries": 60,
+          "p0125_bonf2": 0.05,
+          "p9875_bonf2": 0.25,
+          "p_value_two_sided": 0.00015000000000000001,
+          "tango_score_lcb95": 0.08080237003659663,
+          "tango_score_lcb975_bonf2": 0.061148510890768296,
+          "tango_score_ucb95": 0.2611458906977855,
+          "tango_score_ucb975_bonf2": 0.2799114937173788,
+          "ucb_95_one_sided": 0.23333333333333334,
+          "ucb_975": 0.25
+        },
+        "paired_bootstrap_vs_wave6_30b": {
+          "boot_std": 0.03323899524445814,
+          "clopper_pearson_lcb95": -0.12583996911304204,
+          "clopper_pearson_ucb95": 0.12583996911304204,
+          "lcb_95": -0.05,
+          "lcb_975": -0.06666666666666667,
+          "mean_delta": 0.0,
+          "median_delta": 0.0,
+          "n01": 2.0,
+          "n10": 2.0,
+          "n_queries": 60,
+          "p0125_bonf2": -0.08333333333333333,
+          "p9875_bonf2": 0.06666666666666667,
+          "p_value_two_sided": 1.0,
+          "tango_score_lcb95": -0.085969365553482,
+          "tango_score_lcb975_bonf2": -0.10354849208760115,
+          "tango_score_ucb95": 0.08596936555348199,
+          "tango_score_ucb975_bonf2": 0.10354849208760113,
+          "ucb_95_one_sided": 0.05,
+          "ucb_975": 0.06666666666666667
+        },
+        "promoted_arm": "FastEdge_qwen_qwen2_5_0_5b_instruct_Chelated_v2",
+        "reader_model": "nemotron-lightning",
+        "semantic_abstention_recall": 0.8667,
+        "semantic_accuracy": 0.9667,
+        "semantic_determinate_accuracy": 1.0,
+        "speedup_vs_wave6_30b_extractor": 4.6,
+        "stale_leak_rate": 0.0333,
+        "suite_a_corpus_sha256": "cb6bc0082b5850f4edfea668d1ecb2a73fe6f898b7476e34ed11036cb378765b",
+        "wave6_baselines": {
+          "mem0_live_infer_true_accuracy": 0.8166666666666667,
+          "wave6_30b_extractor_accuracy": 0.9666666666666667,
+          "wave6_30b_extractor_mean_ms_per_case": 9688.871718282948
+        }
+      },
+      "part_b_hypothesis_summary": {
+        "eval_virgin_v2_scope": "virgin_for_grpo_arm_only",
+        "null_result_fails_receipt": false,
+        "protocol_v2_single_knob_attribution_claimed": false,
+        "verdict": "K4 stands under Protocol v2"
+      }
+    },
+    "wave14_d11_pm6_takedown_carryforward": {
+      "copilot_receipts_v2_ref": {
+        "count": 12,
+        "entries_verified": 12,
+        "file": "copilot_receipts_v2.json",
+        "file_sha256": "569d3bd3d3309875191ed5156268dd48632b9914895d2e60214f9c4b923e17f5",
+        "forbidden_pattern_count": 56,
+        "head_hash": "b214649ccadd14bf8ea680a5efbef7d40478bd8f46c94c4084a94812645cc263",
+        "non_nda_leak_hits": 0
+      },
+      "empirical_test_targets": {
+        "r2b_any_of_3_breach_rate": {
+          "arm": "arm9",
+          "by_generator": {
+            "nemotron_30b": {
+              "any_of_k_breach_rate": 0.15625,
+              "any_of_k_breached_works": 5,
+              "cp_one_sided_upper_95": 0.300842,
+              "k_variants_per_work": 3,
+              "manifest_cp_one_sided_upper_95": 0.300842,
+              "n_test_work_families": 32,
+              "per_attack_breached_works": {
+                "entity_omitted_multiturn": 0,
+                "homoglyph_confusable": 3,
+                "interleaved_separator": 2
+              },
+              "post_freeze": true
+            },
+            "qwen25_7b": {
+              "any_of_k_breach_rate": 0.176471,
+              "any_of_k_breached_works": 3,
+              "cp_one_sided_upper_95": 0.395641,
+              "k_variants_per_work": 3,
+              "manifest_cp_one_sided_upper_95": 0.395641,
+              "n_test_work_families": 17,
+              "per_attack_breached_works": {
+                "entity_omitted_multiturn": 0,
+                "homoglyph_confusable": 1,
+                "interleaved_separator": 2
+              },
+              "post_freeze": true
+            }
+          },
+          "note": "Post-freeze adaptive red team breached Arm 9 on 15.6%-17.6% of TEST works (any-of-3); CP upper bound up to 0.396.",
+          "verdict": "NONZERO_BREACH_DISCLOSED"
+        },
+        "r5_benign_fpr_le_002": {
+          "arm": "arm9",
+          "by_generator": {
+            "nemotron_30b": {
+              "certifiable_at_this_n_even_with_zero_errors": false,
+              "cp_one_sided_upper_95": 0.183943,
+              "cp_upper_at_zero_errors_same_n": 0.089368,
+              "cp_upper_le_target": false,
+              "false_refusals": 2,
+              "manifest_cp_one_sided_upper_95": 0.183943,
+              "n_test_families": 32,
+              "passed": false,
+              "point_estimate": 0.0625,
+              "point_estimate_le_target": false
+            },
+            "qwen25_7b": {
+              "certifiable_at_this_n_even_with_zero_errors": false,
+              "cp_one_sided_upper_95": 0.326193,
+              "cp_upper_at_zero_errors_same_n": 0.161566,
+              "cp_upper_le_target": false,
+              "false_refusals": 2,
+              "manifest_cp_one_sided_upper_95": 0.326193,
+              "n_test_families": 17,
+              "passed": false,
+              "point_estimate": 0.117647,
+              "point_estimate_le_target": false
+            }
+          },
+          "cp_upper_at_zero_errors": {
+            "17": 0.161566,
+            "32": 0.089368
+          },
+          "min_n_to_certify_target_at_zero_errors": 149,
+          "passed_all_generators": false,
+          "statistical_power_note": "Even at 0 errors, the one-sided 95% CP upper bound is 0.161566 at N=17 and 0.089368 at N=32; certifying <= 0.02 at 0 errors requires N >= 149. This TEST design could not certify the 2% target under any outcome.",
+          "target": 0.02,
+          "verdict": "FAILED"
+        }
+      },
+      "execution_mode": "run-live",
+      "holm_headline_findings": {
+        "arm9_vs_arm3_survives_holm_both_generators": true,
+        "arm9_vs_arm6_survives_holm_any_generator": false,
+        "arm9_vs_arm8_survives_holm_any_generator": false,
+        "de_bridge_mu_lang_vs_monolingual_survives_holm": true,
+        "es_bridge_mu_lang_vs_monolingual_raw_p": 0.0163,
+        "es_bridge_mu_lang_vs_monolingual_survives_holm": false,
+        "mu_lang_vs_mu_en_any_significant": false,
+        "mu_lang_vs_mu_en_raw_p_by_language": {
+          "de": 0.8667,
+          "es": 0.6093
+        },
+        "mu_lang_vs_mu_en_verdict": "NULL -- per-language mean centering (mu_lang) is not distinguishable from mu_en"
+      },
+      "process_gates": {
+        "all_dev_calibrations_met_target_fpr": true,
+        "bridge_effective_rank_384": true,
+        "caa_sweep_completed_all_alphas": true,
+        "phase0_min_yield_met": true,
+        "unarmed_async_forced_bound_violations_zero": true,
+        "zero_test_leakage_verified": true
+      },
+      "reanalysis_sha256": "fbad8046a4f469742f99ce5a3c93634b40b8e4afb45226f9e3ce17132a652546"
+    },
     "wave6_d2_4096d_3beir_complete": {
       "k3_guardrails": null,
       "primary_endpoint": {
@@ -8996,7 +9923,7 @@
     "manifest_path": "archive/pristine-b37e6a55-exact/PRISTINE_MANIFEST.json",
     "status": "VERIFIED_BYTE_EXACT"
   },
-  "registry_content_sha256": "6e6e9a156f3887cf9b34c22c0b869c39d322a7f802510e47b6eb4856a3124170",
+  "registry_content_sha256": "6ef7eba4f4147de1ea7e51f0ee5ade00711227f3e2a8d4b0c77e5ba7c0511542",
   "release_status": "PRE-RELEASE / HUMAN AUDIT & CLEAN-RERUN GATES PENDING",
-  "schema_version": "verified_registry_v5_0"
+  "schema_version": "verified_registry_v7_0"
 }

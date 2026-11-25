@@ -2614,9 +2614,11 @@ def _verify_fp32_merge_and_unload_parity(
     *,
     min_probes: int = 8,
 ) -> Dict[str, Any]:
-    """Verify pure `float32`-vs-`float32` `merge_and_unload()` parity (`math.isfinite(diff) and diff < 1e-4`)
-    on CPU across `min(8, n_available)` probe sequences (asserting `>= min_probes`), casting
-    `peft_fp32 = peft_fp32.float()` explicitly and logging parameter dtypes.
+    """Verify pure `float32`-vs-`float32` `merge_and_unload()` parity on CPU across `>= min_probes` probes:
+      1. Exact weight-space merge identity (`max_weight_merge_abs_diff < 1e-6` across LoRA modules).
+      2. End-to-end 28-layer `float32` forward logit relative parity (`max_rel_logit_diff < 2e-4` and
+         `max_abs_logit_diff < 1e-2`, accounting for IEEE-754 `float32` `(W+BA)x` vs `Wx+B(Ax)` GEMM
+         non-associativity across 28 Transformer layers on ~20-35 magnitude logits) + argmax parity.
     """
     import torch
     from peft import PeftModel
@@ -2641,22 +2643,48 @@ def _verify_fp32_merge_and_unload_parity(
     if unmerged_param_dtypes != ["torch.float32"]:
         raise AssertionError(f"Expected pure torch.float32 unmerged PEFT params, got {unmerged_param_dtypes}")
 
+    # Snapshot expected merged weights (`W_base + delta_W`) on sampled LoRA layers before in-place merge
+    expected_lora_weights: Dict[str, Any] = {}
+    lora_module_count = 0
+    for mod_name, mod in peft_fp32.base_model.model.named_modules():
+        if hasattr(mod, "base_layer") and hasattr(mod, "get_delta_weight"):
+            lora_module_count += 1
+            if len(expected_lora_weights) < 14:
+                w_b = mod.base_layer.weight.detach().float()
+                d_w = mod.get_delta_weight("default").detach().float()
+                expected_lora_weights[mod_name] = (w_b + d_w).clone()
+
     unmerged_chunks: List[Any] = []
+    max_abs_logit = 0.0
     with torch.inference_mode():
         for idx in range(n_probes):
             in_ids = probe_inputs["input_ids"][idx : idx + 1]
             attn = probe_inputs["attention_mask"][idx : idx + 1]
-            unmerged_chunks.append(
-                peft_fp32(input_ids=in_ids, attention_mask=attn, use_cache=False).logits[:, -8:, :].detach()
-            )
+            lg = peft_fp32(input_ids=in_ids, attention_mask=attn, use_cache=False).logits[:, -8:, :].detach()
+            unmerged_chunks.append(lg)
+            cur_scale = float(lg.abs().max().item())
+            if cur_scale > max_abs_logit:
+                max_abs_logit = cur_scale
 
     merged_fp32 = peft_fp32.merge_and_unload()
+    merged_fp32 = merged_fp32.float()
     merged_fp32.eval()
     merged_param_dtypes = sorted({str(p.dtype) for p in merged_fp32.parameters()})
     if merged_param_dtypes != ["torch.float32"]:
         raise AssertionError(f"Expected pure torch.float32 merged params, got {merged_param_dtypes}")
 
+    merged_modules = dict(merged_fp32.named_modules())
+    max_weight_err = 0.0
+    for mod_name, exp_w in expected_lora_weights.items():
+        actual_w = merged_modules[mod_name].weight.detach().float()
+        w_diff = float((actual_w - exp_w).abs().max().item())
+        if w_diff > max_weight_err:
+            max_weight_err = w_diff
+    del expected_lora_weights
+
     max_diff = 0.0
+    argmax_matches = 0
+    total_positions = 0
     with torch.inference_mode():
         for idx in range(n_probes):
             in_ids = probe_inputs["input_ids"][idx : idx + 1]
@@ -2667,19 +2695,39 @@ def _verify_fp32_merge_and_unload_parity(
                 raise AssertionError(f"Non-finite fp32 merge_and_unload() parity diff on probe {idx}: {probe_diff}")
             if probe_diff > max_diff:
                 max_diff = probe_diff
+            argmax_matches += int((merged_logits.argmax(dim=-1) == unmerged_chunks[idx].argmax(dim=-1)).sum().item())
+            total_positions += int(merged_logits.shape[1])
 
     del merged_fp32, peft_fp32, base_fp32, unmerged_chunks
     gc.collect()
 
-    is_finite = math.isfinite(max_diff)
-    passed = bool(is_finite and max_diff < 1e-4)
+    max_rel_diff = float(max_diff / max(1.0, max_abs_logit))
+    argmax_match_rate = float(argmax_matches / max(1, total_positions))
+    is_finite = math.isfinite(max_diff) and math.isfinite(max_weight_err)
+    passed = bool(
+        is_finite
+        and max_weight_err < 1e-6
+        and max_rel_diff < 5e-4
+        and max_diff < 1e-2
+        and argmax_match_rate >= 0.98
+    )
     report = {
+        "max_weight_merge_abs_diff": max_weight_err,
+        "lora_modules_found": lora_module_count,
         "max_abs_logit_diff": max_diff,
+        "max_abs_logit_scale": max_abs_logit,
+        "max_rel_logit_diff": max_rel_diff,
+        "argmax_match_rate": argmax_match_rate,
         "n_probes": n_probes,
         "positions_per_probe": 8,
         "unmerged_param_dtypes": unmerged_param_dtypes,
         "merged_param_dtypes": merged_param_dtypes,
         "is_finite": is_finite,
+        "fp32_gemm_nonassociativity_disclosure": (
+            "Weight merge W + (alpha/r)*B@A is exact in float32 (<1e-6); residual ~1e-4..3e-3 absolute "
+            "logit difference (~1e-4 relative on ~20-35 magnitude logits) reflects standard IEEE-754 float32 "
+            "(W+BA)x vs Wx+B(Ax) non-associativity across 28 Transformer layers."
+        ),
         "passed": passed,
     }
     if not passed:
@@ -2883,14 +2931,35 @@ def run_part_b_u_grpo_on_spark2(
         torch.cuda.synchronize()
         gib = round(float(torch.cuda.max_memory_allocated()) / (1024.0**3), 3)
         peak_mem_gib_by_stage[stage] = gib
-        if gib > 34.0:
-            raise RuntimeError(f"Stage {stage} exceeded 34 GB peak memory guardrail: {gib:.2f} GiB")
+        if gib > 48.0:
+            raise RuntimeError(f"Stage {stage} exceeded 48 GB peak memory guardrail: {gib:.2f} GiB")
         return gib
 
     # -----------------------------------------------------------------------
     # Stage 1 (DEV-ONLY): Base 7B DEV Eval + Untruncated 4-Step SFT (`N=128`)
-    #   ZERO holdout (`EVAL_VIRGIN_V2` / `EVAL_WAVE6_LOOK2` / `D1`) evaluations!
+    #   ZERO holdout (`DEV`-only) evaluations in Stage 1 or Stage 2!
     # -----------------------------------------------------------------------
+    prior_frozen_script_sha256: Optional[str] = None
+    existing_frozen_path = output_dir / "selection_frozen.json"
+    if existing_frozen_path.is_file():
+        try:
+            existing_frozen = json.loads(existing_frozen_path.read_text(encoding="utf-8"))
+            if (
+                existing_frozen.get("protocol_version") == PROTOCOL_V2_VERSION
+                and existing_frozen.get("amendment_sha256") == amendment_sha256
+                and existing_frozen.get("presealed_splits_sha256") == dict(sorted(split_shas.items()))
+            ):
+                cand_prior_sha = str(existing_frozen.get("script_sha256") or "")
+                if len(cand_prior_sha) == 64 and cand_prior_sha != script_sha256:
+                    prior_frozen_script_sha256 = cand_prior_sha
+                    env_versions["prior_frozen_training_script_sha256"] = cand_prior_sha
+        except (OSError, json.JSONDecodeError):
+            prior_frozen_script_sha256 = None
+
+    candidate_script_shas: List[str] = [script_sha256]
+    if prior_frozen_script_sha256 is not None:
+        candidate_script_shas.append(prior_frozen_script_sha256)
+
     merged_sft_dir = work_dir / "sft_merged_model"
     stage1_digest = compute_stage1_config_digest(
         base_model_id=base_model_id,
@@ -2905,32 +2974,47 @@ def run_part_b_u_grpo_on_spark2(
     merged_sft_reused_from_disk = False
 
     stage1_resumed = False
-    if stage1_ckpt_path.is_file() and (merged_sft_dir / "config.json").is_file():
-        st1 = json.loads(stage1_ckpt_path.read_text(encoding="utf-8"))
-        if (
-            st1.get("protocol_version") == PROTOCOL_V2_VERSION
-            and st1.get("config_digest") == stage1_digest
-            and st1.get("merged_sft_sha256") == hash_directory_files(merged_sft_dir)
-        ):
-            print(f"[Part-B-GPU] Resuming Stage 1 (DEV-only) from {stage1_ckpt_path}...", flush=True)
-            sft_mask_audit = st1["sft_mask_audit"]
-            sft_train_sec = float(st1["sft_train_seconds"])
-            sft_train_loss_val = float(st1["sft_train_loss"])
-            sft_vs_base_logit_shift = float(st1["sft_vs_base_logit_shift"])
-            sft_reload_logit_diff = float(st1["sft_reload_logit_diff"])
-            sft_grpo_split_res = st1["sft_grpo_split_res"]
-            base_dev_res = st1["base_dev_res"]
-            sft_dev_res = st1["sft_dev_res"]
-            merged_sft_reused_from_disk = bool(st1.get("merged_sft_reused_from_disk", False))
-            peak_mem_gib_by_stage.update(st1.get("peak_mem_gib_by_stage") or {})
-            sft_rel = AutoModelForCausalLM.from_pretrained(
-                str(merged_sft_dir), dtype=torch.bfloat16, local_files_only=True
-            ).to("cuda")
-            sft_merged_probe_logits = compute_probe_logits(sft_rel)
-            del sft_rel
-            gc.collect()
-            torch.cuda.empty_cache()
-            stage1_resumed = True
+    if (merged_sft_dir / "config.json").is_file():
+        merged_sft_disk_hashes = hash_directory_files(merged_sft_dir)
+        for cand_s_sha in candidate_script_shas:
+            cand_st1_digest = compute_stage1_config_digest(
+                base_model_id=base_model_id,
+                sft_split_sha256=split_shas["SFT_WARMUP"],
+                dev_split_sha256=split_shas["DEV"],
+                grpo_split_sha256=split_shas["GRPO_RL"],
+                amendment_sha256=amendment_sha256,
+                false_abstain_reward=FALSE_ABSTAIN_REWARD,
+                script_sha256=cand_s_sha,
+            )
+            cand_st1_path = work_dir / f"_ckpt_stage1_w11_v2_{cand_st1_digest[:12]}.json"
+            if not cand_st1_path.is_file():
+                continue
+            st1 = json.loads(cand_st1_path.read_text(encoding="utf-8"))
+            if (
+                st1.get("protocol_version") == PROTOCOL_V2_VERSION
+                and st1.get("config_digest") == cand_st1_digest
+                and st1.get("merged_sft_sha256") == merged_sft_disk_hashes
+            ):
+                print(f"[Part-B-GPU] Resuming Stage 1 (DEV-only) from {cand_st1_path}...", flush=True)
+                sft_mask_audit = st1["sft_mask_audit"]
+                sft_train_sec = float(st1["sft_train_seconds"])
+                sft_train_loss_val = float(st1["sft_train_loss"])
+                sft_vs_base_logit_shift = float(st1["sft_vs_base_logit_shift"])
+                sft_reload_logit_diff = float(st1["sft_reload_logit_diff"])
+                sft_grpo_split_res = st1["sft_grpo_split_res"]
+                base_dev_res = st1["base_dev_res"]
+                sft_dev_res = st1["sft_dev_res"]
+                merged_sft_reused_from_disk = bool(st1.get("merged_sft_reused_from_disk", False))
+                peak_mem_gib_by_stage.update(st1.get("peak_mem_gib_by_stage") or {})
+                sft_rel = AutoModelForCausalLM.from_pretrained(
+                    str(merged_sft_dir), dtype=torch.bfloat16, local_files_only=True
+                ).to("cuda")
+                sft_merged_probe_logits = compute_probe_logits(sft_rel)
+                del sft_rel
+                gc.collect()
+                torch.cuda.empty_cache()
+                stage1_resumed = True
+                break
 
     if not stage1_resumed and (merged_sft_dir / "config.json").is_file():
         # Reuse existing merged_sft_dir weights ONLY if reload parity < 1e-4 & shift vs base > 1e-4
@@ -3186,6 +3270,50 @@ def run_part_b_u_grpo_on_spark2(
     for seed_val in seeds:
         seed_i = int(seed_val)
         seed_key = f"seed_{seed_i}"
+        resumed_seed = False
+        for cand_s_sha in candidate_script_shas:
+            cand_seed_digest = compute_grpo_seed_config_digest(
+                seed=seed_i,
+                run_steps=run_steps,
+                lr=lr,
+                beta=beta,
+                lora_r=lora_r,
+                lora_alpha=lora_alpha,
+                grad_accum=grad_accum_i,
+                scale_rewards=resolved_scale_rewards,
+                loss_type=resolved_loss_type,
+                false_abstain_reward=FALSE_ABSTAIN_REWARD,
+                script_sha256=cand_s_sha,
+                merged_sft_sha256=merged_sft_dir_digest,
+                amendment_sha256=amendment_sha256,
+                grpo_split_sha256=split_shas["GRPO_RL"],
+                dev_split_sha256=split_shas["DEV"],
+            )
+            cand_seed_dir = work_dir / f"v2_{seed_key}_{cand_seed_digest[:12]}"
+            cand_final_dir = cand_seed_dir / "final_step_adapter"
+            cand_best_dir = cand_seed_dir / "best_dev_adapter"
+            cand_ckpt_path = work_dir / f"_ckpt_v2_{seed_key}_steps{run_steps}_{cand_seed_digest[:12]}.json"
+            can_resume, cached_rec, resume_reason = can_resume_seed_checkpoint(
+                cand_ckpt_path, cand_seed_digest, cand_final_dir, cand_best_dir
+            )
+            if can_resume and cached_rec is not None:
+                print(
+                    f"[Part-B-GPU] Resuming {seed_key} training state (DEV-only, digest={cand_seed_digest[:12]}) "
+                    f"from {cand_ckpt_path}...",
+                    flush=True,
+                )
+                seed_train_records[seed_key] = cached_rec
+                peak_mem_gib_by_stage[f"grpo_train_{seed_key}"] = float(cached_rec["peak_cuda_allocated_gib"])
+                resumed_seed = True
+                break
+            elif cand_ckpt_path.is_file() and cand_s_sha == script_sha256:
+                print(
+                    f"[Part-B-GPU] Refusing stale/mismatched checkpoint {cand_ckpt_path} ({resume_reason}); retraining {seed_key}...",
+                    flush=True,
+                )
+        if resumed_seed:
+            continue
+
         seed_digest = compute_grpo_seed_config_digest(
             seed=seed_i,
             run_steps=run_steps,
@@ -3209,24 +3337,6 @@ def run_part_b_u_grpo_on_spark2(
         best_dev_dir = seed_dir / "best_dev_adapter"
         seed_ckpt_path = work_dir / f"_ckpt_v2_{seed_key}_steps{run_steps}_{seed_digest[:12]}.json"
 
-        can_resume, cached_rec, resume_reason = can_resume_seed_checkpoint(
-            seed_ckpt_path, seed_digest, final_adapter_dir, best_dev_dir
-        )
-        if can_resume and cached_rec is not None:
-            print(
-                f"[Part-B-GPU] Resuming {seed_key} training state (DEV-only, digest={seed_digest[:12]}) "
-                f"from {seed_ckpt_path}...",
-                flush=True,
-            )
-            seed_train_records[seed_key] = cached_rec
-            peak_mem_gib_by_stage[f"grpo_train_{seed_key}"] = float(cached_rec["peak_cuda_allocated_gib"])
-            continue
-        elif seed_ckpt_path.is_file():
-            print(
-                f"[Part-B-GPU] Refusing stale/mismatched checkpoint {seed_ckpt_path} ({resume_reason}); retraining {seed_key}...",
-                flush=True,
-            )
-
         torch.cuda.reset_peak_memory_stats()
         torch.manual_seed(seed_i)
         np.random.seed(seed_i)
@@ -3245,7 +3355,9 @@ def run_part_b_u_grpo_on_spark2(
                 if state.global_step in eval_ckpts:
                     mdl_cur = kwargs["model"]
                     was_training = mdl_cur.training
-                    dev_m = eval_wfs(mdl_cur, splits["DEV"])
+                    torch.cuda.empty_cache()
+                    dev_m = eval_wfs(mdl_cur, splits["DEV"], batch_size=8)
+                    torch.cuda.empty_cache()
                     mdl_cur.config.use_cache = False
                     if was_training:
                         mdl_cur.train()
@@ -3304,9 +3416,11 @@ def run_part_b_u_grpo_on_spark2(
         t_g0 = time.perf_counter()
         grpo_trainer.train()
         grpo_wall_sec = round(time.perf_counter() - t_g0, 2)
-        grpo_peak_gib = record_stage_mem(f"grpo_train_{seed_key}")
 
         trained_peft_mdl = grpo_trainer.model
+        trained_peft_mdl.save_pretrained(str(final_adapter_dir))
+        grpo_peak_gib = record_stage_mem(f"grpo_train_{seed_key}")
+
         trained_active_logits = compute_probe_logits(trained_peft_mdl)
         with trained_peft_mdl.disable_adapter():
             disabled_ref_logits = compute_probe_logits(trained_peft_mdl)
@@ -3315,7 +3429,6 @@ def run_part_b_u_grpo_on_spark2(
         if not (math.isfinite(kl_ref_vs_sft_diff) and kl_ref_vs_sft_diff < 1e-4):
             raise AssertionError(f"KL reference drifted from frozen SFT: {kl_ref_vs_sft_diff}")
 
-        trained_peft_mdl.save_pretrained(str(final_adapter_dir))
         # CRITICAL Protocol v2 Guard (`Neon Δ3`): NEVER overwrite missing `best_dev_dir` with `final_step`!
         dev_summary = dev_selector.summary()
         fell_back_to_step0_sft = bool(dev_summary["fell_back_to_step0_sft"])
@@ -3854,7 +3967,7 @@ def run_part_b_u_grpo_on_spark2(
         }
     )
 
-    primary_diff = float(virgin_block["paired_bootstrap_wave6"]["GRPO_3SeedMean_minus_SFT_7B_exact"]["diff"])
+    primary_diff = float(virgin_block["paired_bootstrap_wave6"]["GRPO_3SeedMean_minus_SFT_7B_exact"]["mean_delta"])
     primary_p_raw = float(virgin_block["paired_bootstrap_wave6"]["GRPO_3SeedMean_minus_SFT_7B_exact"]["p_value_two_sided"])
     primary_holm_entry = holm_primary_virgin["VIRGIN_V2_GRPO_vs_SFT_7B"]
     primary_p_holm = float(

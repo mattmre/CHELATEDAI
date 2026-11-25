@@ -1124,6 +1124,29 @@ class TestSplitsAndLeakage(_PM6TestCase):
         self.assertEqual(len(primary.test_families), 60)
         self.assertIs(primary.reduced_yield_fallback_triggered, False)
 
+    def test_global_split_near_floor_skewed_hash_retains_balanced_cohorts(self) -> None:
+        """Stratified rebalance prevents modulo-11 hash skew when a generator has 32 confirmed works."""
+        cat = pm6.build_pm6_canary_catalog()
+        ordered_by_salt = sorted(
+            cat, key=lambda r: (pm6.sha256_text(f"{pm6.PM6_SPLIT_SALT_V1}::{r.author_group_id}"), r.author_group_id)
+        )
+        # Construct worst-case unstratified skew: put 23 works in T-positions and only 9 in D-positions of mod-11!
+        interleave = ("D", "T", "T", "D", "T", "D", "T", "D", "T", "D", "T")
+        d_pool = [r.work_family_id for idx, r in enumerate(ordered_by_salt[:110]) if interleave[idx % 11] == "D"]
+        t_pool = [r.work_family_id for idx, r in enumerate(ordered_by_salt[:110]) if interleave[idx % 11] == "T"]
+        confirmed_qwen = set(d_pool[:9] + t_pool[:23])  # 32 >= 30, but unstratified would get dev=9 < 12!
+        confirmed_nem = set(d_pool[:30] + t_pool[:20])
+        split_by_gen, _primary, unified_bg = pm6.assign_global_cross_generator_splits(
+            cat, confirmed_by_gen={"nemotron_30b": confirmed_nem, "qwen25_7b": confirmed_qwen}
+        )
+        all_dev_ag = {r.author_group_id for sp in split_by_gen.values() for r in sp.dev_families}
+        all_test_ag = {r.author_group_id for sp in split_by_gen.values() for r in sp.test_families}
+        bg_ag = {r.author_group_id for r in unified_bg}
+        self.assertFalse(all_dev_ag & all_test_ag)
+        self.assertFalse(bg_ag & (all_dev_ag | all_test_ag))
+        self.assertGreaterEqual(len(split_by_gen["qwen25_7b"].dev_families), pm6.MIN_DEV_FAMILIES_PER_GEN)
+        self.assertGreaterEqual(len(split_by_gen["qwen25_7b"].test_families), pm6.MIN_TEST_FAMILIES_PER_GEN)
+
     def test_zero_test_leakage_tripwire_checks_authors_both_spaces_and_nan_fail_closed(self) -> None:
         rng = np.random.default_rng(7)
         v_test_384 = rng.standard_normal((8, 16))
@@ -1405,6 +1428,23 @@ class TestTransportContracts(_PM6TestCase):
 # 5. White-Box CAA Forward Hooks & Linear Bridge Parity
 # ---------------------------------------------------------------------------
 class TestCaaAndBridge(_PM6TestCase):
+    def test_drycheck_caa_timebox_scales_with_measured_cost_under_contention(self) -> None:
+        floor, cap = pm6.DRYCHECK_CAA_TIMEBOX_FLOOR_S, pm6.DRYCHECK_CAA_TIMEBOX_CAP_S
+        # Uncontended host: tiny projected cost stays at the floor.
+        self.assertEqual(pm6.drycheck_caa_sweep_timebox_s(0.002, 1500), floor)
+        # B5 regression: a 30x contention slowdown whose projected sweep exceeds the old fixed 120 s
+        # wall clock must get a budget covering that projected cost (with slack), not be truncated.
+        slow_per_call, n_calls = 0.06, 1500  # 90 s projected sweep
+        budget = pm6.drycheck_caa_sweep_timebox_s(slow_per_call, n_calls)
+        self.assertGreater(budget, floor)
+        self.assertGreaterEqual(budget, slow_per_call * n_calls * 2.0)
+        self.assertAlmostEqual(budget, slow_per_call * n_calls * pm6.DRYCHECK_CAA_TIMEBOX_SLACK)
+        # Pathological cost is capped so the timebox stays finite.
+        self.assertEqual(pm6.drycheck_caa_sweep_timebox_s(10.0, 1500), cap)
+        for bad in ((float("nan"), 10), (float("inf"), 10), (-1.0, 10), (0.1, -1)):
+            with self.assertRaises(ValueError):
+                pm6.drycheck_caa_sweep_timebox_s(*bad)
+
     def test_caa_extract_directions_steering_hooks_and_cleanup(self) -> None:
         torch.manual_seed(42)
         vocab = [
@@ -1441,6 +1481,25 @@ class TestCaaAndBridge(_PM6TestCase):
         yc = y - mu_y[None, :]
         w_primal = np.linalg.solve(xc.T @ xc + lam * np.eye(64), xc.T @ yc)
         self.assertTrue(np.allclose(w_dual, w_primal, atol=1e-9))
+
+    def test_procrustes_diagnostics_accepts_minilm_layernorm_381_manifold_and_rejects_underspanned(self) -> None:
+        rng = np.random.default_rng(2026)
+        x_src = rng.standard_normal((512, 512))
+        # Simulate real MiniLM-L6-v2 intrinsic rank 381 (3 zero-variance LayerNorm/distillation axes in 384-d)
+        y_tgt = rng.standard_normal((512, 384))
+        y_tgt[:, -3:] = 0.0
+        bridge_ok = pm6.CenteredProcrustesBridge.fit(x_src, y_tgt, scale_mode="unit")
+        diag_ok = pm6.compute_procrustes_diagnostics(bridge_ok, x_src, y_tgt)
+        self.assertEqual(diag_ok["stiefel_column_rank"], 384)
+        self.assertEqual(diag_ok["target_manifold_rank"], 381)
+        self.assertEqual(diag_ok["effective_rank"], 381)
+        self.assertIs(diag_ok["full_target_manifold_spanned"], True)
+
+        # Underspanned anchor count (60 << 380) MUST fail full_target_manifold_spanned!
+        bridge_bad = pm6.CenteredProcrustesBridge.fit(x_src[:60], y_tgt[:60], scale_mode="unit")
+        diag_bad = pm6.compute_procrustes_diagnostics(bridge_bad, x_src[:60], y_tgt[:60])
+        self.assertLess(diag_bad["effective_rank"], pm6.MIN_MINILM_INTRINSIC_MANIFOLD_RANK)
+        self.assertIs(diag_bad["full_target_manifold_spanned"], False)
 
 
 # ---------------------------------------------------------------------------
@@ -1580,6 +1639,12 @@ class TestLocalDrycheckEndToEnd(_SharedDrycheckRunCase):
         self.assertEqual(set(freeze["dev_ids_sha256_by_generator"]), {"nemotron_30b", "qwen25_7b"})
         self.assertEqual(set(freeze["test_ids_sha256_by_generator"]), {"nemotron_30b", "qwen25_7b"})
         self.assertEqual(freeze["caa_alphas_evaluated"], len(caa.DEFAULT_ALPHA_GRID))
+        # B5: the drycheck sweep timebox is sized from measured cost (>= floor), never silently truncated.
+        caa_cal = self.manifest["arm7_caa_qwen25_7b_reference"]["calibration"]
+        self.assertGreaterEqual(caa_cal["timebox_s"], pm6.DRYCHECK_CAA_TIMEBOX_FLOOR_S)
+        self.assertLessEqual(caa_cal["timebox_s"], pm6.DRYCHECK_CAA_TIMEBOX_CAP_S)
+        self.assertIs(caa_cal["timebox_exceeded"], False)
+        self.assertEqual(len(caa_cal["sweep_results"]), len(caa.DEFAULT_ALPHA_GRID))
 
     def test_bridge_diagnostics_full_rank_and_per_generator_arm7_applicability(self) -> None:
         bd = self.manifest["bridge_diagnostics"]

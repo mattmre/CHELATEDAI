@@ -1,0 +1,483 @@
+{
+  "active_edge_filter": "invalid_at IS NULL",
+  "bolt_uri": "bolt://127.0.0.1:17687",
+  "container": "wave11-d7-neo4j",
+  "corpus_sha256": "cb6bc0082b5850f4edfea668d1ecb2a73fe6f898b7476e34ed11036cb378765b",
+  "docker_rm_argv": [
+    "docker",
+    "rm",
+    "-f",
+    "wave11-d7-neo4j"
+  ],
+  "docker_run_argv": [
+    "docker",
+    "run",
+    "--detach",
+    "--name",
+    "wave11-d7-neo4j",
+    "--memory=8g",
+    "--publish",
+    "127.0.0.1:17474:7474",
+    "--publish",
+    "127.0.0.1:17687:7687",
+    "--env",
+    "NEO4J_AUTH=neo4j/<REDACTED>",
+    "neo4j:5.26-community"
+  ],
+  "embedder": "BAAI/bge-m3",
+  "evidence_tier": "spark1-live",
+  "generator_family": "nvidia-nemotron",
+  "git_sha": "233052445b255f8081876c33f7d6d3055c3d983a",
+  "graphiti_core": "0.31.2",
+  "horizons": [
+    "delta0",
+    "settled"
+  ],
+  "host": "mattmre@10.0.0.49",
+  "http_publish": "127.0.0.1:17474",
+  "judge_family": "alibaba-qwen2.5",
+  "judge_hf_model": "Qwen/Qwen2.5-7B-Instruct",
+  "local_check_is_not_evidence": true,
+  "max_coroutines": 6,
+  "mem0ai": "2.2.1",
+  "mode": "spark1-live",
+  "n_bootstrap": 20000,
+  "neo4j_database": "neo4j",
+  "neo4j_image": "neo4j:5.26-community",
+  "primary_score": "settled_accuracy",
+  "probe": {
+    "json_repair_count": 0,
+    "length_truncation_count": 0,
+    "llm_call_count": 1,
+    "phase": "write",
+    "read_completion_tokens": 0,
+    "read_prompt_tokens": 0,
+    "schema_fallback_count": 0,
+    "structured_output_mode": "json_schema",
+    "validation_retry_count": 0,
+    "write_completion_tokens": 6,
+    "write_prompt_tokens": 31
+  },
+  "reader_endpoint": "http://127.0.0.1:8891/v1",
+  "reader_model": "nemotron-lightning",
+  "reranker": "BAAI/bge-reranker-v2-m3",
+  "schema_version": "wave11_d7_live_zep_graphiti_v1",
+  "scratch_dir": "/home/mattmre/chelated-night1/artifacts/wave11_d7_live_zep_graphiti_arena/scratch",
+  "scratch_is_removable": true,
+  "search_recipe": "EDGE_HYBRID_SEARCH_CROSS_ENCODER",
+  "seed": 42,
+  "suite_a_inference": {
+    "delta0": {
+      "U_separate": {
+        "accuracies": {
+          "Chelated_v4_Stratified_WFS": 0.9333333333333333,
+          "Live_Graphiti_Zep_v0_31_2": 0.13333333333333333,
+          "Live_Mem0_v2_2_1_InferTrue": 0.3333333333333333
+        },
+        "in_holm_family": false,
+        "monotonicity": "weak",
+        "n": 15,
+        "paired": {
+          "Live_Graphiti_Zep_v0_31_2": {
+            "boot_std": 0.1031090176032684,
+            "clopper_pearson_lcb95": 0.229146960880876,
+            "clopper_pearson_ucb95": 0.9666402771633237,
+            "lcb_95": 0.6,
+            "lcb_975": 0.6,
+            "mean_delta": 0.8,
+            "median_delta": 0.8,
+            "n01": 0.0,
+            "n10": 12.0,
+            "n_queries": 15,
+            "p0125_bonf2": 0.5333333333333333,
+            "p9875_bonf2": 1.0,
+            "p_value_two_sided": 5e-05,
+            "tango_score_lcb95": 0.43301005813547255,
+            "tango_score_lcb975_bonf2": 0.34838960566528104,
+            "tango_score_ucb95": 0.9295245065301845,
+            "tango_score_ucb975_bonf2": 0.9387607533032024,
+            "ucb_95_one_sided": 0.9333333333333333,
+            "ucb_975": 1.0
+          },
+          "Live_Mem0_v2_2_1_InferTrue": {
+            "boot_std": 0.1267806441588515,
+            "clopper_pearson_lcb95": 0.038146138802728324,
+            "clopper_pearson_ucb95": 0.8590580157109268,
+            "lcb_95": 0.4,
+            "lcb_975": 0.3333333333333333,
+            "mean_delta": 0.6,
+            "median_delta": 0.6,
+            "n01": 0.0,
+            "n10": 9.0,
+            "n_queries": 15,
+            "p0125_bonf2": 0.3333333333333333,
+            "p9875_bonf2": 0.8666666666666667,
+            "p_value_two_sided": 5e-05,
+            "tango_score_lcb95": 0.2737867183426421,
+            "tango_score_lcb975_bonf2": 0.1985685383691387,
+            "tango_score_ucb95": 0.8017550385865843,
+            "tango_score_ucb975_bonf2": 0.8215767059669641,
+            "ucb_95_one_sided": 0.8,
+            "ucb_975": 0.8666666666666667
+          }
+        }
+      },
+      "arms": {
+        "Chelated_v4_Stratified_WFS": {
+          "accuracy": 0.9666666666666667,
+          "arm_failure_count": 0,
+          "consolidation_bg_mean_ms": 10033.598886153291,
+          "end_to_end_write_plus_bg_mean_ms": 10373.314548002963,
+          "mean_read_completion_tokens": 7.55,
+          "mean_read_prompt_tokens": 170.5,
+          "mean_write_completion_tokens": 890.6,
+          "mean_write_prompt_tokens": 6882.666666666667,
+          "write_ack_p50_ms": 144.55159049248323,
+          "write_clock_disclosure": "write_ack_p50_ms measures post-extraction EK5+index ack; synchronous LLM claim extraction is reported in consolidation_bg_mean_ms and summed in end_to_end_write_plus_bg_mean_ms"
+        },
+        "Live_Graphiti_Zep_v0_31_2": {
+          "accuracy": 0.03333333333333333,
+          "arm_failure_count": 0,
+          "consolidation_bg_mean_ms": 7524.400253368852,
+          "end_to_end_write_plus_bg_mean_ms": 7524.410006220084,
+          "mean_read_completion_tokens": 17.6,
+          "mean_read_prompt_tokens": 771.2333333333333,
+          "mean_write_completion_tokens": 6688.75,
+          "mean_write_prompt_tokens": 85727.11666666667,
+          "write_ack_p50_ms": 0.008984017767943442,
+          "write_clock_disclosure": "write_ack_p50_ms measures ingestion call return; consolidation_bg_mean_ms measures post-write settle wait"
+        },
+        "Live_Mem0_v2_2_1_InferTrue": {
+          "accuracy": 0.1,
+          "arm_failure_count": 0,
+          "consolidation_bg_mean_ms": 2755.080621067706,
+          "end_to_end_write_plus_bg_mean_ms": 2755.0918736174935,
+          "mean_read_completion_tokens": 15.6,
+          "mean_read_prompt_tokens": 779.0,
+          "mean_write_completion_tokens": 1381.4,
+          "mean_write_prompt_tokens": 152482.88333333333,
+          "write_ack_p50_ms": 0.011543990694917738,
+          "write_clock_disclosure": "write_ack_p50_ms measures ingestion call return; consolidation_bg_mean_ms measures post-write settle wait"
+        }
+      },
+      "comparisons": {
+        "Chelated_v4_Stratified_WFS_minus_Live_Graphiti_Zep_v0_31_2": {
+          "boot_std": 0.032353766696390146,
+          "clopper_pearson_lcb95": 0.7527050265006212,
+          "clopper_pearson_ucb95": 0.9850644031842103,
+          "lcb_95": 0.8833333333333333,
+          "lcb_975": 0.8666666666666667,
+          "mean_delta": 0.9333333333333333,
+          "median_delta": 0.9333333333333333,
+          "n01": 0.0,
+          "n10": 56.0,
+          "n_queries": 60,
+          "p0125_bonf2": 0.85,
+          "p9875_bonf2": 1.0,
+          "p_value_two_sided": 5e-05,
+          "tango_score_lcb95": 0.8170010858586262,
+          "tango_score_lcb975_bonf2": 0.783959815410567,
+          "tango_score_ucb95": 0.9737713012754938,
+          "tango_score_ucb975_bonf2": 0.9768488550045039,
+          "ucb_95_one_sided": 0.9833333333333333,
+          "ucb_975": 0.9833333333333333
+        },
+        "Chelated_v4_Stratified_WFS_minus_Live_Mem0_v2_2_1_InferTrue": {
+          "boot_std": 0.04385308546568999,
+          "clopper_pearson_lcb95": 0.6669237607647479,
+          "clopper_pearson_ucb95": 0.9477775064815968,
+          "lcb_95": 0.8,
+          "lcb_975": 0.7833333333333333,
+          "mean_delta": 0.8666666666666667,
+          "median_delta": 0.8666666666666667,
+          "n01": 0.0,
+          "n10": 52.0,
+          "n_queries": 60,
+          "p0125_bonf2": 0.7666666666666667,
+          "p9875_bonf2": 0.95,
+          "p_value_two_sided": 5e-05,
+          "tango_score_lcb95": 0.7543458760014322,
+          "tango_score_lcb975_bonf2": 0.7224439597067543,
+          "tango_score_ucb95": 0.9308589051941304,
+          "tango_score_ucb975_bonf2": 0.9369811654169199,
+          "ucb_95_one_sided": 0.9333333333333333,
+          "ucb_975": 0.95
+        }
+      },
+      "holm_bonferroni": {
+        "Chelated_v4_Stratified_WFS_minus_Live_Graphiti_Zep_v0_31_2": {
+          "family_size": 2,
+          "holm_adjusted_p": 0.0001,
+          "rank": 1,
+          "raw_p": 5e-05,
+          "reject_null_at_alpha": true,
+          "step_alpha_threshold": 0.025
+        },
+        "Chelated_v4_Stratified_WFS_minus_Live_Mem0_v2_2_1_InferTrue": {
+          "family_size": 2,
+          "holm_adjusted_p": 0.0001,
+          "rank": 2,
+          "raw_p": 5e-05,
+          "reject_null_at_alpha": true,
+          "step_alpha_threshold": 0.05
+        }
+      },
+      "horizon": "delta0",
+      "n_bootstrap": 20000,
+      "n_items": 60,
+      "primary_arm": "Chelated_v4_Stratified_WFS",
+      "seed": 42,
+      "stale_leakage": {
+        "Chelated_v4_Stratified_WFS": {
+          "answer_stale_rate": 0.016666666666666666,
+          "context_substring_rate": 0.7833333333333333,
+          "n_stale_items": 60
+        },
+        "Live_Graphiti_Zep_v0_31_2": {
+          "answer_stale_rate": 0.9333333333333333,
+          "context_substring_rate": 1.0,
+          "n_stale_items": 60
+        },
+        "Live_Mem0_v2_2_1_InferTrue": {
+          "answer_stale_rate": 0.8833333333333333,
+          "context_substring_rate": 0.9666666666666667,
+          "n_stale_items": 60
+        }
+      }
+    },
+    "settled": {
+      "U_separate": {
+        "accuracies": {
+          "Chelated_v4_Stratified_WFS": 0.9333333333333333,
+          "Live_Graphiti_Zep_v0_31_2": 0.13333333333333333,
+          "Live_Mem0_v2_2_1_InferTrue": 0.26666666666666666
+        },
+        "in_holm_family": false,
+        "monotonicity": "weak",
+        "n": 15,
+        "paired": {
+          "Live_Graphiti_Zep_v0_31_2": {
+            "boot_std": 0.1031090176032684,
+            "clopper_pearson_lcb95": 0.229146960880876,
+            "clopper_pearson_ucb95": 0.9666402771633237,
+            "lcb_95": 0.6,
+            "lcb_975": 0.6,
+            "mean_delta": 0.8,
+            "median_delta": 0.8,
+            "n01": 0.0,
+            "n10": 12.0,
+            "n_queries": 15,
+            "p0125_bonf2": 0.5333333333333333,
+            "p9875_bonf2": 1.0,
+            "p_value_two_sided": 5e-05,
+            "tango_score_lcb95": 0.43301005813547255,
+            "tango_score_lcb975_bonf2": 0.34838960566528104,
+            "tango_score_ucb95": 0.9295245065301845,
+            "tango_score_ucb975_bonf2": 0.9387607533032024,
+            "ucb_95_one_sided": 0.9333333333333333,
+            "ucb_975": 1.0
+          },
+          "Live_Mem0_v2_2_1_InferTrue": {
+            "boot_std": 0.12222060996411367,
+            "clopper_pearson_lcb95": 0.09687417743253424,
+            "clopper_pearson_ucb95": 0.9004237275351461,
+            "lcb_95": 0.4666666666666667,
+            "lcb_975": 0.4,
+            "mean_delta": 0.6666666666666666,
+            "median_delta": 0.6666666666666666,
+            "n01": 0.0,
+            "n10": 10.0,
+            "n_queries": 15,
+            "p0125_bonf2": 0.4,
+            "p9875_bonf2": 0.9333333333333333,
+            "p_value_two_sided": 5e-05,
+            "tango_score_lcb95": 0.3268611649402522,
+            "tango_score_lcb975_bonf2": 0.2485088941345194,
+            "tango_score_ucb95": 0.8482367556028527,
+            "tango_score_ucb975_bonf2": 0.8646485726763297,
+            "ucb_95_one_sided": 0.8666666666666667,
+            "ucb_975": 0.8666666666666667
+          }
+        }
+      },
+      "arms": {
+        "Chelated_v4_Stratified_WFS": {
+          "accuracy": 0.9666666666666667,
+          "arm_failure_count": 0,
+          "consolidation_bg_mean_ms": 10033.598886153291,
+          "end_to_end_write_plus_bg_mean_ms": 10373.314548002963,
+          "mean_read_completion_tokens": 7.55,
+          "mean_read_prompt_tokens": 170.5,
+          "mean_write_completion_tokens": 890.6,
+          "mean_write_prompt_tokens": 6882.666666666667,
+          "write_ack_p50_ms": 144.55159049248323,
+          "write_clock_disclosure": "write_ack_p50_ms measures post-extraction EK5+index ack; synchronous LLM claim extraction is reported in consolidation_bg_mean_ms and summed in end_to_end_write_plus_bg_mean_ms"
+        },
+        "Live_Graphiti_Zep_v0_31_2": {
+          "accuracy": 0.4666666666666667,
+          "arm_failure_count": 0,
+          "consolidation_bg_mean_ms": 7524.400253368852,
+          "end_to_end_write_plus_bg_mean_ms": 7524.410006220084,
+          "mean_read_completion_tokens": 17.6,
+          "mean_read_prompt_tokens": 771.2333333333333,
+          "mean_write_completion_tokens": 6688.75,
+          "mean_write_prompt_tokens": 85727.11666666667,
+          "write_ack_p50_ms": 0.008984017767943442,
+          "write_clock_disclosure": "write_ack_p50_ms measures ingestion call return; consolidation_bg_mean_ms measures post-write settle wait"
+        },
+        "Live_Mem0_v2_2_1_InferTrue": {
+          "accuracy": 0.45,
+          "arm_failure_count": 0,
+          "consolidation_bg_mean_ms": 2755.080621067706,
+          "end_to_end_write_plus_bg_mean_ms": 2755.0918736174935,
+          "mean_read_completion_tokens": 15.6,
+          "mean_read_prompt_tokens": 779.0,
+          "mean_write_completion_tokens": 1381.4,
+          "mean_write_prompt_tokens": 152482.88333333333,
+          "write_ack_p50_ms": 0.011543990694917738,
+          "write_clock_disclosure": "write_ack_p50_ms measures ingestion call return; consolidation_bg_mean_ms measures post-write settle wait"
+        }
+      },
+      "comparisons": {
+        "Chelated_v4_Stratified_WFS_minus_Live_Graphiti_Zep_v0_31_2": {
+          "boot_std": 0.06863456963735955,
+          "clopper_pearson_lcb95": 0.2650181659161151,
+          "clopper_pearson_ucb95": 0.6642705039875386,
+          "lcb_95": 0.38333333333333336,
+          "lcb_975": 0.36666666666666664,
+          "mean_delta": 0.5,
+          "median_delta": 0.5,
+          "n01": 1.0,
+          "n10": 31.0,
+          "n_queries": 60,
+          "p0125_bonf2": 0.35,
+          "p9875_bonf2": 0.65,
+          "p_value_two_sided": 5e-05,
+          "tango_score_lcb95": 0.3578497407058782,
+          "tango_score_lcb975_bonf2": 0.33483019844532597,
+          "tango_score_ucb95": 0.6270634042880955,
+          "tango_score_ucb975_bonf2": 0.6436341223862594,
+          "ucb_95_one_sided": 0.6166666666666667,
+          "ucb_975": 0.6333333333333333
+        },
+        "Chelated_v4_Stratified_WFS_minus_Live_Mem0_v2_2_1_InferTrue": {
+          "boot_std": 0.06429462228570218,
+          "clopper_pearson_lcb95": 0.2962903810723176,
+          "clopper_pearson_ucb95": 0.6644801283833883,
+          "lcb_95": 0.4166666666666667,
+          "lcb_975": 0.4,
+          "mean_delta": 0.5166666666666667,
+          "median_delta": 0.5166666666666667,
+          "n01": 0.0,
+          "n10": 31.0,
+          "n_queries": 60,
+          "p0125_bonf2": 0.36666666666666664,
+          "p9875_bonf2": 0.6666666666666666,
+          "p_value_two_sided": 5e-05,
+          "tango_score_lcb95": 0.39307810032592494,
+          "tango_score_lcb975_bonf2": 0.37646986567567386,
+          "tango_score_ucb95": 0.6382495046026722,
+          "tango_score_ucb975_bonf2": 0.6542880621762326,
+          "ucb_95_one_sided": 0.6166666666666667,
+          "ucb_975": 0.65
+        }
+      },
+      "holm_bonferroni": {
+        "Chelated_v4_Stratified_WFS_minus_Live_Graphiti_Zep_v0_31_2": {
+          "family_size": 2,
+          "holm_adjusted_p": 0.0001,
+          "rank": 1,
+          "raw_p": 5e-05,
+          "reject_null_at_alpha": true,
+          "step_alpha_threshold": 0.025
+        },
+        "Chelated_v4_Stratified_WFS_minus_Live_Mem0_v2_2_1_InferTrue": {
+          "family_size": 2,
+          "holm_adjusted_p": 0.0001,
+          "rank": 2,
+          "raw_p": 5e-05,
+          "reject_null_at_alpha": true,
+          "step_alpha_threshold": 0.05
+        }
+      },
+      "horizon": "settled",
+      "n_bootstrap": 20000,
+      "n_items": 60,
+      "primary_arm": "Chelated_v4_Stratified_WFS",
+      "seed": 42,
+      "stale_leakage": {
+        "Chelated_v4_Stratified_WFS": {
+          "answer_stale_rate": 0.016666666666666666,
+          "context_substring_rate": 0.7833333333333333,
+          "n_stale_items": 60
+        },
+        "Live_Graphiti_Zep_v0_31_2": {
+          "answer_stale_rate": 0.48333333333333334,
+          "context_substring_rate": 0.9833333333333333,
+          "n_stale_items": 60
+        },
+        "Live_Mem0_v2_2_1_InferTrue": {
+          "answer_stale_rate": 0.55,
+          "context_substring_rate": 0.9666666666666667,
+          "n_stale_items": 60
+        }
+      }
+    }
+  },
+  "suite_a_jsonl": "/home/mattmre/chelated-night1/artifacts/wave11_d7_live_zep_graphiti_arena/suite_a.jsonl",
+  "suite_a_n": 60,
+  "suite_b_descriptive": {
+    "arms": {
+      "Chelated_v4_Stratified_WFS": {
+        "arm_failure_count": 0,
+        "arm_failure_item_ids": [],
+        "mean_read_completion_tokens": 9.3,
+        "mean_read_completion_tokens_delta0s": 9.3,
+        "mean_read_prompt_tokens": 1766.6,
+        "mean_read_prompt_tokens_delta0s": 1766.6,
+        "mean_write_completion_tokens": 0.0,
+        "mean_write_prompt_tokens": 0.0,
+        "n": 20,
+        "temporal_accuracy_delta0s": 0.9,
+        "temporal_accuracy_settled": 0.9
+      },
+      "Live_Graphiti_Zep_v0_31_2": {
+        "arm_failure_count": 0,
+        "arm_failure_item_ids": [],
+        "mean_read_completion_tokens": 28.45,
+        "mean_read_completion_tokens_delta0s": 28.2,
+        "mean_read_prompt_tokens": 925.35,
+        "mean_read_prompt_tokens_delta0s": 926.45,
+        "mean_write_completion_tokens": 202606.95,
+        "mean_write_prompt_tokens": 5650710.2,
+        "n": 20,
+        "temporal_accuracy_delta0s": 0.4,
+        "temporal_accuracy_settled": 0.6
+      },
+      "Live_Mem0_v2_2_1_InferTrue": {
+        "arm_failure_count": 0,
+        "arm_failure_item_ids": [],
+        "mean_read_completion_tokens": 13.3,
+        "mean_read_completion_tokens_delta0s": 13.3,
+        "mean_read_prompt_tokens": 649.25,
+        "mean_read_prompt_tokens_delta0s": 649.1,
+        "mean_write_completion_tokens": 22112.4,
+        "mean_write_prompt_tokens": 442395.8,
+        "n": 20,
+        "temporal_accuracy_delta0s": 0.3,
+        "temporal_accuracy_settled": 0.55
+      }
+    },
+    "holm_bonferroni": null,
+    "inferential_claim": false,
+    "label": "descriptive-only",
+    "n_items": 20,
+    "suite": "Suite_B_LongMemEval_S_Knowledge_Update_N20",
+    "unpooled": true
+  },
+  "suite_b_episode_granularity": "per_session_graphiti_8k_mem0_16k_standalone_retraction",
+  "suite_b_jsonl": "/home/mattmre/chelated-night1/artifacts/wave11_d7_live_zep_graphiti_arena/suite_b.jsonl",
+  "suite_b_n": 20,
+  "suite_b_pooled": false,
+  "untouched_container": "nemotron-37c3"
+}

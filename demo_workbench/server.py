@@ -675,10 +675,34 @@ def dispatch_api_request(
     query_params = parse_qs(parsed.query)
 
     if is_copilot_path(clean_path):
+        effective_headers: Dict[str, Any] = dict(headers) if headers else {}
+        if public_only:
+            # Strip any NDA unlock header and hard-block mode=nda in --public mode even if global service has a token
+            effective_headers = {
+                k: v for k, v in effective_headers.items() if str(k).lower() != "x-copilot-nda-token"
+            }
+            qp_modes = [str(m).strip().lower() for m in query_params.get("mode", [])]
+            if "nda" in qp_modes:
+                return (
+                    403,
+                    "application/json; charset=utf-8",
+                    json.dumps({"error": "mode_unavailable", "message": "NDA mode is disabled in --public mode."}).encode("utf-8"),
+                )
+            if method == "POST" and body_bytes:
+                try:
+                    post_obj = json.loads(body_bytes.decode("utf-8"))
+                except (UnicodeDecodeError, ValueError):
+                    post_obj = None
+                if isinstance(post_obj, dict) and str(post_obj.get("mode", "")).strip().lower() == "nda":
+                    return (
+                        403,
+                        "application/json; charset=utf-8",
+                        json.dumps({"error": "mode_unavailable", "message": "NDA mode is disabled in --public mode."}).encode("utf-8"),
+                    )
         if method == "GET":
-            return handle_copilot_get(clean_path, query_params, headers)
+            return handle_copilot_get(clean_path, query_params, effective_headers)
         if method == "POST":
-            return handle_copilot_post(clean_path, query_params, headers, body_bytes)
+            return handle_copilot_post(clean_path, query_params, effective_headers, body_bytes)
         return 405, "application/json", json.dumps({"error": "method_not_allowed", "message": "Method not allowed."}).encode("utf-8")
 
     # Declarative PV7 routes (routes.d/*.json): served in both modes; the handler enforces Non-NDA.
@@ -777,7 +801,11 @@ def main() -> None:
     parser.add_argument("--public", action="store_true", help="Serve ONLY Non-NDA /copilot routes (404s internal /api/v1/*)")
     parser.add_argument("--nda-token", default="", help="Optional NDA unlock token for /copilot NDA mode")
     args = parser.parse_args()
-    if args.nda_token:
+    if args.public and args.nda_token:
+        parser.error("--public and --nda-token cannot be combined; --public enforces Non-NDA-only responses.")
+    if args.public:
+        set_service(CopilotService(nda_token=None))
+    elif args.nda_token:
         set_service(CopilotService(nda_token=args.nda_token))
     handler_cls = type("ConfiguredWorkbenchHandler", (WorkbenchRequestHandler,), {"public_only": bool(args.public)})
     srv = ThreadingHTTPServer((args.host, args.port), handler_cls)

@@ -1,0 +1,89 @@
+{
+  "amendment_path": "/home/mattmre/chelated-night1/docs/research/d9b_amendment_v1.json",
+  "amendment_sha256": "fbb6fd446dc8ce71a63b9a43af0472f89f00c0418ad757a59a197a03b7e08508",
+  "eval_virgin_v2_scope": "virgin_for_grpo_arm_only",
+  "frozen_at_utc": "2026-11-25T13:51:38.635660+00:00",
+  "in_loop_holdout_evaluations_performed": 0,
+  "merged_sft_dir": "/home/mattmre/chelated-night1/artifacts/wave11_d9_fast_extractor_and_u_grpo/_work/part_b/sft_merged_model",
+  "merged_sft_dir_sha256": {
+    "chat_template.jinja": "cd8e9439f0570856fd70470bf8889ebd8b5d1107207f67a5efb46e342330527f",
+    "config.json": "620e69348718f3fdcd67f0f5c7b1f109c6969d69bf48e2cdad6e59ecbf4b44c8",
+    "generation_config.json": "6ab4169b797c939e5220bee5a9beb34ba5ba94712baca74875afd998a93ab770",
+    "model.safetensors": "91cc8c4ee481e3e2fb7627c778f05ad2e2cc6252eb37ad81e1f7fedab12351d7",
+    "tokenizer.json": "3fd169731d2cbde95e10bf356d66d5997fd885dd8dbb6fb4684da3f23b2585d8",
+    "tokenizer_config.json": "c4f4c62b741ab2940841480f9942f378d7d3878d47c2babb862af7381c59b952"
+  },
+  "presealed_splits_sha256": {
+    "DEV": "6de48c6816e1681c5cbd094572ecca0dbfd38a7b5f8f0e4a75dba18bd39531c8",
+    "EVAL_VIRGIN_V2": "b605b4db28a677c5e75340375c41823f16e41641e99d9666e850067979b6d1a6",
+    "EVAL_WAVE6_LOOK2": "6b08233ce70b69fdd3ec5e1fabfbda8b0934e37acc48b4db96ccb89df078a4a3",
+    "GRPO_RL": "c5d2b1c313bfd214427cb4eaf75f40053983ae665fa48c1df874029ad36ae4d9",
+    "SFT_WARMUP": "32f62b3300ea7979243ace05987a3deed2b1f88418122757117def798a1d10c8"
+  },
+  "protocol_version": "d9b_protocol_v2",
+  "schema_version": "wave11_d9b_selection_frozen_v2",
+  "script_path": "/home/mattmre/chelated-night1/scripts/run_wave11_d9_fast_extractor_and_u_grpo.py",
+  "script_sha256": "e9891c1823956ede3a2b3b8936eb125cedb70374fd4e879967b5199609a034a2",
+  "seeds": {
+    "seed_137": {
+      "best_dev_adapter_dir": "/home/mattmre/chelated-night1/artifacts/wave11_d9_fast_extractor_and_u_grpo/_work/part_b/v2_seed_137_7af3fe14e723/best_dev_adapter",
+      "best_dev_adapter_sha256": {
+        "README.md": "eda649e4773346f416a3b2a38df1cee324aa39338f6f02dea74cb94135c02966",
+        "adapter_config.json": "88ee9fbf3b6bfaeaf7a2a00afafdf77b0721db989d14793fc4a0b4108559efa5",
+        "adapter_model.safetensors": "8601898481a6384bf83d84c3e70cce4958eeb938ce31836cffdea6f366b40f42"
+      },
+      "best_dev_source": "best_dev_adapter_dir",
+      "best_dev_status": "selected_eligible_grpo_step",
+      "best_dev_step": 30,
+      "config_digest": "7af3fe14e723dab7368c66947f9b5aa56229af8b35aafe71e765c02e3a3857f2",
+      "fell_back_to_step0_sft": false,
+      "final_step_adapter_dir": "/home/mattmre/chelated-night1/artifacts/wave11_d9_fast_extractor_and_u_grpo/_work/part_b/v2_seed_137_7af3fe14e723/final_step_adapter",
+      "final_step_adapter_sha256": {
+        "README.md": "eda649e4773346f416a3b2a38df1cee324aa39338f6f02dea74cb94135c02966",
+        "adapter_config.json": "88ee9fbf3b6bfaeaf7a2a00afafdf77b0721db989d14793fc4a0b4108559efa5",
+        "adapter_model.safetensors": "35dbf753d958ea16ada2fc2162867ff8eb0651ecbe829db378e6aac9b6aaec85"
+      },
+      "seed": 137
+    },
+    "seed_2026": {
+      "best_dev_adapter_dir": "/home/mattmre/chelated-night1/artifacts/wave11_d9_fast_extractor_and_u_grpo/_work/part_b/v2_seed_2026_d7f1b9fc4470/best_dev_adapter",
+      "best_dev_adapter_sha256": {
+        "README.md": "eda649e4773346f416a3b2a38df1cee324aa39338f6f02dea74cb94135c02966",
+        "adapter_config.json": "eaed13b4463c54147c3c360a63bf8354662c942bedbe0a5b3b68b350fcd7af3c",
+        "adapter_model.safetensors": "e12db588bbdd6f59e252fd6f374119fcd1407725134a95e1dc04d5ee09b0a22a"
+      },
+      "best_dev_source": "best_dev_adapter_dir",
+      "best_dev_status": "selected_eligible_grpo_step",
+      "best_dev_step": 10,
+      "config_digest": "d7f1b9fc4470b05732ca2bbf84b494e0a12e70fce4530e17e21567a63bbca941",
+      "fell_back_to_step0_sft": false,
+      "final_step_adapter_dir": "/home/mattmre/chelated-night1/artifacts/wave11_d9_fast_extractor_and_u_grpo/_work/part_b/v2_seed_2026_d7f1b9fc4470/final_step_adapter",
+      "final_step_adapter_sha256": {
+        "README.md": "eda649e4773346f416a3b2a38df1cee324aa39338f6f02dea74cb94135c02966",
+        "adapter_config.json": "eaed13b4463c54147c3c360a63bf8354662c942bedbe0a5b3b68b350fcd7af3c",
+        "adapter_model.safetensors": "1b1e268bc3dcb24b66f92e741dc45f53af1fb8df7dceee7a82afb40481b5fe5d"
+      },
+      "seed": 2026
+    },
+    "seed_31415": {
+      "best_dev_adapter_dir": "/home/mattmre/chelated-night1/artifacts/wave11_d9_fast_extractor_and_u_grpo/_work/part_b/v2_seed_31415_e9d75a15688e/best_dev_adapter",
+      "best_dev_adapter_sha256": {
+        "README.md": "eda649e4773346f416a3b2a38df1cee324aa39338f6f02dea74cb94135c02966",
+        "adapter_config.json": "eaed13b4463c54147c3c360a63bf8354662c942bedbe0a5b3b68b350fcd7af3c",
+        "adapter_model.safetensors": "64469189b1f5bcb0419d7e7408df61c5f55d8fe3bdc33002b54ed151cce1dfef"
+      },
+      "best_dev_source": "best_dev_adapter_dir",
+      "best_dev_status": "selected_eligible_grpo_step",
+      "best_dev_step": 50,
+      "config_digest": "e9d75a15688e71bc38ca46b3ff1bc0268adba07f5bca544764e725708545663e",
+      "fell_back_to_step0_sft": false,
+      "final_step_adapter_dir": "/home/mattmre/chelated-night1/artifacts/wave11_d9_fast_extractor_and_u_grpo/_work/part_b/v2_seed_31415_e9d75a15688e/final_step_adapter",
+      "final_step_adapter_sha256": {
+        "README.md": "eda649e4773346f416a3b2a38df1cee324aa39338f6f02dea74cb94135c02966",
+        "adapter_config.json": "eaed13b4463c54147c3c360a63bf8354662c942bedbe0a5b3b68b350fcd7af3c",
+        "adapter_model.safetensors": "a9ce6f370d64a8e9bbcd765b4165843baa95d6030a095dd5c4ddab9338fad2c8"
+      },
+      "seed": 31415
+    }
+  }
+}

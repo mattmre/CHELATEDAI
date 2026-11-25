@@ -1,0 +1,14 @@
+{
+  "artifact_hashes": {
+    "part_a_cutover_summary.json": "166a44a5ec5e6462ef788ec1237acf7cca6e52e33beba0419df71827d9c3a88b",
+    "part_b_70b_sweep_summary.json": "e8d9906f7359b1c0912c85a31b2ad2b174012107047213a6f903ecdcfb18fd6f"
+  },
+  "bundle_id": "wave11_d10_5m_real_cutover_and_70b_scale",
+  "generated_at_utc": "2026-11-25T15:52:09.157096+00:00",
+  "input_part_a_sha256": "166a44a5ec5e6462ef788ec1237acf7cca6e52e33beba0419df71827d9c3a88b",
+  "input_part_b_sha256": "e8d9906f7359b1c0912c85a31b2ad2b174012107047213a6f903ecdcfb18fd6f",
+  "manifest_file": "wave11_d10_scale_manifest.json",
+  "manifest_sha256": "e50b8746038755f16dc17d09ce15e13fe25c43c71131308477757f36500d9032",
+  "schema_version": "report_receipt_v4_0",
+  "status": "COMPLETED"
+}

@@ -1,0 +1,28 @@
+{
+  "artifact_hashes": {
+    "part_a_fast_extractor_results.json": "0af8333739c9b15ab965bc03360d70a65b843c6cab008ebf18f261456277ba82",
+    "part_b_u_grpo_results.json": "39d67413a161a8379d06f9408a0e5be413ea76071bfd731b68b86be2957e3690",
+    "selection_frozen.json": "967dac7f24f1e2addf12b0e84f622253483c662facde4315a1a12aa76784c88c",
+    "wave11_d9_extractor_grpo_manifest.json": "c41fae097f76b4cf4514886626e39a04adf5c5c6430b369fabb3e099ecfd3f7a",
+    "wave11_d9_part_a_suite_a_n60_rows.csv": "1d43b0cba79f7e1debf59167c441fcfe4950101528f93a7df25a0071295704ab",
+    "wave11_d9_part_b_eval_virgin_v2_n120_rows.csv": "299a4392d2674a113f8b38f803759293a926bb337d44f8b719bdebd27e2894ff",
+    "wave11_d9_part_b_eval_wave6_look2_n120_rows.csv": "7931778ce3e88db89ca4932030983bc19bf4c3af4e4b5ba3de9a4949b7190377"
+  },
+  "bundle_id": "wave11_d9_fast_extractor_and_u_grpo",
+  "diagnostics": {
+    "non_blocking_gate_variances": [
+      "part_a_ms_per_case_below_1500: latency_gate_not_met"
+    ],
+    "part_a_latency_disclosure": "latency gate not met (2104.0 ms vs 1500.0 ms gate; 4.6x faster than 30B)",
+    "part_a_latency_status": "latency_gate_not_met",
+    "part_a_ms_per_case_below_1500": false,
+    "part_b_hypothesis_verdict": "K4 stands under Protocol v2"
+  },
+  "generated_at_utc": "2026-11-25T14:57:53.568637+00:00",
+  "git_sha": "f7a515db0e6aa6ec28a67d6c431a3d2a2b99bfc3",
+  "manifest_file": "wave11_d9_extractor_grpo_manifest.json",
+  "manifest_sha256": "c41fae097f76b4cf4514886626e39a04adf5c5c6430b369fabb3e099ecfd3f7a",
+  "schema_version": "report_receipt_v4_0",
+  "status": "COMPLETED",
+  "timestamp_utc": "2026-11-25T14:57:53.568637+00:00"
+}

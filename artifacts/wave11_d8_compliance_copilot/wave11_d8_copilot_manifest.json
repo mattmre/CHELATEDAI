@@ -40,13 +40,13 @@
       },
       {
         "id": "L1",
-        "what": "server.py forwarder is NOT wired by this slice (file ownership); the page is reachable only via the standalone server until the orchestrator adds the forwarder.",
-        "where": "demo_workbench/compliance_copilot_engine.py:handle_copilot_get"
+        "what": "Integrated demo_workbench/server.py forwards /copilot and /api/v2/copilot/* and enforces Non-NDA-only responses under --public (403 on mode=nda even when a token is supplied).",
+        "where": "demo_workbench/server.py:dispatch_api_request"
       },
       {
         "id": "L4",
         "what": "NDA token is supplied by constructor argument or env CHELATED_COPILOT_NDA_TOKEN; the standalone CLI has no --nda-token flag.",
-        "where": "demo_workbench/compliance_copilot_engine.py:1576"
+        "where": "demo_workbench/compliance_copilot_engine.py:1584"
       }
     ],
     "mocks_in_production_paths_L3": "none; the only mock is the seeded-leak positive control, applied in tests/runner only",
@@ -689,14 +689,14 @@
     "warm_benchmark": {
       "deterministic": false,
       "fixture_nodes_before": 11,
-      "full_fixture_rebuild_ms": 0.2803,
+      "full_fixture_rebuild_ms": 0.3405,
       "incremental_update_ms": {
-        "p50": 0.0374,
-        "p95": 0.0598
+        "p50": 0.0347,
+        "p95": 0.0378
       },
       "incremental_update_outer_ms": {
-        "p50": 0.0404,
-        "p95": 0.0665
+        "p50": 0.0376,
+        "p95": 0.0409
       },
       "repeats": 30,
       "scope": "Warm store, fixture-sized graph (tens of nodes), one child plus one retraction per repeat on one machine. It says nothing about production-scale graphs. The rebuild figure is shown separately and is not the update latency.",

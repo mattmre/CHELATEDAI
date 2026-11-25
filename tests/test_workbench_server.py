@@ -148,3 +148,30 @@ def test_copilot_forwarder_and_public_only_isolation() -> None:
     assert st_root == 404
     st_pub, _, _ = dispatch_api_request("GET", "/api/v2/copilot/health", public_only=True)
     assert st_pub == 200
+
+    # Even if an NDA token is configured on the process service, public_only=True must reject mode=nda on GET and POST
+    from demo_workbench.compliance_copilot_engine import SCENARIOS, CopilotService, get_service, set_service
+
+    role_w1 = SCENARIOS["w1"].roles[0]
+    prev_svc = get_service()
+    try:
+        set_service(CopilotService(nda_token="unit-test-secret-token"))
+        hdrs = {"X-Copilot-Nda-Token": "unit-test-secret-token"}
+        st_nda_ok, _, _ = dispatch_api_request(
+            "GET", f"/api/v2/copilot/step?scenario=w1&step=2&role={role_w1}&mode=nda", headers=hdrs, public_only=False
+        )
+        assert st_nda_ok == 200
+        st_nda_get_pub, _, _ = dispatch_api_request(
+            "GET", f"/api/v2/copilot/step?scenario=w1&step=2&role={role_w1}&mode=nda", headers=hdrs, public_only=True
+        )
+        assert st_nda_get_pub == 403
+        st_nda_post_pub, _, _ = dispatch_api_request(
+            "POST",
+            "/api/v2/copilot/query",
+            json.dumps({"scenario": "w1", "step": 2, "role": role_w1, "mode": "nda"}).encode("utf-8"),
+            headers=hdrs,
+            public_only=True,
+        )
+        assert st_nda_post_pub == 403
+    finally:
+        set_service(prev_svc)
