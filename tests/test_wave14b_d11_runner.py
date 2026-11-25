@@ -1124,6 +1124,29 @@ class TestSplitsAndLeakage(_PM6TestCase):
         self.assertEqual(len(primary.test_families), 60)
         self.assertIs(primary.reduced_yield_fallback_triggered, False)
 
+    def test_global_split_near_floor_skewed_hash_retains_balanced_cohorts(self) -> None:
+        """Stratified rebalance prevents modulo-11 hash skew when a generator has 32 confirmed works."""
+        cat = pm6.build_pm6_canary_catalog()
+        ordered_by_salt = sorted(
+            cat, key=lambda r: (pm6.sha256_text(f"{pm6.PM6_SPLIT_SALT_V1}::{r.author_group_id}"), r.author_group_id)
+        )
+        # Construct worst-case unstratified skew: put 23 works in T-positions and only 9 in D-positions of mod-11!
+        interleave = ("D", "T", "T", "D", "T", "D", "T", "D", "T", "D", "T")
+        d_pool = [r.work_family_id for idx, r in enumerate(ordered_by_salt[:110]) if interleave[idx % 11] == "D"]
+        t_pool = [r.work_family_id for idx, r in enumerate(ordered_by_salt[:110]) if interleave[idx % 11] == "T"]
+        confirmed_qwen = set(d_pool[:9] + t_pool[:23])  # 32 >= 30, but unstratified would get dev=9 < 12!
+        confirmed_nem = set(d_pool[:30] + t_pool[:20])
+        split_by_gen, _primary, unified_bg = pm6.assign_global_cross_generator_splits(
+            cat, confirmed_by_gen={"nemotron_30b": confirmed_nem, "qwen25_7b": confirmed_qwen}
+        )
+        all_dev_ag = {r.author_group_id for sp in split_by_gen.values() for r in sp.dev_families}
+        all_test_ag = {r.author_group_id for sp in split_by_gen.values() for r in sp.test_families}
+        bg_ag = {r.author_group_id for r in unified_bg}
+        self.assertFalse(all_dev_ag & all_test_ag)
+        self.assertFalse(bg_ag & (all_dev_ag | all_test_ag))
+        self.assertGreaterEqual(len(split_by_gen["qwen25_7b"].dev_families), pm6.MIN_DEV_FAMILIES_PER_GEN)
+        self.assertGreaterEqual(len(split_by_gen["qwen25_7b"].test_families), pm6.MIN_TEST_FAMILIES_PER_GEN)
+
     def test_zero_test_leakage_tripwire_checks_authors_both_spaces_and_nan_fail_closed(self) -> None:
         rng = np.random.default_rng(7)
         v_test_384 = rng.standard_normal((8, 16))

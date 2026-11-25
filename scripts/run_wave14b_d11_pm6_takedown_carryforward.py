@@ -1086,16 +1086,47 @@ def assign_global_cross_generator_splits(
 
     dev_by_gen: Dict[str, List[WorkFamilyRecord]] = {}
     test_by_gen: Dict[str, List[WorkFamilyRecord]] = {}
+    needs_stratified_rebalance = False
     for g in gen_names:
         dev_g = [r for r in global_dev if r.work_family_id in confirmed_sets[g]][: int(dev_count)]
         test_g = [r for r in global_test if r.work_family_id in confirmed_sets[g]][: int(test_count)]
         if len(dev_g) < MIN_DEV_FAMILIES_PER_GEN or len(test_g) < MIN_TEST_FAMILIES_PER_GEN:
-            raise RuntimeError(
-                f"INSUFFICIENT_SPLIT_COHORT[{g}]: dev={len(dev_g)} (min {MIN_DEV_FAMILIES_PER_GEN}), "
-                f"test={len(test_g)} (min {MIN_TEST_FAMILIES_PER_GEN}) after global author-disjoint partition"
-            )
+            needs_stratified_rebalance = True
         dev_by_gen[g] = dev_g
         test_by_gen[g] = test_g
+
+    if needs_stratified_rebalance:
+        # Stratified global partition by generator-confirmation signature without discarding the `<11` tail,
+        # preventing unstratified modulo-11 hash skew when a generator has 30..40 confirmed works.
+        global_dev = []
+        global_test = []
+        global_bg_confirmed = []
+        strata: Dict[Tuple[bool, ...], List[str]] = {}
+        for gk in ordered_keys:
+            sig = tuple(any(r.work_family_id in confirmed_sets[g] for r in groups[gk]) for g in gen_names)
+            strata.setdefault(sig, []).append(gk)
+        for sig in sorted(strata.keys()):
+            for s_pos, gk in enumerate(strata[sig]):
+                recs_sorted = sorted(
+                    groups[gk],
+                    key=lambda r: (sha256_text(f"{salt}::{r.work_family_id}"), r.work_family_id),
+                )
+                if interleave[s_pos % len(interleave)] == "D":
+                    global_dev.extend(recs_sorted)
+                else:
+                    global_test.extend(recs_sorted)
+        dev_by_gen = {}
+        test_by_gen = {}
+        for g in gen_names:
+            dev_g = [r for r in global_dev if r.work_family_id in confirmed_sets[g]][: int(dev_count)]
+            test_g = [r for r in global_test if r.work_family_id in confirmed_sets[g]][: int(test_count)]
+            if len(dev_g) < MIN_DEV_FAMILIES_PER_GEN or len(test_g) < MIN_TEST_FAMILIES_PER_GEN:
+                raise RuntimeError(
+                    f"INSUFFICIENT_SPLIT_COHORT[{g}]: dev={len(dev_g)} (min {MIN_DEV_FAMILIES_PER_GEN}), "
+                    f"test={len(test_g)} (min {MIN_TEST_FAMILIES_PER_GEN}) after global author-disjoint partition"
+                )
+            dev_by_gen[g] = dev_g
+            test_by_gen[g] = test_g
 
     all_dev_ids = {r.work_family_id for lst in dev_by_gen.values() for r in lst}
     all_test_ids = {r.work_family_id for lst in test_by_gen.values() for r in lst}
@@ -4382,34 +4413,46 @@ def execute_pm6_pipeline(
         nem_scores: List[Dict[str, Any]] = []
         nem_api_errors = 0
         nem_trunc_empty = 0
-        for rec in catalog:
+
+        def _probe_nem_one(rec_item: WorkFamilyRecord) -> Tuple[str, Optional[Dict[str, Any]], Optional[str]]:
             try:
-                resp = nem_backend.generate(user_prompt=rec.r1_prompt, max_tokens=160)
-                if resp["truncated_empty"]:
-                    nem_trunc_empty += 1
-                ok, rl, ng10 = is_memorization_confirmed_for_work(resp["content"], rec)
-                ng6 = compute_ngram_block_recall(resp["content"], rec.r1_ground_truth, n=6)
-                if ok:
-                    confirmed_nem.add(rec.work_family_id)
-                nem_scores.append(
-                    {
-                        "work_family_id": rec.work_family_id,
-                        "confirmed": ok,
-                        "rouge_l": round(rl, 4),
-                        "ngram10": round(ng10, 4),
-                        "ngram6": round(ng6, 4),
-                        "finish_reason": resp["finish_reason"],
-                        "truncated_empty": resp["truncated_empty"],
-                        "latency_us": resp["elapsed_us"],
-                    }
-                )
-            except ModelInferenceError as exc:
+                r_item = nem_backend.generate(user_prompt=rec_item.r1_prompt, max_tokens=160)
+                return rec_item.work_family_id, r_item, None
+            except ModelInferenceError as exc_item:
+                return rec_item.work_family_id, None, str(exc_item)
+
+        print(f"[PM-6 Phase 0] Screening {len(catalog)} works on Nemotron-30B (8 concurrent workers)...", flush=True)
+        with ThreadPoolExecutor(max_workers=8) as nem_pool:
+            nem_raw_results = list(nem_pool.map(_probe_nem_one, catalog))
+
+        for rec, (_fid, resp, err_str) in zip(catalog, nem_raw_results):
+            if err_str is not None or resp is None:
                 nem_api_errors += 1
-                nem_scores.append({"work_family_id": rec.work_family_id, "confirmed": False, "api_error": str(exc)})
+                nem_scores.append({"work_family_id": rec.work_family_id, "confirmed": False, "api_error": str(err_str)})
+                continue
+            if resp["truncated_empty"]:
+                nem_trunc_empty += 1
+            ok, rl, ng10 = is_memorization_confirmed_for_work(resp["content"], rec)
+            ng6 = compute_ngram_block_recall(resp["content"], rec.r1_ground_truth, n=6)
+            if ok:
+                confirmed_nem.add(rec.work_family_id)
+            nem_scores.append(
+                {
+                    "work_family_id": rec.work_family_id,
+                    "confirmed": ok,
+                    "rouge_l": round(rl, 4),
+                    "ngram10": round(ng10, 4),
+                    "ngram6": round(ng6, 4),
+                    "finish_reason": resp["finish_reason"],
+                    "truncated_empty": resp["truncated_empty"],
+                    "latency_us": resp["elapsed_us"],
+                }
+            )
         if nem_api_errors > 0:
             raise ModelInferenceError(
                 f"Phase-0 Nemotron-30B encountered {nem_api_errors} API/HTTP errors (never silently treated as recall misses)."
             )
+        print(f"[PM-6 Phase 0] Nemotron-30B confirmed={len(confirmed_nem)}/{len(catalog)}; screening Qwen2.5-7B...", flush=True)
         phase0_by_generator["nemotron_30b"] = {
             "confirmed_count": len(confirmed_nem),
             "catalog_size": len(catalog),
@@ -4461,6 +4504,7 @@ def execute_pm6_pipeline(
             "source": qwen25_model,
             "samples": qwen_scores[:10],
         }
+        print(f"[PM-6 Phase 0] Qwen2.5-7B confirmed={len(confirmed_qwen)}/{len(catalog)}!", flush=True)
 
     # NB-1 / N4: hard Phase-0 yield gate BEFORE any vault embedding or Phase 1-3 spend.
     if (
