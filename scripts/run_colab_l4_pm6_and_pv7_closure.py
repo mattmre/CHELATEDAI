@@ -34,18 +34,15 @@ import argparse
 import csv
 import gc
 import hashlib
-import io
 import json
 import math
 import os
 import platform
 import sys
 import time
-import urllib.request
-import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 from scipy.stats import beta as scipy_beta
@@ -57,9 +54,6 @@ if str(REPO_ROOT) not in sys.path:
 from benchmark_utils import canonicalize_id  # noqa: E402
 from chelated_loft_and_zero_write_ni import PREREGISTERED_NI_MARGIN, compute_exact_tango_ni  # noqa: E402
 from chelated_pv7_spine.bridge_merge_harness import (  # noqa: E402
-    BRIDGE_NAMES,
-    MERGE_NAMES,
-    CSLSMerge,
     UncenteredProcrustes,
     ZeroMuPolarBridge,
     evaluate_4hop_chain,
@@ -78,19 +72,14 @@ ENCODER_SPECS: Tuple[Tuple[str, str, int, int], ...] = (
     ("Qwen3-4096", "Qwen/Qwen3-Embedding-8B", 4096, 32),
 )
 
-BEIR_BASE_URLS: Tuple[str, ...] = (
-    "https://public.ukp.informatik.tu-darmstadt.de/thakur/BEIR/datasets",
-    "https://huggingface.co/datasets/BeIR",
-)
-
 UNBURNED_DOMAIN_PLAN: Tuple[Dict[str, Any], ...] = (
-    {"domain_id": "trec-covid", "zip_name": "trec-covid.zip", "subpath": "trec-covid", "max_docs": 1400, "max_eval_q": 35, "max_dev_q": 15},
-    {"domain_id": "touche-2020", "zip_name": "webis-touche2020.zip", "subpath": "webis-touche2020", "max_docs": 1400, "max_eval_q": 34, "max_dev_q": 15},
-    {"domain_id": "cqadupstack-android", "zip_name": "cqadupstack.zip", "subpath": "cqadupstack/android", "max_docs": 1300, "max_eval_q": 240, "max_dev_q": 80},
-    {"domain_id": "cqadupstack-physics", "zip_name": "cqadupstack.zip", "subpath": "cqadupstack/physics", "max_docs": 1300, "max_eval_q": 240, "max_dev_q": 80},
-    {"domain_id": "cqadupstack-programmers", "zip_name": "cqadupstack.zip", "subpath": "cqadupstack/programmers", "max_docs": 1300, "max_eval_q": 240, "max_dev_q": 80},
-    {"domain_id": "cqadupstack-stats", "zip_name": "cqadupstack.zip", "subpath": "cqadupstack/stats", "max_docs": 1300, "max_eval_q": 220, "max_dev_q": 80},
-    {"domain_id": "cqadupstack-unix", "zip_name": "cqadupstack.zip", "subpath": "cqadupstack/unix", "max_docs": 1300, "max_eval_q": 240, "max_dev_q": 80},
+    {"domain_id": "trec-covid", "hf_repo": "mteb/trec-covid", "max_docs": 1400, "max_eval_q": 35, "max_dev_q": 15},
+    {"domain_id": "touche-2020", "hf_repo": "mteb/touche2020", "max_docs": 1400, "max_eval_q": 34, "max_dev_q": 15},
+    {"domain_id": "cqadupstack-android", "hf_repo": "mteb/cqadupstack-android", "max_docs": 1300, "max_eval_q": 240, "max_dev_q": 80},
+    {"domain_id": "cqadupstack-physics", "hf_repo": "mteb/cqadupstack-physics", "max_docs": 1300, "max_eval_q": 240, "max_dev_q": 80},
+    {"domain_id": "cqadupstack-programmers", "hf_repo": "mteb/cqadupstack-programmers", "max_docs": 1300, "max_eval_q": 240, "max_dev_q": 80},
+    {"domain_id": "cqadupstack-stats", "hf_repo": "mteb/cqadupstack-stats", "max_docs": 1300, "max_eval_q": 220, "max_dev_q": 80},
+    {"domain_id": "cqadupstack-unix", "hf_repo": "mteb/cqadupstack-unix", "max_docs": 1300, "max_eval_q": 240, "max_dev_q": 80},
 )
 
 
@@ -217,123 +206,87 @@ def calibrate_rcps_conformal_threshold(
     }
 
 
-def download_beir_zip(zip_name: str, cache_dir: Path) -> Tuple[Path, str]:
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    dst = cache_dir / zip_name
-    if not dst.is_file():
-        url = f"{BEIR_BASE_URLS[0]}/{zip_name}"
-        print(f"[download] Fetching {url} -> {dst} ...", flush=True)
-        req = urllib.request.Request(url, headers={"User-Agent": "chelatedai-pv7-colab-runner/1.0"})
-        with urllib.request.urlopen(req, timeout=300) as resp, dst.open("wb") as out_fh:
-            while True:
-                chunk = resp.read(4 * 1024 * 1024)
-                if not chunk:
-                    break
-                out_fh.write(chunk)
-    digest = sha256_file(dst)
-    return dst, digest
-
-
-def load_beir_slice_from_zip(
-    zip_path: Path,
+def load_beir_slice_from_hf(
     *,
     domain_id: str,
-    subpath: str,
+    hf_repo: str,
+    cache_dir: Path,
     max_docs: int,
     max_eval_q: int,
     max_dev_q: int,
     seed: int,
-) -> Dict[str, Any]:
+) -> Tuple[Dict[str, Any], Dict[str, str]]:
+    from huggingface_hub import hf_hub_download
+
     norm_id = normalize_dataset_id(domain_id)
     if norm_id in BURNED_CORPORA:
         raise RuntimeError(f"Burned corpus forbidden: {domain_id!r} normalized to {norm_id!r}")
 
-    prefix = subpath.strip("/") + "/"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    print(f"[download] Fetching {hf_repo} JSONL/TSV files via HuggingFace Hub ...", flush=True)
+    qrels_path = Path(hf_hub_download(hf_repo, "qrels/test.tsv", repo_type="dataset", cache_dir=str(cache_dir)))
+    queries_path = Path(hf_hub_download(hf_repo, "queries.jsonl", repo_type="dataset", cache_dir=str(cache_dir)))
+    corpus_path = Path(hf_hub_download(hf_repo, "corpus.jsonl", repo_type="dataset", cache_dir=str(cache_dir)))
+    file_digests = {
+        "qrels/test.tsv": sha256_file(qrels_path),
+        "queries.jsonl": sha256_file(queries_path),
+        "corpus.jsonl": sha256_file(corpus_path),
+    }
+
     qrels_all: Dict[str, Dict[str, float]] = {}
     queries_raw: Dict[str, str] = {}
     corpus_raw: Dict[str, str] = {}
 
-    def _open_effective_zip(outer_zf: zipfile.ZipFile) -> Tuple[zipfile.ZipFile, str, Optional[io.BytesIO]]:
-        outer_names = set(outer_zf.namelist())
-        if f"{prefix}queries.jsonl" in outer_names:
-            return outer_zf, prefix, None
-        # UKP cqadupstack.zip packages subforums either as cqadupstack/android/queries.jsonl OR cqadupstack/android.zip
-        nested_candidates = [f"{subpath.strip('/')}.zip", f"{subpath.strip('/').split('/')[-1]}.zip"]
-        for nc in nested_candidates:
-            if nc in outer_names:
-                bio = io.BytesIO(outer_zf.read(nc))
-                inner_zf = zipfile.ZipFile(bio, "r")
-                inner_names = set(inner_zf.namelist())
-                leaf = subpath.strip("/").split("/")[-1] + "/"
-                eff_pref = leaf if f"{leaf}queries.jsonl" in inner_names else ""
-                return inner_zf, eff_pref, bio
-        # Fallback: auto-locate queries.jsonl matching leaf name
-        leaf_tok = subpath.strip("/").split("/")[-1]
-        for name in sorted(outer_names):
-            if name.endswith("queries.jsonl") and leaf_tok in name:
-                return outer_zf, name[: -len("queries.jsonl")], None
-        raise FileNotFoundError(f"Could not locate {subpath} inside {zip_path.name}; sample entries: {sorted(outer_names)[:8]}")
+    with qrels_path.open("r", encoding="utf-8", errors="replace") as fh:
+        reader = csv.reader(fh, delimiter="\t")
+        _header = next(reader, None)
+        for row in reader:
+            if len(row) < 3:
+                continue
+            qid, did, score_s = row[0].strip(), row[1].strip(), row[2].strip()
+            try:
+                sc = float(score_s)
+            except ValueError:
+                continue
+            if sc > 0.0:
+                qrels_all.setdefault(qid, {})[did] = sc
 
-    with zipfile.ZipFile(zip_path, "r") as outer_zf:
-        zf, eff_prefix, _bio_ref = _open_effective_zip(outer_zf)
-        try:
-            names = set(zf.namelist())
-            qrels_member = f"{eff_prefix}qrels/test.tsv"
-            if qrels_member not in names:
-                qrels_member = next(n for n in sorted(names) if n.startswith(f"{eff_prefix}qrels/") and n.endswith(".tsv"))
-            with zf.open(qrels_member) as fh:
-                reader = csv.reader(io.TextIOWrapper(fh, encoding="utf-8", errors="replace"), delimiter="\t")
-                _header = next(reader, None)
-                for row in reader:
-                    if len(row) < 3:
-                        continue
-                    qid, did, score_s = row[0].strip(), row[1].strip(), row[2].strip()
-                    try:
-                        sc = float(score_s)
-                    except ValueError:
-                        continue
-                    if sc > 0.0:
-                        qrels_all.setdefault(qid, {})[did] = sc
+    with queries_path.open("r", encoding="utf-8", errors="replace") as fh:
+        for line in fh:
+            if not line.strip():
+                continue
+            obj = json.loads(line)
+            qid = str(obj["_id"]).strip()
+            txt = str(obj.get("text") or "").strip()
+            if qid in qrels_all and txt:
+                queries_raw[qid] = txt
 
-            with zf.open(f"{eff_prefix}queries.jsonl") as fh:
-                for line in io.TextIOWrapper(fh, encoding="utf-8", errors="replace"):
-                    if not line.strip():
-                        continue
-                    obj = json.loads(line)
-                    qid = str(obj["_id"]).strip()
-                    txt = str(obj.get("text") or "").strip()
-                    if qid in qrels_all and txt:
-                        queries_raw[qid] = txt
-
-            # Cap per-query positive docs kept in slice to top-8 by relevance grade so dense NIST pools
-            # (like trec-covid with ~500 positives/query) stay strictly within max_docs!
-            capped_qrels: Dict[str, Dict[str, float]] = {}
-            for qid, dmap in qrels_all.items():
-                top_dids = sorted(dmap.items(), key=lambda kv: (-kv[1], kv[0]))[:8]
-                capped_qrels[qid] = dict(top_dids)
-            qrels_all = capped_qrels
-            needed_pos_docs = {did for qid in queries_raw for did in qrels_all.get(qid, {})}
-            reservoir: List[Tuple[str, str, str]] = []
-            with zf.open(f"{eff_prefix}corpus.jsonl") as fh:
-                for line in io.TextIOWrapper(fh, encoding="utf-8", errors="replace"):
-                    if not line.strip():
-                        continue
-                    obj = json.loads(line)
-                    did = str(obj["_id"]).strip()
-                    title = str(obj.get("title") or "").strip()
-                    body = str(obj.get("text") or "").strip()
-                    full_txt = (f"{title}\n{body}".strip() if title else body)[:1400]
-                    if not full_txt:
-                        continue
-                    if did in needed_pos_docs:
-                        corpus_raw[did] = full_txt
-                    else:
-                        h_key = hashlib.sha256(f"{seed}:{domain_id}:{did}".encode("utf-8")).hexdigest()
-                        if len(reservoir) < (max_docs * 4):
-                            reservoir.append((h_key, did, full_txt))
-        finally:
-            if zf is not outer_zf:
-                zf.close()
+    # Cap per-query positive docs kept in slice to top-8 by relevance grade so dense NIST pools
+    # (like trec-covid with ~500 positives/query) stay strictly within max_docs!
+    capped_qrels: Dict[str, Dict[str, float]] = {}
+    for qid, dmap in qrels_all.items():
+        top_dids = sorted(dmap.items(), key=lambda kv: (-kv[1], kv[0]))[:8]
+        capped_qrels[qid] = dict(top_dids)
+    qrels_all = capped_qrels
+    needed_pos_docs = {did for qid in queries_raw for did in qrels_all.get(qid, {})}
+    reservoir: List[Tuple[str, str, str]] = []
+    with corpus_path.open("r", encoding="utf-8", errors="replace") as fh:
+        for line in fh:
+            if not line.strip():
+                continue
+            obj = json.loads(line)
+            did = str(obj["_id"]).strip()
+            title = str(obj.get("title") or "").strip()
+            body = str(obj.get("text") or "").strip()
+            full_txt = (f"{title}\n{body}".strip() if title else body)[:1400]
+            if not full_txt:
+                continue
+            if did in needed_pos_docs:
+                corpus_raw[did] = full_txt
+            else:
+                h_key = hashlib.sha256(f"{seed}:{domain_id}:{did}".encode("utf-8")).hexdigest()
+                if len(reservoir) < (max_docs * 4):
+                    reservoir.append((h_key, did, full_txt))
 
     # Filter queries that have >= 1 non-empty positive doc in corpus_raw
     valid_qids = sorted(
@@ -405,7 +358,7 @@ def load_beir_slice_from_zip(
         "dev_query_texts": [queries_raw[q] for q in dev_qids],
         "eval_qrels": eval_qrels,
         "dev_qrels": dev_qrels,
-    }
+    }, file_digests
 
 
 def encode_all_texts_on_gpu(
@@ -972,22 +925,21 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     hardware_cohort = f"colab:{gpu_name}"
     print(f"[init] hardware_cohort={hardware_cohort} vram_mib={vram_total_mib} torch={torch.__version__}", flush=True)
 
-    # 1. Download & load all 7 unburned BEIR slices
-    zip_digests: Dict[str, str] = {}
+    # 1. Download & load all 7 unburned MTEB/BEIR slices from HuggingFace Hub
+    hf_dataset_digests: Dict[str, Dict[str, str]] = {}
     domain_bundles: List[Dict[str, Any]] = []
     text_fp_count = 0
     for plan in UNBURNED_DOMAIN_PLAN:
-        zpath, zsha = download_beir_zip(plan["zip_name"], args.cache_dir)
-        zip_digests[plan["zip_name"]] = zsha
-        sliced = load_beir_slice_from_zip(
-            zpath,
+        sliced, digests = load_beir_slice_from_hf(
             domain_id=plan["domain_id"],
-            subpath=plan["subpath"],
+            hf_repo=plan["hf_repo"],
+            cache_dir=args.cache_dir,
             max_docs=plan["max_docs"],
             max_eval_q=plan["max_eval_q"],
             max_dev_q=plan["max_dev_q"],
             seed=args.seed,
         )
+        hf_dataset_digests[plan["hf_repo"]] = digests
         # Verify text_fingerprint runs cleanly on every selected doc & query
         text_fp_count += len([text_fingerprint(t) for t in sliced["eval_query_texts"]])
         sliced["emb"] = {}
@@ -1055,7 +1007,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "platform": platform.platform(),
             "torch_version": torch.__version__,
             "cli_argv": list(sys.argv),
-            "beir_zip_sha256": zip_digests,
+            "hf_dataset_file_sha256": hf_dataset_digests,
             "verified_query_text_fingerprints": text_fp_count,
             "encoders": encoder_provenance,
             "wall_seconds_total": wall_total,
