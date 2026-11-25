@@ -1,0 +1,273 @@
+{
+  "bundle_id": 48,
+  "ek5": {
+    "canonical_cause_counts": {
+      "CURRENT": 36703,
+      "PEER_CONFLICT_DISPUTED": 1863,
+      "REFUTED": 9561,
+      "SUPERSEDED": 7022,
+      "TEMPORAL_DISPUTED": 297,
+      "UNFOUNDED_POSITIVE_CYCLE": 12554
+    },
+    "canonical_trace_sha256": "ef93286bd6f1424e7eadf1843bc97948e0d614d64da140c9c404bb45c18c05ef",
+    "first_diffs": [],
+    "nodes_compared": 68000,
+    "parity_passed": true,
+    "pos_cyc_export_diffs": 0,
+    "reason_export_diffs": 0,
+    "semantic_diffs": 0,
+    "sequences": 1000,
+    "snapshots_compared": 12000,
+    "steps_per_sequence": 12
+  },
+  "engines": [
+    {
+      "cells": [
+        {
+          "admitted_epoch": 4,
+          "admitted_points": 240,
+          "ann_latency": {
+            "p50_ms": 0.403400044888258,
+            "p95_ms": 0.43479999294504523,
+            "p99_ms": 0.4364000051282346
+          },
+          "exact_latency": {
+            "p50_ms": 0.048900023102760315,
+            "p95_ms": 0.062000006437301636,
+            "p99_ms": 0.31460000900551677
+          },
+          "exact_short_responses": 0,
+          "exact_timeouts": 0,
+          "graph_candidate_sample_count": 24,
+          "graph_telemetry_basis": "per_query_visit_counts",
+          "graph_telemetry_complete": true,
+          "hnsw_ef": 100,
+          "invalid_exact_hits": 0,
+          "invalid_hits": 0,
+          "max_recall_gap": 0.01,
+          "paired_requests": 24,
+          "passed": true,
+          "per_query_visit_counts_available": true,
+          "performance_passed": null,
+          "plan_probes": [
+            {
+              "exact_fallback_triggered": false,
+              "query_index": 0,
+              "route": "simulated_filtered_graph",
+              "visited_graph_candidates": 100
+            },
+            {
+              "exact_fallback_triggered": false,
+              "query_index": 12,
+              "route": "simulated_filtered_graph",
+              "visited_graph_candidates": 100
+            },
+            {
+              "exact_fallback_triggered": false,
+              "query_index": 23,
+              "route": "simulated_filtered_graph",
+              "visited_graph_candidates": 100
+            }
+          ],
+          "probed_exact_fallback_count": 0,
+          "qdrant_measured_route": null,
+          "recall_at_10": 0.7916666666666666,
+          "retraction_percent": 0,
+          "route_evidence_passed": true,
+          "short_responses": 0,
+          "telemetry_passed": true,
+          "timeouts": 0,
+          "visited_graph_candidates": 2400
+        },
+        {
+          "admitted_epoch": 3,
+          "admitted_points": 216,
+          "ann_latency": {
+            "p50_ms": 0.4392999690026045,
+            "p95_ms": 0.4637999809347093,
+            "p99_ms": 0.47480000648647547
+          },
+          "exact_latency": {
+            "p50_ms": 0.04629994509741664,
+            "p95_ms": 0.062400009483098984,
+            "p99_ms": 0.06739998934790492
+          },
+          "exact_short_responses": 0,
+          "exact_timeouts": 0,
+          "graph_candidate_sample_count": 24,
+          "graph_telemetry_basis": "per_query_visit_counts",
+          "graph_telemetry_complete": true,
+          "hnsw_ef": 112,
+          "invalid_exact_hits": 0,
+          "invalid_hits": 0,
+          "max_recall_gap": 0.01,
+          "paired_requests": 24,
+          "passed": true,
+          "per_query_visit_counts_available": true,
+          "performance_passed": null,
+          "plan_probes": [
+            {
+              "exact_fallback_triggered": false,
+              "query_index": 0,
+              "route": "simulated_filtered_graph",
+              "visited_graph_candidates": 112
+            },
+            {
+              "exact_fallback_triggered": false,
+              "query_index": 12,
+              "route": "simulated_filtered_graph",
+              "visited_graph_candidates": 112
+            },
+            {
+              "exact_fallback_triggered": false,
+              "query_index": 23,
+              "route": "simulated_filtered_graph",
+              "visited_graph_candidates": 112
+            }
+          ],
+          "probed_exact_fallback_count": 0,
+          "qdrant_measured_route": null,
+          "recall_at_10": 0.8416666666666667,
+          "retraction_percent": 10,
+          "route_evidence_passed": true,
+          "short_responses": 0,
+          "telemetry_passed": true,
+          "timeouts": 0,
+          "visited_graph_candidates": 2688
+        },
+        {
+          "admitted_epoch": 2,
+          "admitted_points": 120,
+          "ann_latency": {
+            "p50_ms": 0.7124000112526119,
+            "p95_ms": 0.8567000040784478,
+            "p99_ms": 0.9109000093303621
+          },
+          "exact_latency": {
+            "p50_ms": 0.037999998312443495,
+            "p95_ms": 0.044199987314641476,
+            "p99_ms": 0.04569999873638153
+          },
+          "exact_short_responses": 0,
+          "exact_timeouts": 0,
+          "graph_candidate_sample_count": 24,
+          "graph_telemetry_basis": "per_query_visit_counts",
+          "graph_telemetry_complete": true,
+          "hnsw_ef": 200,
+          "invalid_exact_hits": 0,
+          "invalid_hits": 0,
+          "max_recall_gap": 0.01,
+          "paired_requests": 24,
+          "passed": true,
+          "per_query_visit_counts_available": true,
+          "performance_passed": null,
+          "plan_probes": [
+            {
+              "exact_fallback_triggered": false,
+              "query_index": 0,
+              "route": "simulated_filtered_graph",
+              "visited_graph_candidates": 200
+            },
+            {
+              "exact_fallback_triggered": false,
+              "query_index": 12,
+              "route": "simulated_filtered_graph",
+              "visited_graph_candidates": 200
+            },
+            {
+              "exact_fallback_triggered": false,
+              "query_index": 23,
+              "route": "simulated_filtered_graph",
+              "visited_graph_candidates": 200
+            }
+          ],
+          "probed_exact_fallback_count": 0,
+          "qdrant_measured_route": null,
+          "recall_at_10": 0.9958333333333333,
+          "retraction_percent": 50,
+          "route_evidence_passed": true,
+          "short_responses": 0,
+          "telemetry_passed": true,
+          "timeouts": 0,
+          "visited_graph_candidates": 4800
+        },
+        {
+          "admitted_epoch": 1,
+          "admitted_points": 24,
+          "ann_latency": {
+            "p50_ms": 1.0507000260986388,
+            "p95_ms": 1.0826000361703336,
+            "p99_ms": 1.1749999830499291
+          },
+          "exact_latency": {
+            "p50_ms": 0.030800001695752144,
+            "p95_ms": 0.03789999755099416,
+            "p99_ms": 0.03950000973418355
+          },
+          "exact_short_responses": 0,
+          "exact_timeouts": 0,
+          "graph_candidate_sample_count": 24,
+          "graph_telemetry_basis": "per_query_visit_counts",
+          "graph_telemetry_complete": true,
+          "hnsw_ef": 1000,
+          "invalid_exact_hits": 0,
+          "invalid_hits": 0,
+          "max_recall_gap": 0.01,
+          "paired_requests": 24,
+          "passed": true,
+          "per_query_visit_counts_available": true,
+          "performance_passed": null,
+          "plan_probes": [
+            {
+              "exact_fallback_triggered": false,
+              "query_index": 0,
+              "route": "simulated_filtered_graph",
+              "visited_graph_candidates": 240
+            },
+            {
+              "exact_fallback_triggered": false,
+              "query_index": 12,
+              "route": "simulated_filtered_graph",
+              "visited_graph_candidates": 240
+            },
+            {
+              "exact_fallback_triggered": false,
+              "query_index": 23,
+              "route": "simulated_filtered_graph",
+              "visited_graph_candidates": 240
+            }
+          ],
+          "probed_exact_fallback_count": 0,
+          "qdrant_measured_route": null,
+          "recall_at_10": 1.0,
+          "retraction_percent": 90,
+          "route_evidence_passed": true,
+          "short_responses": 0,
+          "telemetry_passed": true,
+          "timeouts": 0,
+          "visited_graph_candidates": 5760
+        }
+      ],
+      "engine": "simulated_hnsw",
+      "server": null
+    }
+  ],
+  "fixture": {
+    "digest": "7d571304e7e2f71e5430ebb91fab345f3deee4fbd505b951ece2e56c1cd0acd3",
+    "dimension": 32,
+    "id": "pv7-b48-synthetic-gaussian-v1",
+    "is_wild_corpus": false,
+    "origin": "synthetic_engine_route_probe",
+    "population": 240,
+    "queries": 24,
+    "seed": 480017,
+    "synthetic": true
+  },
+  "fixture_origin": "synthetic_engine_route_probe",
+  "is_wild_corpus": false,
+  "mode": "local-drycheck",
+  "passed": true,
+  "schema": 1,
+  "spine_commit": "d4454e2d9fca146ccdc3d18db22ac6c0b5d3e802",
+  "spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9"
+}

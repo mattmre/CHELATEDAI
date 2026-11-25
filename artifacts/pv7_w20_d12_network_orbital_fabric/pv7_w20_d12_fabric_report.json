@@ -1,0 +1,736 @@
+{
+  "allow_dry_standin": true,
+  "banner": "Software emulation only. No ASIC, P4 or DPU silicon was in the loop and no flight hardware was used. Traffic and orbital elements are synthetic; propagation is two-body Keplerian.",
+  "bundle_id": 61,
+  "demo_id": "D12",
+  "disclosures": [
+    "Traffic is synthetic and follows the public CESNET-TLS / CIC-IDS feature schema; no captured traffic is used.",
+    "Orbital elements are synthetic in the CelesTrak two-line format and are propagated two-body Keplerian, not SGP4.",
+    "In the default check mode the encoders are deterministic text-derived stand-ins; real checkpoints run only with --mode run-live-encoders.",
+    "Arms 3 and 4 are authored emulations (exact class-signature lookup); they are not reproductions of any named product.",
+    "Arms 5 and 6 share one ledger state machine and differ only in the retrieval path that selects the matched class.",
+    "The two-bit register is torn-read safe only under a trailer-last writer; other write orders can still expose mixed images.",
+    "The bridge-health gate admits a warned bridge with an alarm and refuses only a degenerate anchor set; retrieval uses all four hops.",
+    "Disjointness of the synthetic corpus from historical fingerprint inventories was not established (no inventory supplied).",
+    "Echo clusters are inferred from record text fingerprints; no embedding-similarity threshold is used."
+  ],
+  "dry_standin_fallbacks": [
+    "enc_d",
+    "enc_e"
+  ],
+  "encoder_status": {
+    "enc_a": "live:sentence-transformers/all-MiniLM-L6-v2",
+    "enc_b": "live:BAAI/bge-small-en-v1.5",
+    "enc_c": "live:sentence-transformers/all-mpnet-base-v2",
+    "enc_d": "stand_in (checkpoint not loadable offline: ValueError)",
+    "enc_e": "stand_in (4096-d ground encoder (Qwen3-8B) is not loaded on CPU in this harness; dry stand-in retained)"
+  },
+  "engine_sha256": "0afcca0ba7342686efd773ec027fffaedbcd35f722da3221e2a09bb3bf46ee80",
+  "gates": [
+    {
+      "detail": "both hardware flags are false in the scoreboard payload",
+      "name": "honesty_flags_false",
+      "passed": true
+    },
+    {
+      "detail": "scenario_a_steps=6 scenario_b_steps=5 fuzz_traces=260",
+      "name": "oracle_traces_cover_scenarios_and_fuzz",
+      "passed": true
+    },
+    {
+      "detail": "prefixes=6172 disagreements=0",
+      "name": "oracle_disagreements_zero",
+      "passed": true
+    },
+    {
+      "detail": "register_checks=6172 disagreements=0",
+      "name": "register_oracle_disagreements_zero",
+      "passed": true
+    },
+    {
+      "detail": "injected=1570 fenced_leaks=0 naive_leaks=1570",
+      "name": "reserved_code_never_forwards_when_fenced",
+      "passed": true
+    },
+    {
+      "detail": "|kappa-1|<1e-05 on all hops: {\"fabric_chain\": true, \"linear_chain\": false, \"orthogonal_chain\": true}",
+      "name": "scale_factor_within_tolerance_on_bridge_paths",
+      "passed": true
+    },
+    {
+      "detail": "{\"1\": [8, 0, true], \"2\": [8, 0, true], \"3\": [8, 0, true], \"4\": [8, 0, true]}",
+      "name": "sidecar_is_8_bytes_per_flow_and_argmax_and_top5_identical",
+      "passed": true
+    },
+    {
+      "detail": "dry stand-in used for ['enc_d', 'enc_e']; explicitly allowed by --allow-dry-standin",
+      "name": "live_encoders_fail_closed_on_dry_fallback",
+      "passed": true
+    },
+    {
+      "detail": "FAIL_CLOSED_DEGENERATE",
+      "name": "degenerate_anchor_set_refused",
+      "passed": true
+    },
+    {
+      "detail": "A=1/1 B=1/1",
+      "name": "audit_records_survive_in_canonical_trace",
+      "passed": true
+    },
+    {
+      "detail": "{\"scenario_a\": {\"echo_clusters\": 12, \"echo_records\": 25}, \"scenario_b\": {\"echo_clusters\": 12, \"echo_records\": 24}}",
+      "name": "echo_clusters_collapse_observably",
+      "passed": true
+    },
+    {
+      "detail": "{\"ground_window_count\": {\"0\": 10, \"1\": 11, \"2\": 3}, \"oceanic_blackout_count\": {\"0\": 20, \"1\": 12, \"2\": 13}, \"oceanic_blackout_seconds\": {\"0\": 8610, \"1\": 7620, \"2\": 9480}, \"oisl_window_count\": {\"0-1\": 8, \"1-2\": 8}}",
+      "name": "contact_schedule_has_oisl_ground_and_blackout_windows",
+      "passed": true
+    },
+    {
+      "detail": "{\"all_valid\": true, \"forged_register_detected\": true, \"integer_only_payloads\": true, \"issued\": 11, \"tamper_detected\": true}",
+      "name": "receipt_chain_roundtrip_and_tamper_detection",
+      "passed": true
+    },
+    {
+      "detail": "0 forbidden-pattern hits in the non_nda scoreboard",
+      "name": "non_nda_projection_clean",
+      "passed": true
+    },
+    {
+      "detail": "0/56 forbidden patterns matched across the page and 10 live HTTP responses; http_errors=[]",
+      "name": "non_nda_ip_clean_0_of_n_page_and_live_http",
+      "passed": true
+    },
+    {
+      "detail": "{\"forbidden_input_rejected_without_echo\": true, \"nda_ledger_isolated\": true}",
+      "name": "forbidden_input_rejected_and_nda_ledger_isolated",
+      "passed": true
+    }
+  ],
+  "hardware_asic_p4_silicon_in_loop_claimed": false,
+  "http_probe": {
+    "forbidden_input_rejected_without_echo": true,
+    "hits": 0,
+    "http_errors": [],
+    "nda_ledger_isolated": true,
+    "page_hits": 0,
+    "patterns": 56,
+    "responses_scanned": 10
+  },
+  "live_encoders_used": [
+    "enc_a",
+    "enc_b",
+    "enc_c"
+  ],
+  "mode": "run-live-encoders",
+  "orbital_flight_hardware_claimed": false,
+  "outcomes": {
+    "best_other_flow_acc_ppm": 931818,
+    "best_other_state_acc_ppm": 962121,
+    "fabric_control_flow_acc_ppm": 1000000,
+    "fabric_control_leads_flow": true,
+    "fabric_control_leads_state": true,
+    "fabric_control_state_acc_ppm": 1000000,
+    "note": "Informational. Arms 3 and 4 are authored emulations; scenarios are authored; this is not a market comparison."
+  },
+  "passed": true,
+  "python": "3.11.9",
+  "schedule_sha256": "98b18413913911a1c62e844b32e42b541b7d68dde207d1e3c49c6491a3ceeb2b",
+  "schema": "pv7_w20_d12_fabric_report_v1",
+  "scoreboard": {
+    "arms": [
+      {
+        "combined": {
+          "flow_acc_ppm": 500000,
+          "state_acc_ppm": 916666
+        },
+        "emulation_ours": false,
+        "id": "fleet_rag",
+        "label": "Fleet RAG over raw per-tranche vectors",
+        "note": "Each tranche vector is zero-padded to the ground width and compared with raw cosine; the last rule seen for the matched class is applied.",
+        "scenario_a": {
+          "audit_invalid_parent_survived": 1,
+          "audit_invalid_parent_total": 1,
+          "audit_survived": 1,
+          "audit_total": 1,
+          "derived_hygiene_ppm": 333333,
+          "flow_acc_ppm": 422453,
+          "stale_served": 2,
+          "state_acc_ppm": 916666,
+          "wrongly_suppressed": 0
+        },
+        "scenario_b": {
+          "audit_invalid_parent_survived": 0,
+          "audit_invalid_parent_total": 0,
+          "audit_survived": 1,
+          "audit_total": 1,
+          "derived_hygiene_ppm": 1000000,
+          "flow_acc_ppm": 593055,
+          "stale_served": 0,
+          "state_acc_ppm": 916666,
+          "wrongly_suppressed": 0
+        }
+      },
+      {
+        "combined": {
+          "flow_acc_ppm": 916666,
+          "state_acc_ppm": 916666
+        },
+        "emulation_ours": false,
+        "id": "chained_ridge",
+        "label": "Chained linear adapters with score normalisation",
+        "note": "Four pairwise ridge adapters are composed and scores are z-normalised; the last rule seen for the matched class is applied.",
+        "scenario_a": {
+          "audit_invalid_parent_survived": 1,
+          "audit_invalid_parent_total": 1,
+          "audit_survived": 1,
+          "audit_total": 1,
+          "derived_hygiene_ppm": 333333,
+          "flow_acc_ppm": 916666,
+          "stale_served": 2,
+          "state_acc_ppm": 916666,
+          "wrongly_suppressed": 0
+        },
+        "scenario_b": {
+          "audit_invalid_parent_survived": 0,
+          "audit_invalid_parent_total": 0,
+          "audit_survived": 1,
+          "audit_total": 1,
+          "derived_hygiene_ppm": 1000000,
+          "flow_acc_ppm": 916666,
+          "stale_served": 0,
+          "state_acc_ppm": 916666,
+          "wrongly_suppressed": 0
+        }
+      },
+      {
+        "combined": {
+          "flow_acc_ppm": 787878,
+          "state_acc_ppm": 871212
+        },
+        "emulation_ours": true,
+        "id": "popularity_correlator",
+        "label": "Unsigned popularity correlator (emulation, ours)",
+        "note": "Authored emulation: the claim repeated by most records for a class wins, whatever their authority. Exact class-signature lookup, no vectors.",
+        "scenario_a": {
+          "audit_invalid_parent_survived": 1,
+          "audit_invalid_parent_total": 1,
+          "audit_survived": 1,
+          "audit_total": 1,
+          "derived_hygiene_ppm": 333333,
+          "flow_acc_ppm": 722222,
+          "stale_served": 2,
+          "state_acc_ppm": 805555,
+          "wrongly_suppressed": 0
+        },
+        "scenario_b": {
+          "audit_invalid_parent_survived": 0,
+          "audit_invalid_parent_total": 0,
+          "audit_survived": 1,
+          "audit_total": 1,
+          "derived_hygiene_ppm": 1000000,
+          "flow_acc_ppm": 866666,
+          "stale_served": 0,
+          "state_acc_ppm": 950000,
+          "wrongly_suppressed": 0
+        }
+      },
+      {
+        "combined": {
+          "flow_acc_ppm": 882575,
+          "state_acc_ppm": 962121
+        },
+        "emulation_ours": true,
+        "id": "overwrite_last",
+        "label": "Overwrite by last arrival",
+        "note": "The most recently delivered record per class replaces the previous one. Exact class-signature lookup, no vectors.",
+        "scenario_a": {
+          "audit_invalid_parent_survived": 1,
+          "audit_invalid_parent_total": 1,
+          "audit_survived": 1,
+          "audit_total": 1,
+          "derived_hygiene_ppm": 333333,
+          "flow_acc_ppm": 875000,
+          "stale_served": 2,
+          "state_acc_ppm": 958333,
+          "wrongly_suppressed": 0
+        },
+        "scenario_b": {
+          "audit_invalid_parent_survived": 0,
+          "audit_invalid_parent_total": 0,
+          "audit_survived": 1,
+          "audit_total": 1,
+          "derived_hygiene_ppm": 1000000,
+          "flow_acc_ppm": 891666,
+          "stale_served": 0,
+          "state_acc_ppm": 966666,
+          "wrongly_suppressed": 0
+        }
+      },
+      {
+        "combined": {
+          "flow_acc_ppm": 500000,
+          "state_acc_ppm": 931818
+        },
+        "emulation_ours": false,
+        "id": "ledger_raw",
+        "label": "Bitemporal ledger over raw vectors",
+        "note": "Records live in a bitemporal ledger with authority and withdrawal; vectors are raw and unbridged. Echoes are separate records.",
+        "scenario_a": {
+          "audit_invalid_parent_survived": 0,
+          "audit_invalid_parent_total": 1,
+          "audit_survived": 0,
+          "audit_total": 1,
+          "derived_hygiene_ppm": 666666,
+          "flow_acc_ppm": 422453,
+          "stale_served": 1,
+          "state_acc_ppm": 930555,
+          "wrongly_suppressed": 0
+        },
+        "scenario_b": {
+          "audit_invalid_parent_survived": 0,
+          "audit_invalid_parent_total": 0,
+          "audit_survived": 1,
+          "audit_total": 1,
+          "derived_hygiene_ppm": 1000000,
+          "flow_acc_ppm": 593055,
+          "stale_served": 0,
+          "state_acc_ppm": 933333,
+          "wrongly_suppressed": 0
+        }
+      },
+      {
+        "combined": {
+          "flow_acc_ppm": 931818,
+          "state_acc_ppm": 931818
+        },
+        "emulation_ours": false,
+        "id": "bridge_plus_ledger",
+        "label": "Orthogonal bridge chain plus bitemporal ledger",
+        "note": "Same ledger, but queries cross a semi-orthogonal bridge chain with hub-bias-corrected scores.",
+        "scenario_a": {
+          "audit_invalid_parent_survived": 0,
+          "audit_invalid_parent_total": 1,
+          "audit_survived": 0,
+          "audit_total": 1,
+          "derived_hygiene_ppm": 666666,
+          "flow_acc_ppm": 930555,
+          "stale_served": 1,
+          "state_acc_ppm": 930555,
+          "wrongly_suppressed": 0
+        },
+        "scenario_b": {
+          "audit_invalid_parent_survived": 0,
+          "audit_invalid_parent_total": 0,
+          "audit_survived": 1,
+          "audit_total": 1,
+          "derived_hygiene_ppm": 1000000,
+          "flow_acc_ppm": 933333,
+          "stale_served": 0,
+          "state_acc_ppm": 933333,
+          "wrongly_suppressed": 0
+        }
+      },
+      {
+        "combined": {
+          "flow_acc_ppm": 1000000,
+          "state_acc_ppm": 1000000
+        },
+        "emulation_ours": false,
+        "id": "fabric_control",
+        "label": "Chelated fabric control plane",
+        "note": "Bridge-health gate, compact per-flow sidecar, lineage engine with observable echo collapse, and an epoch-pinned two-bit register.",
+        "scenario_a": {
+          "audit_invalid_parent_survived": 1,
+          "audit_invalid_parent_total": 1,
+          "audit_survived": 1,
+          "audit_total": 1,
+          "derived_hygiene_ppm": 1000000,
+          "flow_acc_ppm": 1000000,
+          "stale_served": 0,
+          "state_acc_ppm": 1000000,
+          "wrongly_suppressed": 0
+        },
+        "scenario_b": {
+          "audit_invalid_parent_survived": 0,
+          "audit_invalid_parent_total": 0,
+          "audit_survived": 1,
+          "audit_total": 1,
+          "derived_hygiene_ppm": 1000000,
+          "flow_acc_ppm": 1000000,
+          "stale_served": 0,
+          "state_acc_ppm": 1000000,
+          "wrongly_suppressed": 0
+        }
+      }
+    ],
+    "audit_survival": {
+      "scenario_a": [
+        "a_cls_web_browse"
+      ],
+      "scenario_b": [
+        "a_cls_web_browse"
+      ]
+    },
+    "banner": "Software emulation only. No ASIC, P4 or DPU silicon was in the loop and no flight hardware was used. Traffic and orbital elements are synthetic; propagation is two-body Keplerian.",
+    "classes": [
+      {
+        "baseline_action": "FORWARD",
+        "id": "class_01",
+        "label": "Class 01 streaming video"
+      },
+      {
+        "baseline_action": "FORWARD",
+        "id": "class_02",
+        "label": "Class 02 interactive web"
+      },
+      {
+        "baseline_action": "FORWARD",
+        "id": "class_03",
+        "label": "Class 03 firmware and telemetry"
+      },
+      {
+        "baseline_action": "FORWARD",
+        "id": "class_04",
+        "label": "Class 04 bulk backup"
+      },
+      {
+        "baseline_action": "FORWARD",
+        "id": "class_05",
+        "label": "Class 05 voice and conferencing"
+      },
+      {
+        "baseline_action": "FORWARD",
+        "id": "class_06",
+        "label": "Class 06 sensor messaging"
+      },
+      {
+        "baseline_action": "FORWARD",
+        "id": "class_07",
+        "label": "Class 07 name resolution"
+      },
+      {
+        "baseline_action": "FORWARD",
+        "id": "class_08",
+        "label": "Class 08 mail submission"
+      },
+      {
+        "baseline_action": "FORWARD",
+        "id": "class_09",
+        "label": "Class 09 interactive streaming"
+      },
+      {
+        "baseline_action": "DROP",
+        "id": "class_10",
+        "label": "Class 10 periodic beaconing"
+      },
+      {
+        "baseline_action": "DROP",
+        "id": "class_11",
+        "label": "Class 11 sustained outbound transfer"
+      },
+      {
+        "baseline_action": "DEFER_INSPECT",
+        "id": "class_12",
+        "label": "Class 12 short-lived certificate services"
+      }
+    ],
+    "disclosures": [
+      "Traffic is synthetic and follows the public CESNET-TLS / CIC-IDS feature schema; no captured traffic is used.",
+      "Orbital elements are synthetic in the CelesTrak two-line format and are propagated two-body Keplerian, not SGP4.",
+      "In the default check mode the encoders are deterministic text-derived stand-ins; real checkpoints run only with --mode run-live-encoders.",
+      "Arms 3 and 4 are authored emulations (exact class-signature lookup); they are not reproductions of any named product.",
+      "Arms 5 and 6 share one ledger state machine and differ only in the retrieval path that selects the matched class.",
+      "The two-bit register is torn-read safe only under a trailer-last writer; other write orders can still expose mixed images.",
+      "The bridge-health gate admits a warned bridge with an alarm and refuses only a degenerate anchor set; retrieval uses all four hops.",
+      "Disjointness of the synthetic corpus from historical fingerprint inventories was not established (no inventory supplied).",
+      "Echo clusters are inferred from record text fingerprints; no embedding-similarity threshold is used."
+    ],
+    "echo_collapse": {
+      "scenario_a": {
+        "echo_clusters": 12,
+        "echo_records": 25
+      },
+      "scenario_b": {
+        "echo_clusters": 12,
+        "echo_records": 24
+      }
+    },
+    "encoder_mode": "run-live-encoders",
+    "hardware_asic_p4_silicon_in_loop_claimed": false,
+    "mode": "non_nda",
+    "oracle": {
+      "oracle_disagreements": 0,
+      "prefixes": 6172,
+      "register_checks": 6172,
+      "register_disagreements": 0,
+      "reserved_code_injected": 1570,
+      "reserved_forward_leaks_fenced": 0,
+      "reserved_forward_leaks_naive": 1570,
+      "shared_decision_code_with_engine": false,
+      "torn_injected": 1563,
+      "traces": 262
+    },
+    "oracle_fuzz_traces": 260,
+    "oracle_scenario_a_steps": 6,
+    "oracle_scenario_b_steps": 5,
+    "orbital_flight_hardware_claimed": false,
+    "register": {
+      "encoding": {
+        "DEFER_INSPECT": "10",
+        "DROP": "00",
+        "FORWARD": "01",
+        "INVALID_FAIL_CLOSED": "11 (reserved)"
+      },
+      "reserved_code_demo": {
+        "alarms": 1,
+        "class": "class_04",
+        "fenced_action": "DEFER_INSPECT",
+        "forward_leak_fenced": false,
+        "forward_leak_naive": true,
+        "naive_action": "FORWARD"
+      },
+      "torn_read_demo": {
+        "fenced_mixed_reads": 0,
+        "fenced_mixed_reads_noncontract_orders": 4,
+        "naive_mixed_reads": 19,
+        "write_orders": 9,
+        "write_positions": 99
+      },
+      "writer_contract": "Fenced reads are exact only when the epoch trailer is written last."
+    },
+    "retrieval": {
+      "bridge_health": {
+        "admitted": [
+          "b01",
+          "b12",
+          "b23",
+          "b34"
+        ],
+        "alarms": [
+          "b01",
+          "b12",
+          "b23",
+          "b34"
+        ],
+        "chain_status": {
+          "b01": "WARN_CONTAMINATED",
+          "b12": "WARN_CONTAMINATED",
+          "b23": "WARN_CONTAMINATED",
+          "b34": "WARN_CONTAMINATED"
+        },
+        "degenerate_anchor_refused": true,
+        "degenerate_anchor_status": "FAIL_CLOSED_DEGENERATE",
+        "policy": "admit PASS; admit WARN_CONTAMINATED with an alarm; refuse FAIL_CLOSED_DEGENERATE",
+        "refused": []
+      },
+      "burn_check": {
+        "burned": false,
+        "checked": false,
+        "disjointness_established": false
+      },
+      "doc_count": 144,
+      "encoder_status": {
+        "Encoder A (384-d)": "live",
+        "Encoder B (384-d)": "live",
+        "Encoder C (768-d)": "live",
+        "Encoder D (1024-d)": "stand_in",
+        "Ground index encoder (4096-d)": "stand_in"
+      },
+      "ground_dim": 4096,
+      "kappa_tolerance_nano": 10000,
+      "kappa_within_tol_all_hops": {
+        "fabric_chain": true,
+        "linear_chain": false,
+        "orthogonal_chain": true
+      },
+      "native_ceiling": {
+        "class_acc_ppm": 1000000,
+        "recall1_ppm": 1000000
+      },
+      "per_hop": [
+        {
+          "families": {
+            "fabric_chain": {
+              "class_acc_ppm": 1000000,
+              "kappa_dev_nano": 0,
+              "kappa_within_tol": true,
+              "recall1_ppm": 1000000,
+              "recall5_ppm": 1000000
+            },
+            "linear_chain": {
+              "class_acc_ppm": 1000000,
+              "kappa_dev_nano": 17479719840,
+              "kappa_within_tol": false,
+              "recall1_ppm": 1000000,
+              "recall5_ppm": 1000000
+            },
+            "orthogonal_chain": {
+              "class_acc_ppm": 1000000,
+              "kappa_dev_nano": 0,
+              "kappa_within_tol": true,
+              "recall1_ppm": 1000000,
+              "recall5_ppm": 1000000
+            },
+            "raw_padded": {
+              "class_acc_ppm": 180555,
+              "kappa_dev_nano": 0,
+              "kappa_within_tol": null,
+              "recall1_ppm": 20833,
+              "recall5_ppm": 83333
+            }
+          },
+          "hop": 1,
+          "source_encoder": "enc_d",
+          "source_label": "Encoder D (1024-d)"
+        },
+        {
+          "families": {
+            "fabric_chain": {
+              "class_acc_ppm": 1000000,
+              "kappa_dev_nano": 0,
+              "kappa_within_tol": true,
+              "recall1_ppm": 930555,
+              "recall5_ppm": 1000000
+            },
+            "linear_chain": {
+              "class_acc_ppm": 1000000,
+              "kappa_dev_nano": 128382500432498,
+              "kappa_within_tol": false,
+              "recall1_ppm": 958333,
+              "recall5_ppm": 1000000
+            },
+            "orthogonal_chain": {
+              "class_acc_ppm": 1000000,
+              "kappa_dev_nano": 0,
+              "kappa_within_tol": true,
+              "recall1_ppm": 708333,
+              "recall5_ppm": 972222
+            },
+            "raw_padded": {
+              "class_acc_ppm": 111111,
+              "kappa_dev_nano": 0,
+              "kappa_within_tol": null,
+              "recall1_ppm": 0,
+              "recall5_ppm": 41666
+            }
+          },
+          "hop": 2,
+          "source_encoder": "enc_c",
+          "source_label": "Encoder C (768-d)"
+        },
+        {
+          "families": {
+            "fabric_chain": {
+              "class_acc_ppm": 1000000,
+              "kappa_dev_nano": 0,
+              "kappa_within_tol": true,
+              "recall1_ppm": 854166,
+              "recall5_ppm": 993055
+            },
+            "linear_chain": {
+              "class_acc_ppm": 1000000,
+              "kappa_dev_nano": 5712675901453404,
+              "kappa_within_tol": false,
+              "recall1_ppm": 861111,
+              "recall5_ppm": 1000000
+            },
+            "orthogonal_chain": {
+              "class_acc_ppm": 1000000,
+              "kappa_dev_nano": 0,
+              "kappa_within_tol": true,
+              "recall1_ppm": 722222,
+              "recall5_ppm": 965277
+            },
+            "raw_padded": {
+              "class_acc_ppm": 118055,
+              "kappa_dev_nano": 0,
+              "kappa_within_tol": null,
+              "recall1_ppm": 6944,
+              "recall5_ppm": 34722
+            }
+          },
+          "hop": 3,
+          "source_encoder": "enc_b",
+          "source_label": "Encoder B (384-d)"
+        },
+        {
+          "families": {
+            "fabric_chain": {
+              "class_acc_ppm": 1000000,
+              "kappa_dev_nano": 0,
+              "kappa_within_tol": true,
+              "recall1_ppm": 888888,
+              "recall5_ppm": 1000000
+            },
+            "linear_chain": {
+              "class_acc_ppm": 1000000,
+              "kappa_dev_nano": 965931334347084032,
+              "kappa_within_tol": false,
+              "recall1_ppm": 798611,
+              "recall5_ppm": 1000000
+            },
+            "orthogonal_chain": {
+              "class_acc_ppm": 1000000,
+              "kappa_dev_nano": 0,
+              "kappa_within_tol": true,
+              "recall1_ppm": 791666,
+              "recall5_ppm": 993055
+            },
+            "raw_padded": {
+              "class_acc_ppm": 27777,
+              "kappa_dev_nano": 0,
+              "kappa_within_tol": null,
+              "recall1_ppm": 0,
+              "recall5_ppm": 27777
+            }
+          },
+          "hop": 4,
+          "source_encoder": "enc_a",
+          "source_label": "Encoder A (384-d)"
+        }
+      ],
+      "sidecar": {
+        "1": {
+          "argmax_identical": true,
+          "bytes_per_flow": 8,
+          "direct_harness_parity_ppm": 0,
+          "max_abs_parity_ppm": 0,
+          "top5_identical": true,
+          "total_bytes": 1152
+        },
+        "2": {
+          "argmax_identical": true,
+          "bytes_per_flow": 8,
+          "direct_harness_parity_ppm": -1,
+          "max_abs_parity_ppm": 0,
+          "top5_identical": true,
+          "total_bytes": 1152
+        },
+        "3": {
+          "argmax_identical": true,
+          "bytes_per_flow": 8,
+          "direct_harness_parity_ppm": -1,
+          "max_abs_parity_ppm": 0,
+          "top5_identical": true,
+          "total_bytes": 1152
+        },
+        "4": {
+          "argmax_identical": true,
+          "bytes_per_flow": 8,
+          "direct_harness_parity_ppm": -1,
+          "max_abs_parity_ppm": 0,
+          "top5_identical": true,
+          "total_bytes": 1152
+        }
+      }
+    },
+    "schema": "fabric_scoreboard_v1",
+    "signature_collisions": {
+      "scenario_a": 2
+    }
+  },
+  "scoreboard_sha256": "9ba7e9726ffc5e83a4c317f537b43420dba81bb2c39696610632ecc4f4fab8e4",
+  "spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9"
+}

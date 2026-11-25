@@ -1,0 +1,48 @@
+{
+  "bundle_id": 60,
+  "deterministic_sha256": "173dd16754b8888b177a011781773d505a7dc409ca3a526294379e420003db6a",
+  "gates": {
+    "challenger_logit_parity_also_holds": true,
+    "challenger_serves_stale_after_retraction_control": true,
+    "chelated_greedy_tokens_equal_full_prefill": true,
+    "chelated_max_abs_logit_diff_lt_1e-4": true,
+    "chelated_probe_logits_match_full_prefill": true,
+    "chelated_reuse_non_inferior_to_challenger_lcb_ge_neg_0_01": true,
+    "config_and_tokenizer_identical_in_weight_probe": true,
+    "cuda_hidden": true,
+    "ek5_blocks_invalidated_when_earlier_prefix_retracted": true,
+    "ek5_fresh_rebuild_parity": true,
+    "kernel_ledger_ingested_all_file_versions": true,
+    "memt_style_identity_would_reuse_silently": true,
+    "naive_block_key_control_breaks_parity": true,
+    "prefix_and_position_change_the_key": true,
+    "replay_probe_refusals_accumulated_into_chelated_stats": true,
+    "repo_and_commit_counts_match_request": true,
+    "repos_hash_selected_distinct": true,
+    "retractions_exercised": true,
+    "ssd_blocks_written": true,
+    "ssd_cache_refuses_patched_weights": true,
+    "stale_weight_revision_refused_all_trials": true,
+    "wrong_contract_probe_isolated_from_primary_cache": true
+  },
+  "generated_utc": "2026-11-25T11:33:48.026464+00:00",
+  "item": "2E",
+  "manifest_file": "pv7_w19_2e_manifest.json",
+  "manifest_sha256": "379b5a7d33497d9037693caf3a7a941c600a6fad2dcd6e732b2c3a891e5eac6f",
+  "mode": "local-drycheck",
+  "overall_pass": true,
+  "performance_claim_supported": false,
+  "retirement_trigger_fired": true,
+  "runtime": {
+    "cuda_visible_devices": "",
+    "platform": "Windows-10-10.0.26300-SP0",
+    "python_version": "3.11.9"
+  },
+  "schema_version": "pv7_report_receipt_v1",
+  "source_file_sha256": {
+    "chelated_ssd_kv_repo_cache.py": "589a29b6f5b8acf03ef2bcf50ed570a4405663017aa94d1ed91d3f33d201217e",
+    "scripts/run_pv7_w19_2e_ssd_kv_repos.py": "273583e1bd850f42dd5b4b6b8202e3880cb68fd727df5f36874ab1f814e9071d"
+  },
+  "spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "tier": "floor"
+}

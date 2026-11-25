@@ -1,0 +1,7 @@
+{
+  "bundle_id": 52,
+  "manifest_file": "pv7_w18_3c_drycheck_manifest.json",
+  "manifest_sha256": "db2e6373e56ad4a995a46f1cd2dcd2bca91a62a5de1331f1a44d64f36ff9fcfd",
+  "mode": "local-drycheck",
+  "passed": true
+}

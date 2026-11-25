@@ -1,0 +1,41 @@
+{
+  "bundle_id": 59,
+  "deterministic_sha256": "1a3c867f3514cee1929906131298dff0319478bbe26f84eb5b743ef5882efe62",
+  "gates": {
+    "burn_ledger_clean": true,
+    "chelated_beats_challenger_paired_lcb_gt_0": true,
+    "chelated_beats_raw_append_on_echo_kinds": true,
+    "chelated_clean_recall_loss_le_0_02": true,
+    "chelated_ge_challenger_every_family_class": true,
+    "cuda_hidden": true,
+    "family_count_is_200": true,
+    "kernel_audit_rows_match_ingest": true,
+    "kernel_zero_llm_write_tokens": true,
+    "lineage_inferred_from_surface_text_no_oracle": true,
+    "memory_max_960m_strictly_under_1gib": true,
+    "memt_1_0_model_runs_zero": true,
+    "mode_label_fail_closed": true,
+    "seven_arms_present": true,
+    "swap_zero": true,
+    "symmetric_reranker_topk_budget_across_arms": true,
+    "traced_peak_under_memory_max": true
+  },
+  "generated_utc": "2026-11-25T11:38:40.913528+00:00",
+  "item": "2D",
+  "manifest_file": "pv7_w19_2d_manifest.json",
+  "manifest_sha256": "8143e2cd2c5398b388ab9aece077a4e8a47e1bca4856f748b77906c9b7212484",
+  "mode": "local-drycheck",
+  "overall_pass": true,
+  "runtime": {
+    "cuda_visible_devices": "",
+    "platform": "Windows-10-10.0.26300-SP0",
+    "python_version": "3.11.9"
+  },
+  "schema_version": "pv7_report_receipt_v1",
+  "source_file_sha256": {
+    "chelated_cpu_memory_appliance.py": "b57da32518d6529184a110773c2d80e8fe638b86f146886150edcf68f4ec3f6e",
+    "scripts/run_pv7_w19_2d_sub1gib_iq04.py": "6390fe8c990899ce36671cfa0c0f512c4fb81a6e4753a94674d502f29c0b5359"
+  },
+  "spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "tier": "floor"
+}

@@ -1,0 +1,41 @@
+{
+  "bundle_id": 57,
+  "deterministic_sha256": "5c895ad7502728e339e1e995d04d9d16473a1ceb5f2ee71898006e6417a4408a",
+  "gates": {
+    "all_revoked_payloads_not_admitted": true,
+    "catalog_count_is_1000_and_distinct": true,
+    "catalog_lookup_not_conflated_with_swap": true,
+    "cgroup_memory_max_is_6gib_swap_zero": true,
+    "cp_matches_zero_event_closed_form": true,
+    "cp_upper_bound_below_1pct": true,
+    "cuda_hidden": true,
+    "ek5_fresh_rebuild_parity": true,
+    "first_inference_not_below_physical_bound": true,
+    "first_inference_overhead_ratio_le_50": true,
+    "materialized_count_is_250": true,
+    "payload_integrity_all_swaps": true,
+    "revocation_trials_each_race_a_distinct_fresh_payload": true,
+    "tra1_contract_bound_to_each_cspg_body_sha": true,
+    "traced_peak_under_6gib": true,
+    "unguarded_control_shows_race_is_real": true,
+    "zero_post_enforcement_executions": true
+  },
+  "generated_utc": "2026-11-25T11:32:15.360265+00:00",
+  "item": "2B",
+  "manifest_file": "pv7_w19_2b_manifest.json",
+  "manifest_sha256": "8ca74db78a466a2e242f2508dbb991e8e496df0e3ee0ce26dc80b8e2d9d67f1b",
+  "mode": "run-live",
+  "overall_pass": true,
+  "runtime": {
+    "cuda_visible_devices": "",
+    "platform": "Linux-6.17.0-1029-nvidia-aarch64-with-glibc2.39",
+    "python_version": "3.12.3"
+  },
+  "schema_version": "pv7_report_receipt_v1",
+  "source_file_sha256": {
+    "chelated_cartridge_array.py": "d57029f32bb13681d203df45a84773fdcd3df02ab6f128a87cd3750199fecc23",
+    "scripts/run_pv7_w19_2b_cartridges.py": "1f9ba22ef6625d3195710daededd36f6f39e93ae5a70a9e03b49f347ea97c71e"
+  },
+  "spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "tier": "ceiling-candidate"
+}

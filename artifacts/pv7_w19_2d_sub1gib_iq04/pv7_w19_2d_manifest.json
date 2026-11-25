@@ -1,0 +1,289 @@
+{
+  "arms": {
+    "chelated_iq04_appliance": {
+      "accuracy_by_kind": {
+        "clean": 1.0,
+        "copy_echo_vs_correction": 1.0,
+        "independent_corroboration": 1.0,
+        "paraphrase_echo_vs_independent": 1.0
+      },
+      "accuracy_overall": 1.0,
+      "adapter_kind": "native",
+      "budget": {
+        "reader_token_budget": 64,
+        "reranker_id": "lexical_overlap_v1",
+        "top_k": 5
+      },
+      "distinct_budget_configs_seen": 1,
+      "max_reader_tokens_used": 27
+    },
+    "equally_tuned_sqlite_c3_challenger": {
+      "accuracy_by_kind": {
+        "clean": 1.0,
+        "copy_echo_vs_correction": 1.0,
+        "independent_corroboration": 1.0,
+        "paraphrase_echo_vs_independent": 0.0
+      },
+      "accuracy_overall": 0.75,
+      "adapter_kind": "native",
+      "budget": {
+        "reader_token_budget": 64,
+        "reranker_id": "lexical_overlap_v1",
+        "top_k": 5
+      },
+      "distinct_budget_configs_seen": 1,
+      "max_reader_tokens_used": 54
+    },
+    "live_memos_upstream_adapter": {
+      "accuracy_by_kind": {
+        "clean": 1.0,
+        "copy_echo_vs_correction": 0.0,
+        "independent_corroboration": 1.0,
+        "paraphrase_echo_vs_independent": 0.0
+      },
+      "accuracy_overall": 0.5,
+      "adapter_kind": "memos_offline_contract_adapter",
+      "budget": {
+        "reader_token_budget": 64,
+        "reranker_id": "lexical_overlap_v1",
+        "top_k": 5
+      },
+      "distinct_budget_configs_seen": 1,
+      "max_reader_tokens_used": 54
+    },
+    "mem0_adapter": {
+      "accuracy_by_kind": {
+        "clean": 1.0,
+        "copy_echo_vs_correction": 0.0,
+        "independent_corroboration": 0.0,
+        "paraphrase_echo_vs_independent": 0.0
+      },
+      "accuracy_overall": 0.25,
+      "adapter_kind": "mem0_offline_contract_adapter",
+      "budget": {
+        "reader_token_budget": 64,
+        "reranker_id": "lexical_overlap_v1",
+        "top_k": 5
+      },
+      "distinct_budget_configs_seen": 1,
+      "max_reader_tokens_used": 9
+    },
+    "raw_append_rag": {
+      "accuracy_by_kind": {
+        "clean": 1.0,
+        "copy_echo_vs_correction": 0.0,
+        "independent_corroboration": 1.0,
+        "paraphrase_echo_vs_independent": 0.0
+      },
+      "accuracy_overall": 0.5,
+      "adapter_kind": "native",
+      "budget": {
+        "reader_token_budget": 64,
+        "reranker_id": "lexical_overlap_v1",
+        "top_k": 5
+      },
+      "distinct_budget_configs_seen": 1,
+      "max_reader_tokens_used": 54
+    },
+    "recency_overwrite": {
+      "accuracy_by_kind": {
+        "clean": 1.0,
+        "copy_echo_vs_correction": 0.0,
+        "independent_corroboration": 0.0,
+        "paraphrase_echo_vs_independent": 0.0
+      },
+      "accuracy_overall": 0.25,
+      "adapter_kind": "native",
+      "budget": {
+        "reader_token_budget": 64,
+        "reranker_id": "lexical_overlap_v1",
+        "top_k": 5
+      },
+      "distinct_budget_configs_seen": 1,
+      "max_reader_tokens_used": 9
+    },
+    "unsigned_dedup": {
+      "accuracy_by_kind": {
+        "clean": 1.0,
+        "copy_echo_vs_correction": 1.0,
+        "independent_corroboration": 1.0,
+        "paraphrase_echo_vs_independent": 0.0
+      },
+      "accuracy_overall": 0.75,
+      "adapter_kind": "native",
+      "budget": {
+        "reader_token_budget": 64,
+        "reranker_id": "lexical_overlap_v1",
+        "top_k": 5
+      },
+      "distinct_budget_configs_seen": 1,
+      "max_reader_tokens_used": 54
+    }
+  },
+  "bundle_id": 59,
+  "burn": {
+    "burn_clean": true,
+    "documents_checked": 750,
+    "inventory_documents": 85,
+    "inventory_queries": 10,
+    "queries_checked": 200
+  },
+  "cage": {
+    "enforced_on_this_host": false,
+    "enforcement_check": {
+      "enforced": false,
+      "reason": "local-drycheck: no cage is applied"
+    },
+    "memory_max_bytes": 1006632960,
+    "memory_swap_max_bytes": 0,
+    "strictly_under_one_gib": true,
+    "systemd_run_command": [
+      "systemd-run",
+      "--user",
+      "--scope",
+      "-p",
+      "MemoryMax=1006632960",
+      "-p",
+      "MemorySwapMax=0",
+      "--",
+      "C:\\Program Files\\Python311\\python.exe",
+      "scripts/run_pv7_w19_2d_sub1gib_iq04.py",
+      "--mode",
+      "local-drycheck"
+    ]
+  },
+  "clean_recall": {
+    "chelated_iq04_appliance": 1.0,
+    "equally_tuned_sqlite_c3_challenger": 1.0,
+    "live_memos_upstream_adapter": 1.0,
+    "mem0_adapter": 1.0,
+    "raw_append_rag": 1.0,
+    "recency_overwrite": 1.0,
+    "unsigned_dedup": 1.0
+  },
+  "clean_recall_loss_vs_raw_append": 0.0,
+  "deterministic_sha256": "1a3c867f3514cee1929906131298dff0319478bbe26f84eb5b743ef5882efe62",
+  "deterministic_view": {
+    "budget": {
+      "reader_token_budget": 64,
+      "reranker_id": "lexical_overlap_v1",
+      "top_k": 5
+    },
+    "bundle_id": 59,
+    "clean_recall_loss": 0.0,
+    "corpus_sha256": "2e57ec620596b4845bbd5dc2ca2d05a0f8935a3f63a4abc6b152f86c99b9b393",
+    "family_count": 200,
+    "gate_names": [
+      "burn_ledger_clean",
+      "chelated_beats_challenger_paired_lcb_gt_0",
+      "chelated_beats_raw_append_on_echo_kinds",
+      "chelated_clean_recall_loss_le_0_02",
+      "chelated_ge_challenger_every_family_class",
+      "cuda_hidden",
+      "family_count_is_200",
+      "kernel_audit_rows_match_ingest",
+      "kernel_zero_llm_write_tokens",
+      "lineage_inferred_from_surface_text_no_oracle",
+      "memory_max_960m_strictly_under_1gib",
+      "memt_1_0_model_runs_zero",
+      "mode_label_fail_closed",
+      "seven_arms_present",
+      "swap_zero",
+      "symmetric_reranker_topk_budget_across_arms",
+      "traced_peak_under_memory_max"
+    ],
+    "memory_max_bytes": 1006632960,
+    "mode": "local-drycheck",
+    "paired_delta_mean_vs_challenger": 0.25,
+    "per_arm_accuracy": {
+      "chelated_iq04_appliance": {
+        "clean": 1.0,
+        "copy_echo_vs_correction": 1.0,
+        "independent_corroboration": 1.0,
+        "paraphrase_echo_vs_independent": 1.0
+      },
+      "equally_tuned_sqlite_c3_challenger": {
+        "clean": 1.0,
+        "copy_echo_vs_correction": 1.0,
+        "independent_corroboration": 1.0,
+        "paraphrase_echo_vs_independent": 0.0
+      },
+      "live_memos_upstream_adapter": {
+        "clean": 1.0,
+        "copy_echo_vs_correction": 0.0,
+        "independent_corroboration": 1.0,
+        "paraphrase_echo_vs_independent": 0.0
+      },
+      "mem0_adapter": {
+        "clean": 1.0,
+        "copy_echo_vs_correction": 0.0,
+        "independent_corroboration": 0.0,
+        "paraphrase_echo_vs_independent": 0.0
+      },
+      "raw_append_rag": {
+        "clean": 1.0,
+        "copy_echo_vs_correction": 0.0,
+        "independent_corroboration": 1.0,
+        "paraphrase_echo_vs_independent": 0.0
+      },
+      "recency_overwrite": {
+        "clean": 1.0,
+        "copy_echo_vs_correction": 0.0,
+        "independent_corroboration": 0.0,
+        "paraphrase_echo_vs_independent": 0.0
+      },
+      "unsigned_dedup": {
+        "clean": 1.0,
+        "copy_echo_vs_correction": 1.0,
+        "independent_corroboration": 1.0,
+        "paraphrase_echo_vs_independent": 0.0
+      }
+    },
+    "record_count": 750
+  },
+  "gates": {
+    "burn_ledger_clean": true,
+    "chelated_beats_challenger_paired_lcb_gt_0": true,
+    "chelated_beats_raw_append_on_echo_kinds": true,
+    "chelated_clean_recall_loss_le_0_02": true,
+    "chelated_ge_challenger_every_family_class": true,
+    "cuda_hidden": true,
+    "family_count_is_200": true,
+    "kernel_audit_rows_match_ingest": true,
+    "kernel_zero_llm_write_tokens": true,
+    "lineage_inferred_from_surface_text_no_oracle": true,
+    "memory_max_960m_strictly_under_1gib": true,
+    "memt_1_0_model_runs_zero": true,
+    "mode_label_fail_closed": true,
+    "seven_arms_present": true,
+    "swap_zero": true,
+    "symmetric_reranker_topk_budget_across_arms": true,
+    "traced_peak_under_memory_max": true
+  },
+  "item": "2D",
+  "lineage_inference": {
+    "echo_records_inferred": 300,
+    "echo_records_truth": 300,
+    "false_negative": 0,
+    "false_positive": 0,
+    "method": "surface_text_shingle_overlap_and_backref_cue",
+    "root_agreement": 1.0,
+    "true_positive": 300
+  },
+  "memt_reference": {
+    "arxiv": "2610.26825v5",
+    "correction": "symmetric reranker/top_k/reader budget",
+    "model_runs": 0
+  },
+  "mode": "local-drycheck",
+  "overall_pass": true,
+  "paired_delta_vs_challenger": {
+    "lcb95": 0.185,
+    "mean": 0.25,
+    "n_families": 200,
+    "ucb95": 0.31
+  },
+  "tier": "floor",
+  "tier_disclosure": "local-drycheck: synthetic deterministic families with a deterministic lexical read path (no LLM reader); mem0/memos arms are labeled offline contract adapters; burn inventory is worktree-local, not the full historical BEIR/LongMemEval/LoCoMo index; INPUT SYMMETRY: every arm ingests the identical Record schema with the ground-truth `derived_from` label stripped (Record.arm_view); only the chelated arm runs lineage inference (surface-text word-3-gram overlap / back-reference cue, scored vs ground truth post hoc), the SQLite C3 challenger is lineage-free by definition (authority+recency) and gets no such pass",
+  "traced_peak_bytes": 3198845
+}

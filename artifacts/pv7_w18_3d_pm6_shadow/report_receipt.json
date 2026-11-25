@@ -1,0 +1,7 @@
+{
+  "bundle_id": 53,
+  "manifest_file": "pv7_w18_3d_live_shadow_manifest.json",
+  "manifest_sha256": "e791fe5d1730b97bfe76735fdae7ba907631c5ec9cda11633f7a9374278d9458",
+  "mode": "run-live-shadow",
+  "passed": true
+}

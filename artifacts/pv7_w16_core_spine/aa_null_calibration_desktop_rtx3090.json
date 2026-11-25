@@ -1,0 +1,92 @@
+{
+  "acceptance_rule": "fail iff exact upper-tail binomial p(rejections | trials, alpha) < inflation_p",
+  "confidence": 0.95,
+  "host_id": "desktop-rtx3090",
+  "inflation_p": 0.01,
+  "input_sha256": "bbeeaa9fc5946efdf65aa78b71ee5d317206fc86b48d002b5039af2b4e2d9e81",
+  "metrics": {
+    "disposition_mcnemar": {
+      "anti_conservative": false,
+      "clopper_pearson_interval": [
+        0.0,
+        0.018275340355136248
+      ],
+      "clopper_pearson_lower_one_sided": 0.0,
+      "degenerate_identical_measurements": false,
+      "disjoint_splits": true,
+      "false_rejection_rate": 0.0,
+      "identical_measured_pairs": 1172,
+      "inflation_p_value": 1.0,
+      "one_sided_confidence": 0.99,
+      "pairs_used": 2000,
+      "passed": true,
+      "rejections": 0,
+      "source_pairs": 2000,
+      "split_size": 10
+    },
+    "latency_p95": {
+      "anti_conservative": false,
+      "clopper_pearson_interval": [
+        0.008166166190842823,
+        0.057374351126844296
+      ],
+      "clopper_pearson_lower_one_sided": 0.006439508564558168,
+      "degenerate_identical_measurements": false,
+      "disjoint_splits": true,
+      "false_rejection_rate": 0.025,
+      "identical_measured_pairs": 0,
+      "inflation_p_value": 0.9735531999908801,
+      "one_sided_confidence": 0.99,
+      "pairs_used": 2000,
+      "passed": true,
+      "rejections": 5,
+      "source_pairs": 2000,
+      "split_size": 10
+    },
+    "retrieval_ndcg_at_10": {
+      "anti_conservative": false,
+      "clopper_pearson_interval": [
+        0.01742480899448056,
+        0.07729196822601633
+      ],
+      "clopper_pearson_lower_one_sided": 0.014681830289669691,
+      "degenerate_identical_measurements": false,
+      "disjoint_splits": true,
+      "false_rejection_rate": 0.04,
+      "identical_measured_pairs": 136,
+      "inflation_p_value": 0.7866952972153061,
+      "one_sided_confidence": 0.99,
+      "pairs_used": 2000,
+      "passed": true,
+      "rejections": 8,
+      "source_pairs": 2000,
+      "split_size": 10
+    },
+    "storage_p95": {
+      "anti_conservative": false,
+      "clopper_pearson_interval": [
+        0.0,
+        0.018275340355136248
+      ],
+      "clopper_pearson_lower_one_sided": 0.0,
+      "degenerate_identical_measurements": false,
+      "disjoint_splits": true,
+      "false_rejection_rate": 0.0,
+      "identical_measured_pairs": 1,
+      "inflation_p_value": 1.0,
+      "one_sided_confidence": 0.99,
+      "pairs_used": 2000,
+      "passed": true,
+      "rejections": 0,
+      "source_pairs": 2000,
+      "split_size": 10
+    }
+  },
+  "monte_carlo_permutations": 999,
+  "nominal_alpha": 0.05,
+  "passed": true,
+  "receipt_sha256": "844c5edd814454e1410f2cd0394f1f09ef69e3a4d34cd4bf98c2ddb5f39a83f8",
+  "schema_version": "pv7_aa_calibration_v2",
+  "seed": 3090,
+  "trials": 200
+}

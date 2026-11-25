@@ -1,0 +1,62 @@
+{
+  "bundle_id": 53,
+  "burn_inventory_scope": "supplied_historical_inventory",
+  "byte_identical_families": 100,
+  "claim_level": "observational-manifest",
+  "cuda_isolation": {
+    "cuda_visible_devices": "",
+    "passed": true,
+    "receipt_sha256": "bfa376e826f0871104ebcceb326fe1e398a2ed9ce6bada6e427b508ef52f0b2d",
+    "violations": []
+  },
+  "executed": true,
+  "families": 100,
+  "gates": [
+    {
+      "detail": "manifest-shadow-observed",
+      "name": "live_shadow_executed",
+      "passed": true
+    },
+    {
+      "detail": "8073afb04d0606c2781416e15db1c1ecfb46df6366d716e0bdf9a778983d5597",
+      "name": "manifest_sha256_recorded",
+      "passed": true
+    },
+    {
+      "detail": "supplied_historical_inventory",
+      "name": "historical_burn_inventory_verified",
+      "passed": true
+    },
+    {
+      "detail": "manifest-shadow-observed",
+      "name": "live_shadow_does_not_invent_gateway_result",
+      "passed": true
+    }
+  ],
+  "holm_family_disclosure": {
+    "included_in_t1_confirmatory_holm_family": false,
+    "local_t3_confidence_per_arm": 0.975,
+    "local_t3_family_size": 2,
+    "local_t3_shadow_holm_family": [
+      "1unit",
+      "4unit"
+    ],
+    "t1_claim_registry_holm_family": [
+      "3A",
+      "H6B_merge",
+      "H6B_bridge_shift_and_4hop",
+      "6C",
+      "6D"
+    ],
+    "tier": "T3"
+  },
+  "item": "3D",
+  "live_pm6_gateway_executed": false,
+  "manifest_sha256": "8073afb04d0606c2781416e15db1c1ecfb46df6366d716e0bdf9a778983d5597",
+  "mode": "run-live-shadow",
+  "passed": true,
+  "reason": "manifest-shadow-observed",
+  "report_emitted": false,
+  "scoreboard_sha256": "87e64cd1867d346cb277c4416d95facee8c35998eac26c2892e19f35fe81ba82",
+  "shadow_flags": 0
+}
