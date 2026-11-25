@@ -1,12 +1,12 @@
 {
   "artifact_hashes": {
-    "wave11_d8_copilot_manifest.json": "3fea611fe16ae7900db7a6ceeb32eb0e2bcdeef1f7f7c36556ff56cfa7e41fc7"
+    "wave11_d8_copilot_manifest.json": "7395d687c54f3711a0ebfbbbc0467e1c254128598a064e83fca58d469a7a154c"
   },
   "bundle_id": "wave11_d8_compliance_copilot",
-  "generated_at_utc": "2026-11-23T18:32:24.234051+00:00",
-  "git_sha": "4fae0b77c6ae59213e24a12e89f5dd7b28405ca8",
+  "generated_at_utc": "2026-11-25T15:35:52.650571+00:00",
+  "git_sha": "4b1520cd362a04b07ff6ef627ccc25604fccad08",
   "manifest_file": "wave11_d8_copilot_manifest.json",
-  "manifest_sha256": "3fea611fe16ae7900db7a6ceeb32eb0e2bcdeef1f7f7c36556ff56cfa7e41fc7",
+  "manifest_sha256": "7395d687c54f3711a0ebfbbbc0467e1c254128598a064e83fca58d469a7a154c",
   "schema_version": "report_receipt_v4_0",
   "status": "COMPLETED"
 }
