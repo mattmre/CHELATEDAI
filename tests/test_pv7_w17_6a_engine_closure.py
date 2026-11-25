@@ -48,7 +48,7 @@ VERIFIER = "scripts/verifiers.d/48_verifier.py"
 class TestNativeQueryContracts(unittest.TestCase):
     def test_adaptive_budget_has_floor_and_cap(self):
         self.assertEqual([adaptive_ef(frac) for frac in (1, 0.9, 0.5, 0.1, 0.001, 0)],
-                         [100, 112, 200, 1000, 1000, 1000])
+                         [220, 245, 440, 1000, 1000, 1000])
         self.assertEqual(adaptive_ef(0, base_ef=4, ef_cap=500), 200)
         for bad in (-0.1, 1.1, float("nan")):
             with self.assertRaises(ValueError):

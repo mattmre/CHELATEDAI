@@ -1,0 +1,1157 @@
+{
+  "bundle_id": 48,
+  "ek5": {
+    "canonical_cause_counts": {
+      "CURRENT": 36703,
+      "PEER_CONFLICT_DISPUTED": 1863,
+      "REFUTED": 9561,
+      "SUPERSEDED": 7022,
+      "TEMPORAL_DISPUTED": 297,
+      "UNFOUNDED_POSITIVE_CYCLE": 12554
+    },
+    "canonical_trace_sha256": "ef93286bd6f1424e7eadf1843bc97948e0d614d64da140c9c404bb45c18c05ef",
+    "first_diffs": [],
+    "nodes_compared": 68000,
+    "parity_passed": true,
+    "pos_cyc_export_diffs": 0,
+    "reason_export_diffs": 0,
+    "semantic_diffs": 0,
+    "sequences": 1000,
+    "snapshots_compared": 12000,
+    "steps_per_sequence": 12
+  },
+  "engines": [
+    {
+      "cells": [
+        {
+          "admitted_epoch": 4,
+          "admitted_points": 12000,
+          "ann_latency": {
+            "p50_ms": 2.311637974344194,
+            "p95_ms": 3.272450005169958,
+            "p99_ms": 3.813424031250179
+          },
+          "exact_latency": {
+            "p50_ms": 2.1968059591017663,
+            "p95_ms": 3.115377970971167,
+            "p99_ms": 3.669456986244768
+          },
+          "exact_short_responses": 0,
+          "exact_timeouts": 0,
+          "graph_candidate_sample_count": 0,
+          "graph_telemetry_basis": "qdrant_route_and_fallback_counters",
+          "graph_telemetry_complete": true,
+          "hnsw_ef": 220,
+          "invalid_exact_hits": 0,
+          "invalid_hits": 0,
+          "max_recall_gap": 0.01,
+          "paired_requests": 10000,
+          "passed": true,
+          "per_query_visit_counts_available": false,
+          "performance_passed": true,
+          "plan_probes": [
+            {
+              "exact_fallback_triggered": false,
+              "indexed_segments": 1,
+              "query_index": 0,
+              "route": "filtered_hnsw",
+              "route_counts": {
+                "filtered_acorn": 0,
+                "filtered_exact": 0,
+                "filtered_large_cardinality": 1,
+                "filtered_plain": 0,
+                "filtered_small_cardinality": 0
+              },
+              "visited_graph_candidates": null
+            },
+            {
+              "exact_fallback_triggered": false,
+              "indexed_segments": 1,
+              "query_index": 5000,
+              "route": "filtered_hnsw",
+              "route_counts": {
+                "filtered_acorn": 0,
+                "filtered_exact": 0,
+                "filtered_large_cardinality": 1,
+                "filtered_plain": 0,
+                "filtered_small_cardinality": 0
+              },
+              "visited_graph_candidates": null
+            },
+            {
+              "exact_fallback_triggered": false,
+              "indexed_segments": 1,
+              "query_index": 9999,
+              "route": "filtered_hnsw",
+              "route_counts": {
+                "filtered_acorn": 0,
+                "filtered_exact": 0,
+                "filtered_large_cardinality": 1,
+                "filtered_plain": 0,
+                "filtered_small_cardinality": 0
+              },
+              "visited_graph_candidates": null
+            }
+          ],
+          "probed_exact_fallback_count": 0,
+          "qdrant_measured_route": {
+            "exact_fallback_triggered": false,
+            "indexed_segments": 1,
+            "route": "filtered_hnsw",
+            "route_counts": {
+              "filtered_acorn": 0,
+              "filtered_exact": 10000,
+              "filtered_large_cardinality": 10000,
+              "filtered_plain": 0,
+              "filtered_small_cardinality": 0
+            }
+          },
+          "recall_at_10": 0.99925,
+          "retraction_percent": 0,
+          "route_evidence_passed": true,
+          "short_responses": 0,
+          "telemetry_passed": true,
+          "timeouts": 0,
+          "visited_graph_candidates": null
+        },
+        {
+          "admitted_epoch": 3,
+          "admitted_points": 10800,
+          "ann_latency": {
+            "p50_ms": 2.5573180173523724,
+            "p95_ms": 3.5411539720371366,
+            "p99_ms": 3.9956480031833053
+          },
+          "exact_latency": {
+            "p50_ms": 2.2993989987298846,
+            "p95_ms": 3.2378920004703104,
+            "p99_ms": 3.681185015011579
+          },
+          "exact_short_responses": 0,
+          "exact_timeouts": 0,
+          "graph_candidate_sample_count": 0,
+          "graph_telemetry_basis": "qdrant_route_and_fallback_counters",
+          "graph_telemetry_complete": true,
+          "hnsw_ef": 245,
+          "invalid_exact_hits": 0,
+          "invalid_hits": 0,
+          "max_recall_gap": 0.01,
+          "paired_requests": 10000,
+          "passed": true,
+          "per_query_visit_counts_available": false,
+          "performance_passed": true,
+          "plan_probes": [
+            {
+              "exact_fallback_triggered": false,
+              "indexed_segments": 1,
+              "query_index": 0,
+              "route": "filtered_hnsw",
+              "route_counts": {
+                "filtered_acorn": 0,
+                "filtered_exact": 0,
+                "filtered_large_cardinality": 1,
+                "filtered_plain": 0,
+                "filtered_small_cardinality": 0
+              },
+              "visited_graph_candidates": null
+            },
+            {
+              "exact_fallback_triggered": false,
+              "indexed_segments": 1,
+              "query_index": 5000,
+              "route": "filtered_hnsw",
+              "route_counts": {
+                "filtered_acorn": 0,
+                "filtered_exact": 0,
+                "filtered_large_cardinality": 1,
+                "filtered_plain": 0,
+                "filtered_small_cardinality": 0
+              },
+              "visited_graph_candidates": null
+            },
+            {
+              "exact_fallback_triggered": false,
+              "indexed_segments": 1,
+              "query_index": 9999,
+              "route": "filtered_hnsw",
+              "route_counts": {
+                "filtered_acorn": 0,
+                "filtered_exact": 0,
+                "filtered_large_cardinality": 1,
+                "filtered_plain": 0,
+                "filtered_small_cardinality": 0
+              },
+              "visited_graph_candidates": null
+            }
+          ],
+          "probed_exact_fallback_count": 0,
+          "qdrant_measured_route": {
+            "exact_fallback_triggered": false,
+            "indexed_segments": 1,
+            "route": "filtered_hnsw",
+            "route_counts": {
+              "filtered_acorn": 0,
+              "filtered_exact": 10000,
+              "filtered_large_cardinality": 10000,
+              "filtered_plain": 0,
+              "filtered_small_cardinality": 0
+            }
+          },
+          "recall_at_10": 0.99937,
+          "retraction_percent": 10,
+          "route_evidence_passed": true,
+          "short_responses": 0,
+          "telemetry_passed": true,
+          "timeouts": 0,
+          "visited_graph_candidates": null
+        },
+        {
+          "admitted_epoch": 2,
+          "admitted_points": 6000,
+          "ann_latency": {
+            "p50_ms": 2.747413993347436,
+            "p95_ms": 3.708001982886344,
+            "p99_ms": 4.1611529886722565
+          },
+          "exact_latency": {
+            "p50_ms": 1.9996570190414786,
+            "p95_ms": 2.964596962556243,
+            "p99_ms": 3.4086579689756036
+          },
+          "exact_short_responses": 0,
+          "exact_timeouts": 0,
+          "graph_candidate_sample_count": 0,
+          "graph_telemetry_basis": "qdrant_route_and_fallback_counters",
+          "graph_telemetry_complete": true,
+          "hnsw_ef": 440,
+          "invalid_exact_hits": 0,
+          "invalid_hits": 0,
+          "max_recall_gap": 0.01,
+          "paired_requests": 10000,
+          "passed": true,
+          "per_query_visit_counts_available": false,
+          "performance_passed": true,
+          "plan_probes": [
+            {
+              "exact_fallback_triggered": false,
+              "indexed_segments": 1,
+              "query_index": 0,
+              "route": "filtered_hnsw",
+              "route_counts": {
+                "filtered_acorn": 0,
+                "filtered_exact": 0,
+                "filtered_large_cardinality": 1,
+                "filtered_plain": 0,
+                "filtered_small_cardinality": 0
+              },
+              "visited_graph_candidates": null
+            },
+            {
+              "exact_fallback_triggered": false,
+              "indexed_segments": 1,
+              "query_index": 5000,
+              "route": "filtered_hnsw",
+              "route_counts": {
+                "filtered_acorn": 0,
+                "filtered_exact": 0,
+                "filtered_large_cardinality": 1,
+                "filtered_plain": 0,
+                "filtered_small_cardinality": 0
+              },
+              "visited_graph_candidates": null
+            },
+            {
+              "exact_fallback_triggered": false,
+              "indexed_segments": 1,
+              "query_index": 9999,
+              "route": "filtered_hnsw",
+              "route_counts": {
+                "filtered_acorn": 0,
+                "filtered_exact": 0,
+                "filtered_large_cardinality": 1,
+                "filtered_plain": 0,
+                "filtered_small_cardinality": 0
+              },
+              "visited_graph_candidates": null
+            }
+          ],
+          "probed_exact_fallback_count": 0,
+          "qdrant_measured_route": {
+            "exact_fallback_triggered": false,
+            "indexed_segments": 1,
+            "route": "filtered_hnsw",
+            "route_counts": {
+              "filtered_acorn": 0,
+              "filtered_exact": 10000,
+              "filtered_large_cardinality": 10000,
+              "filtered_plain": 0,
+              "filtered_small_cardinality": 0
+            }
+          },
+          "recall_at_10": 0.99986,
+          "retraction_percent": 50,
+          "route_evidence_passed": true,
+          "short_responses": 0,
+          "telemetry_passed": true,
+          "timeouts": 0,
+          "visited_graph_candidates": null
+        },
+        {
+          "admitted_epoch": 1,
+          "admitted_points": 1200,
+          "ann_latency": {
+            "p50_ms": 2.6037829811684787,
+            "p95_ms": 3.5317320143803954,
+            "p99_ms": 4.028833995107561
+          },
+          "exact_latency": {
+            "p50_ms": 1.5278829960152507,
+            "p95_ms": 2.35960801364854,
+            "p99_ms": 2.8832060052081943
+          },
+          "exact_short_responses": 0,
+          "exact_timeouts": 0,
+          "graph_candidate_sample_count": 0,
+          "graph_telemetry_basis": "qdrant_route_and_fallback_counters",
+          "graph_telemetry_complete": true,
+          "hnsw_ef": 1000,
+          "invalid_exact_hits": 0,
+          "invalid_hits": 0,
+          "max_recall_gap": 0.01,
+          "paired_requests": 10000,
+          "passed": true,
+          "per_query_visit_counts_available": false,
+          "performance_passed": true,
+          "plan_probes": [
+            {
+              "exact_fallback_triggered": false,
+              "indexed_segments": 1,
+              "query_index": 0,
+              "route": "filtered_hnsw",
+              "route_counts": {
+                "filtered_acorn": 0,
+                "filtered_exact": 0,
+                "filtered_large_cardinality": 1,
+                "filtered_plain": 0,
+                "filtered_small_cardinality": 0
+              },
+              "visited_graph_candidates": null
+            },
+            {
+              "exact_fallback_triggered": false,
+              "indexed_segments": 1,
+              "query_index": 5000,
+              "route": "filtered_hnsw",
+              "route_counts": {
+                "filtered_acorn": 0,
+                "filtered_exact": 0,
+                "filtered_large_cardinality": 1,
+                "filtered_plain": 0,
+                "filtered_small_cardinality": 0
+              },
+              "visited_graph_candidates": null
+            },
+            {
+              "exact_fallback_triggered": false,
+              "indexed_segments": 1,
+              "query_index": 9999,
+              "route": "filtered_hnsw",
+              "route_counts": {
+                "filtered_acorn": 0,
+                "filtered_exact": 0,
+                "filtered_large_cardinality": 1,
+                "filtered_plain": 0,
+                "filtered_small_cardinality": 0
+              },
+              "visited_graph_candidates": null
+            }
+          ],
+          "probed_exact_fallback_count": 0,
+          "qdrant_measured_route": {
+            "exact_fallback_triggered": false,
+            "indexed_segments": 1,
+            "route": "filtered_hnsw",
+            "route_counts": {
+              "filtered_acorn": 0,
+              "filtered_exact": 10000,
+              "filtered_large_cardinality": 10000,
+              "filtered_plain": 0,
+              "filtered_small_cardinality": 0
+            }
+          },
+          "recall_at_10": 0.99842,
+          "retraction_percent": 90,
+          "route_evidence_passed": true,
+          "short_responses": 0,
+          "telemetry_passed": true,
+          "timeouts": 0,
+          "visited_graph_candidates": null
+        }
+      ],
+      "engine": "qdrant",
+      "server": {
+        "version": "1.20.2"
+      }
+    },
+    {
+      "cells": [
+        {
+          "admitted_epoch": 4,
+          "admitted_points": 12000,
+          "ann_latency": {
+            "p50_ms": 3.1305020092986524,
+            "p95_ms": 4.234355001244694,
+            "p99_ms": 5.039918993134052
+          },
+          "exact_latency": {
+            "p50_ms": 3.260886005591601,
+            "p95_ms": 4.324545036070049,
+            "p99_ms": 5.076110945083201
+          },
+          "exact_short_responses": 0,
+          "exact_timeouts": 0,
+          "graph_candidate_sample_count": 0,
+          "graph_telemetry_basis": null,
+          "graph_telemetry_complete": null,
+          "hnsw_ef": 220,
+          "invalid_exact_hits": 0,
+          "invalid_hits": 0,
+          "max_recall_gap": 0.01,
+          "paired_requests": 10000,
+          "passed": true,
+          "per_query_visit_counts_available": false,
+          "performance_passed": true,
+          "plan_probes": [
+            {
+              "exact_fallback_triggered": false,
+              "explain_descriptions": [
+                "the type of knn search executed was Approximate-NN",
+                "the type of knn search executed at leaf was Approximate-NN with vectorDataType = FLOAT, spaceType = innerproduct where score is computed as `-rawScore + 1` from:",
+                "rawScore, returned from FAISS library"
+              ],
+              "profile_counters": {
+                "ann_search_count": 1,
+                "bitset_creation_count": 1,
+                "cardinality": 12000,
+                "exact_search_count": 0
+              },
+              "profile_node_types": [
+                "BoostQuery",
+                "FetchSourcePhase",
+                "KNNQuery",
+                "MatchAllDocsQuery",
+                "fetch"
+              ],
+              "query_index": 0,
+              "route": "filtered_hnsw"
+            },
+            {
+              "exact_fallback_triggered": false,
+              "explain_descriptions": [
+                "the type of knn search executed was Approximate-NN",
+                "the type of knn search executed at leaf was Approximate-NN with vectorDataType = FLOAT, spaceType = innerproduct where score is computed as `-rawScore + 1` from:",
+                "rawScore, returned from FAISS library"
+              ],
+              "profile_counters": {
+                "ann_search_count": 1,
+                "bitset_creation_count": 1,
+                "cardinality": 12000,
+                "exact_search_count": 0
+              },
+              "profile_node_types": [
+                "BoostQuery",
+                "FetchSourcePhase",
+                "KNNQuery",
+                "MatchAllDocsQuery",
+                "fetch"
+              ],
+              "query_index": 5000,
+              "route": "filtered_hnsw"
+            },
+            {
+              "exact_fallback_triggered": false,
+              "explain_descriptions": [
+                "the type of knn search executed was Approximate-NN",
+                "the type of knn search executed at leaf was Approximate-NN with vectorDataType = FLOAT, spaceType = innerproduct where score is computed as `-rawScore + 1` from:",
+                "rawScore, returned from FAISS library"
+              ],
+              "profile_counters": {
+                "ann_search_count": 1,
+                "bitset_creation_count": 1,
+                "cardinality": 12000,
+                "exact_search_count": 0
+              },
+              "profile_node_types": [
+                "BoostQuery",
+                "FetchSourcePhase",
+                "KNNQuery",
+                "MatchAllDocsQuery",
+                "fetch"
+              ],
+              "query_index": 9999,
+              "route": "filtered_hnsw"
+            }
+          ],
+          "probed_exact_fallback_count": 0,
+          "qdrant_measured_route": null,
+          "recall_at_10": 0.9992,
+          "retraction_percent": 0,
+          "route_evidence_passed": true,
+          "short_responses": 0,
+          "telemetry_passed": true,
+          "timeouts": 0,
+          "visited_graph_candidates": null
+        },
+        {
+          "admitted_epoch": 3,
+          "admitted_points": 10800,
+          "ann_latency": {
+            "p50_ms": 3.0958629795350134,
+            "p95_ms": 4.11773199448362,
+            "p99_ms": 4.653904994484037
+          },
+          "exact_latency": {
+            "p50_ms": 3.171126008965075,
+            "p95_ms": 4.09955601207912,
+            "p99_ms": 4.592945973854512
+          },
+          "exact_short_responses": 0,
+          "exact_timeouts": 0,
+          "graph_candidate_sample_count": 0,
+          "graph_telemetry_basis": null,
+          "graph_telemetry_complete": null,
+          "hnsw_ef": 245,
+          "invalid_exact_hits": 0,
+          "invalid_hits": 0,
+          "max_recall_gap": 0.01,
+          "paired_requests": 10000,
+          "passed": true,
+          "per_query_visit_counts_available": false,
+          "performance_passed": true,
+          "plan_probes": [
+            {
+              "exact_fallback_triggered": false,
+              "explain_descriptions": [
+                "the type of knn search executed was Approximate-NN",
+                "the type of knn search executed at leaf was Approximate-NN with vectorDataType = FLOAT, spaceType = innerproduct where score is computed as `-rawScore + 1` from:",
+                "rawScore, returned from FAISS library"
+              ],
+              "profile_counters": {
+                "ann_search_count": 1,
+                "bitset_creation_count": 1,
+                "cardinality": 10800,
+                "exact_search_count": 0
+              },
+              "profile_node_types": [
+                "BoostQuery",
+                "FetchSourcePhase",
+                "IndexOrDocValuesQuery",
+                "KNNQuery",
+                "fetch"
+              ],
+              "query_index": 0,
+              "route": "filtered_hnsw"
+            },
+            {
+              "exact_fallback_triggered": false,
+              "explain_descriptions": [
+                "the type of knn search executed was Approximate-NN",
+                "the type of knn search executed at leaf was Approximate-NN with vectorDataType = FLOAT, spaceType = innerproduct where score is computed as `-rawScore + 1` from:",
+                "rawScore, returned from FAISS library"
+              ],
+              "profile_counters": {
+                "ann_search_count": 1,
+                "bitset_creation_count": 1,
+                "cardinality": 10800,
+                "exact_search_count": 0
+              },
+              "profile_node_types": [
+                "BoostQuery",
+                "FetchSourcePhase",
+                "IndexOrDocValuesQuery",
+                "KNNQuery",
+                "fetch"
+              ],
+              "query_index": 5000,
+              "route": "filtered_hnsw"
+            },
+            {
+              "exact_fallback_triggered": false,
+              "explain_descriptions": [
+                "the type of knn search executed was Approximate-NN",
+                "the type of knn search executed at leaf was Approximate-NN with vectorDataType = FLOAT, spaceType = innerproduct where score is computed as `-rawScore + 1` from:",
+                "rawScore, returned from FAISS library"
+              ],
+              "profile_counters": {
+                "ann_search_count": 1,
+                "bitset_creation_count": 1,
+                "cardinality": 10800,
+                "exact_search_count": 0
+              },
+              "profile_node_types": [
+                "BoostQuery",
+                "FetchSourcePhase",
+                "IndexOrDocValuesQuery",
+                "KNNQuery",
+                "fetch"
+              ],
+              "query_index": 9999,
+              "route": "filtered_hnsw"
+            }
+          ],
+          "probed_exact_fallback_count": 0,
+          "qdrant_measured_route": null,
+          "recall_at_10": 0.99953,
+          "retraction_percent": 10,
+          "route_evidence_passed": true,
+          "short_responses": 0,
+          "telemetry_passed": true,
+          "timeouts": 0,
+          "visited_graph_candidates": null
+        },
+        {
+          "admitted_epoch": 2,
+          "admitted_points": 6000,
+          "ann_latency": {
+            "p50_ms": 3.4713829518295825,
+            "p95_ms": 4.401220008730888,
+            "p99_ms": 4.963651008438319
+          },
+          "exact_latency": {
+            "p50_ms": 2.9574159998446703,
+            "p95_ms": 3.861364966724068,
+            "p99_ms": 4.296436032745987
+          },
+          "exact_short_responses": 0,
+          "exact_timeouts": 0,
+          "graph_candidate_sample_count": 0,
+          "graph_telemetry_basis": null,
+          "graph_telemetry_complete": null,
+          "hnsw_ef": 440,
+          "invalid_exact_hits": 0,
+          "invalid_hits": 0,
+          "max_recall_gap": 0.01,
+          "paired_requests": 10000,
+          "passed": true,
+          "per_query_visit_counts_available": false,
+          "performance_passed": true,
+          "plan_probes": [
+            {
+              "exact_fallback_triggered": false,
+              "explain_descriptions": [
+                "the type of knn search executed was Approximate-NN",
+                "the type of knn search executed at leaf was Approximate-NN with vectorDataType = FLOAT, spaceType = innerproduct where score is computed as `-rawScore + 1` from:",
+                "rawScore, returned from FAISS library"
+              ],
+              "profile_counters": {
+                "ann_search_count": 1,
+                "bitset_creation_count": 1,
+                "cardinality": 6000,
+                "exact_search_count": 0
+              },
+              "profile_node_types": [
+                "BoostQuery",
+                "FetchSourcePhase",
+                "IndexOrDocValuesQuery",
+                "KNNQuery",
+                "fetch"
+              ],
+              "query_index": 0,
+              "route": "filtered_hnsw"
+            },
+            {
+              "exact_fallback_triggered": false,
+              "explain_descriptions": [
+                "the type of knn search executed was Approximate-NN",
+                "the type of knn search executed at leaf was Approximate-NN with vectorDataType = FLOAT, spaceType = innerproduct where score is computed as `-rawScore + 1` from:",
+                "rawScore, returned from FAISS library"
+              ],
+              "profile_counters": {
+                "ann_search_count": 1,
+                "bitset_creation_count": 1,
+                "cardinality": 6000,
+                "exact_search_count": 0
+              },
+              "profile_node_types": [
+                "BoostQuery",
+                "FetchSourcePhase",
+                "IndexOrDocValuesQuery",
+                "KNNQuery",
+                "fetch"
+              ],
+              "query_index": 5000,
+              "route": "filtered_hnsw"
+            },
+            {
+              "exact_fallback_triggered": false,
+              "explain_descriptions": [
+                "the type of knn search executed was Approximate-NN",
+                "the type of knn search executed at leaf was Approximate-NN with vectorDataType = FLOAT, spaceType = innerproduct where score is computed as `-rawScore + 1` from:",
+                "rawScore, returned from FAISS library"
+              ],
+              "profile_counters": {
+                "ann_search_count": 1,
+                "bitset_creation_count": 1,
+                "cardinality": 6000,
+                "exact_search_count": 0
+              },
+              "profile_node_types": [
+                "BoostQuery",
+                "FetchSourcePhase",
+                "IndexOrDocValuesQuery",
+                "KNNQuery",
+                "fetch"
+              ],
+              "query_index": 9999,
+              "route": "filtered_hnsw"
+            }
+          ],
+          "probed_exact_fallback_count": 0,
+          "qdrant_measured_route": null,
+          "recall_at_10": 0.99999,
+          "retraction_percent": 50,
+          "route_evidence_passed": true,
+          "short_responses": 0,
+          "telemetry_passed": true,
+          "timeouts": 0,
+          "visited_graph_candidates": null
+        },
+        {
+          "admitted_epoch": 1,
+          "admitted_points": 1200,
+          "ann_latency": {
+            "p50_ms": 4.522531991824508,
+            "p95_ms": 5.885937018319964,
+            "p99_ms": 6.450832006521523
+          },
+          "exact_latency": {
+            "p50_ms": 2.5051929987967014,
+            "p95_ms": 3.4347589826211333,
+            "p99_ms": 3.8328379741869867
+          },
+          "exact_short_responses": 0,
+          "exact_timeouts": 0,
+          "graph_candidate_sample_count": 0,
+          "graph_telemetry_basis": null,
+          "graph_telemetry_complete": null,
+          "hnsw_ef": 1000,
+          "invalid_exact_hits": 0,
+          "invalid_hits": 0,
+          "max_recall_gap": 0.01,
+          "paired_requests": 10000,
+          "passed": true,
+          "per_query_visit_counts_available": false,
+          "performance_passed": true,
+          "plan_probes": [
+            {
+              "exact_fallback_triggered": false,
+              "explain_descriptions": [
+                "the type of knn search executed was Approximate-NN",
+                "the type of knn search executed at leaf was Approximate-NN with vectorDataType = FLOAT, spaceType = innerproduct where score is computed as `-rawScore + 1` from:",
+                "rawScore, returned from FAISS library"
+              ],
+              "profile_counters": {
+                "ann_search_count": 1,
+                "bitset_creation_count": 1,
+                "cardinality": 1200,
+                "exact_search_count": 0
+              },
+              "profile_node_types": [
+                "BoostQuery",
+                "FetchSourcePhase",
+                "IndexOrDocValuesQuery",
+                "KNNQuery",
+                "fetch"
+              ],
+              "query_index": 0,
+              "route": "filtered_hnsw"
+            },
+            {
+              "exact_fallback_triggered": false,
+              "explain_descriptions": [
+                "the type of knn search executed was Approximate-NN",
+                "the type of knn search executed at leaf was Approximate-NN with vectorDataType = FLOAT, spaceType = innerproduct where score is computed as `-rawScore + 1` from:",
+                "rawScore, returned from FAISS library"
+              ],
+              "profile_counters": {
+                "ann_search_count": 1,
+                "bitset_creation_count": 1,
+                "cardinality": 1200,
+                "exact_search_count": 0
+              },
+              "profile_node_types": [
+                "BoostQuery",
+                "FetchSourcePhase",
+                "IndexOrDocValuesQuery",
+                "KNNQuery",
+                "fetch"
+              ],
+              "query_index": 5000,
+              "route": "filtered_hnsw"
+            },
+            {
+              "exact_fallback_triggered": false,
+              "explain_descriptions": [
+                "the type of knn search executed was Approximate-NN",
+                "the type of knn search executed at leaf was Approximate-NN with vectorDataType = FLOAT, spaceType = innerproduct where score is computed as `-rawScore + 1` from:",
+                "rawScore, returned from FAISS library"
+              ],
+              "profile_counters": {
+                "ann_search_count": 1,
+                "bitset_creation_count": 1,
+                "cardinality": 1200,
+                "exact_search_count": 0
+              },
+              "profile_node_types": [
+                "BoostQuery",
+                "FetchSourcePhase",
+                "IndexOrDocValuesQuery",
+                "KNNQuery",
+                "fetch"
+              ],
+              "query_index": 9999,
+              "route": "filtered_hnsw"
+            }
+          ],
+          "probed_exact_fallback_count": 0,
+          "qdrant_measured_route": null,
+          "recall_at_10": 1.0,
+          "retraction_percent": 90,
+          "route_evidence_passed": true,
+          "short_responses": 0,
+          "telemetry_passed": true,
+          "timeouts": 0,
+          "visited_graph_candidates": null
+        }
+      ],
+      "engine": "opensearch",
+      "server": {
+        "engine": "faiss",
+        "version": "3.9.0"
+      }
+    },
+    {
+      "cells": [
+        {
+          "admitted_epoch": 4,
+          "admitted_points": 12000,
+          "ann_latency": {
+            "p50_ms": 5.233091942500323,
+            "p95_ms": 6.17480103392154,
+            "p99_ms": 6.750639993697405
+          },
+          "exact_latency": {
+            "p50_ms": 2.378378005232662,
+            "p95_ms": 3.2929370063357055,
+            "p99_ms": 3.7416070117615163
+          },
+          "exact_short_responses": 0,
+          "exact_timeouts": 0,
+          "graph_candidate_sample_count": 0,
+          "graph_telemetry_basis": null,
+          "graph_telemetry_complete": null,
+          "hnsw_ef": 220,
+          "invalid_exact_hits": 0,
+          "invalid_hits": 0,
+          "max_recall_gap": 0.01,
+          "paired_requests": 10000,
+          "passed": true,
+          "per_query_visit_counts_available": false,
+          "performance_passed": true,
+          "plan_probes": [
+            {
+              "exact_fallback_count": 0,
+              "exact_fallback_triggered": false,
+              "index_name": "pv7_b48_0d32406a668e4091_hnsw",
+              "iterative_scan": "relaxed_order",
+              "plan_node_type": "Index Scan",
+              "query_index": 0,
+              "route": "iterative_hnsw",
+              "rows_removed_by_filter": 0,
+              "shared_hit_blocks": 10198,
+              "short_results": 0
+            },
+            {
+              "exact_fallback_count": 0,
+              "exact_fallback_triggered": false,
+              "index_name": "pv7_b48_0d32406a668e4091_hnsw",
+              "iterative_scan": "relaxed_order",
+              "plan_node_type": "Index Scan",
+              "query_index": 5000,
+              "route": "iterative_hnsw",
+              "rows_removed_by_filter": 0,
+              "shared_hit_blocks": 10264,
+              "short_results": 0
+            },
+            {
+              "exact_fallback_count": 0,
+              "exact_fallback_triggered": false,
+              "index_name": "pv7_b48_0d32406a668e4091_hnsw",
+              "iterative_scan": "relaxed_order",
+              "plan_node_type": "Index Scan",
+              "query_index": 9999,
+              "route": "iterative_hnsw",
+              "rows_removed_by_filter": 0,
+              "shared_hit_blocks": 10227,
+              "short_results": 0
+            }
+          ],
+          "probed_exact_fallback_count": 0,
+          "qdrant_measured_route": null,
+          "recall_at_10": 0.99997,
+          "retraction_percent": 0,
+          "route_evidence_passed": true,
+          "short_responses": 0,
+          "telemetry_passed": true,
+          "timeouts": 0,
+          "visited_graph_candidates": null
+        },
+        {
+          "admitted_epoch": 3,
+          "admitted_points": 10800,
+          "ann_latency": {
+            "p50_ms": 5.380549002438784,
+            "p95_ms": 6.344819033984095,
+            "p99_ms": 6.836017011664808
+          },
+          "exact_latency": {
+            "p50_ms": 2.243019000161439,
+            "p95_ms": 3.0619140015915036,
+            "p99_ms": 3.4538329928182065
+          },
+          "exact_short_responses": 0,
+          "exact_timeouts": 0,
+          "graph_candidate_sample_count": 0,
+          "graph_telemetry_basis": null,
+          "graph_telemetry_complete": null,
+          "hnsw_ef": 245,
+          "invalid_exact_hits": 0,
+          "invalid_hits": 0,
+          "max_recall_gap": 0.01,
+          "paired_requests": 10000,
+          "passed": true,
+          "per_query_visit_counts_available": false,
+          "performance_passed": true,
+          "plan_probes": [
+            {
+              "exact_fallback_count": 0,
+              "exact_fallback_triggered": false,
+              "index_name": "pv7_b48_0d32406a668e4091_hnsw",
+              "iterative_scan": "relaxed_order",
+              "plan_node_type": "Index Scan",
+              "query_index": 0,
+              "route": "iterative_hnsw",
+              "rows_removed_by_filter": 1,
+              "shared_hit_blocks": 10547,
+              "short_results": 0
+            },
+            {
+              "exact_fallback_count": 0,
+              "exact_fallback_triggered": false,
+              "index_name": "pv7_b48_0d32406a668e4091_hnsw",
+              "iterative_scan": "relaxed_order",
+              "plan_node_type": "Index Scan",
+              "query_index": 5000,
+              "route": "iterative_hnsw",
+              "rows_removed_by_filter": 2,
+              "shared_hit_blocks": 10632,
+              "short_results": 0
+            },
+            {
+              "exact_fallback_count": 0,
+              "exact_fallback_triggered": false,
+              "index_name": "pv7_b48_0d32406a668e4091_hnsw",
+              "iterative_scan": "relaxed_order",
+              "plan_node_type": "Index Scan",
+              "query_index": 9999,
+              "route": "iterative_hnsw",
+              "rows_removed_by_filter": 1,
+              "shared_hit_blocks": 10550,
+              "short_results": 0
+            }
+          ],
+          "probed_exact_fallback_count": 0,
+          "qdrant_measured_route": null,
+          "recall_at_10": 0.99999,
+          "retraction_percent": 10,
+          "route_evidence_passed": true,
+          "short_responses": 0,
+          "telemetry_passed": true,
+          "timeouts": 0,
+          "visited_graph_candidates": null
+        },
+        {
+          "admitted_epoch": 2,
+          "admitted_points": 6000,
+          "ann_latency": {
+            "p50_ms": 6.37338001979515,
+            "p95_ms": 7.666768040508032,
+            "p99_ms": 8.158993034157902
+          },
+          "exact_latency": {
+            "p50_ms": 2.062043990008533,
+            "p95_ms": 3.0554980039596558,
+            "p99_ms": 3.3981369924731553
+          },
+          "exact_short_responses": 0,
+          "exact_timeouts": 0,
+          "graph_candidate_sample_count": 0,
+          "graph_telemetry_basis": null,
+          "graph_telemetry_complete": null,
+          "hnsw_ef": 440,
+          "invalid_exact_hits": 0,
+          "invalid_hits": 0,
+          "max_recall_gap": 0.01,
+          "paired_requests": 10000,
+          "passed": true,
+          "per_query_visit_counts_available": false,
+          "performance_passed": true,
+          "plan_probes": [
+            {
+              "exact_fallback_count": 0,
+              "exact_fallback_triggered": false,
+              "index_name": "pv7_b48_0d32406a668e4091_hnsw",
+              "iterative_scan": "relaxed_order",
+              "plan_node_type": "Index Scan",
+              "query_index": 0,
+              "route": "iterative_hnsw",
+              "rows_removed_by_filter": 9,
+              "shared_hit_blocks": 11998,
+              "short_results": 0
+            },
+            {
+              "exact_fallback_count": 0,
+              "exact_fallback_triggered": false,
+              "index_name": "pv7_b48_0d32406a668e4091_hnsw",
+              "iterative_scan": "relaxed_order",
+              "plan_node_type": "Index Scan",
+              "query_index": 5000,
+              "route": "iterative_hnsw",
+              "rows_removed_by_filter": 12,
+              "shared_hit_blocks": 12051,
+              "short_results": 0
+            },
+            {
+              "exact_fallback_count": 0,
+              "exact_fallback_triggered": false,
+              "index_name": "pv7_b48_0d32406a668e4091_hnsw",
+              "iterative_scan": "relaxed_order",
+              "plan_node_type": "Index Scan",
+              "query_index": 9999,
+              "route": "iterative_hnsw",
+              "rows_removed_by_filter": 5,
+              "shared_hit_blocks": 11991,
+              "short_results": 0
+            }
+          ],
+          "probed_exact_fallback_count": 0,
+          "qdrant_measured_route": null,
+          "recall_at_10": 1.0,
+          "retraction_percent": 50,
+          "route_evidence_passed": true,
+          "short_responses": 0,
+          "telemetry_passed": true,
+          "timeouts": 0,
+          "visited_graph_candidates": null
+        },
+        {
+          "admitted_epoch": 1,
+          "admitted_points": 1200,
+          "ann_latency": {
+            "p50_ms": 8.859248016960919,
+            "p95_ms": 9.713311039377004,
+            "p99_ms": 10.163613012991846
+          },
+          "exact_latency": {
+            "p50_ms": 1.6820449964143336,
+            "p95_ms": 2.4753710022196174,
+            "p99_ms": 2.9439469799399376
+          },
+          "exact_short_responses": 0,
+          "exact_timeouts": 0,
+          "graph_candidate_sample_count": 0,
+          "graph_telemetry_basis": null,
+          "graph_telemetry_complete": null,
+          "hnsw_ef": 1000,
+          "invalid_exact_hits": 0,
+          "invalid_hits": 0,
+          "max_recall_gap": 0.01,
+          "paired_requests": 10000,
+          "passed": true,
+          "per_query_visit_counts_available": false,
+          "performance_passed": true,
+          "plan_probes": [
+            {
+              "exact_fallback_count": 0,
+              "exact_fallback_triggered": false,
+              "index_name": "pv7_b48_0d32406a668e4091_hnsw",
+              "iterative_scan": "relaxed_order",
+              "plan_node_type": "Index Scan",
+              "query_index": 0,
+              "route": "iterative_hnsw",
+              "rows_removed_by_filter": 59,
+              "shared_hit_blocks": 13140,
+              "short_results": 0
+            },
+            {
+              "exact_fallback_count": 0,
+              "exact_fallback_triggered": false,
+              "index_name": "pv7_b48_0d32406a668e4091_hnsw",
+              "iterative_scan": "relaxed_order",
+              "plan_node_type": "Index Scan",
+              "query_index": 5000,
+              "route": "iterative_hnsw",
+              "rows_removed_by_filter": 63,
+              "shared_hit_blocks": 13179,
+              "short_results": 0
+            },
+            {
+              "exact_fallback_count": 0,
+              "exact_fallback_triggered": false,
+              "index_name": "pv7_b48_0d32406a668e4091_hnsw",
+              "iterative_scan": "relaxed_order",
+              "plan_node_type": "Index Scan",
+              "query_index": 9999,
+              "route": "iterative_hnsw",
+              "rows_removed_by_filter": 83,
+              "shared_hit_blocks": 13195,
+              "short_results": 0
+            }
+          ],
+          "probed_exact_fallback_count": 0,
+          "qdrant_measured_route": null,
+          "recall_at_10": 1.0,
+          "retraction_percent": 90,
+          "route_evidence_passed": true,
+          "short_responses": 0,
+          "telemetry_passed": true,
+          "timeouts": 0,
+          "visited_graph_candidates": null
+        }
+      ],
+      "engine": "pgvector",
+      "server": {
+        "postgres_version_num": 170012,
+        "version": "0.8.7"
+      }
+    }
+  ],
+  "fixture": {
+    "digest": "5eb91e0bd3ce1f53d70de6e91d3c9bca671ec825f115ab10f5590328db94ef83",
+    "dimension": 128,
+    "id": "pv7-b48-synthetic-gaussian-v1",
+    "is_wild_corpus": false,
+    "origin": "synthetic_engine_route_probe",
+    "population": 12000,
+    "queries": 10000,
+    "seed": 480017,
+    "synthetic": true
+  },
+  "fixture_origin": "synthetic_engine_route_probe",
+  "is_wild_corpus": false,
+  "mode": "run-live",
+  "passed": true,
+  "schema": 1,
+  "spine_commit": "d4454e2d9fca146ccdc3d18db22ac6c0b5d3e802",
+  "spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9"
+}

@@ -19,12 +19,11 @@ from chelated_multibackend_appliance import (
     LiveOpenSearchKnnBackend,
     _identifier,
     _os_search_body,
-    pgvector_index_sql,
     pgvector_search_sql,
 )
 
 TOP_K = 10
-BASE_EF = 100
+BASE_EF = 220
 EF_CAP = 1000
 TIMEOUT_SECONDS = 5
 _PINNED_VERSIONS = {"qdrant": "1.20", "opensearch": "3.9", "pgvector": "0.8.7"}
@@ -298,30 +297,30 @@ class QdrantPrefilter:
         return {"version": version}
 
     def create(self, dim):
-        self._request("PUT", self.path, json={
+        self._request("PUT", self.path, timeout=120, json={
             "vectors": {"size": dim, "distance": "Dot"},
-            "hnsw_config": {"m": 16, "ef_construct": 128, "full_scan_threshold": 1},
+            "hnsw_config": {"m": 64, "ef_construct": 512, "full_scan_threshold": 10},
             "optimizers_config": {"indexing_threshold": 0, "default_segment_number": 1},
             "shard_number": 1,
         })
 
     def ingest(self, vectors, epochs):
-        self._request("PUT", f"{self.path}/index", params={"wait": "true"}, json={
+        self._request("PUT", f"{self.path}/index", params={"wait": "true"}, timeout=120, json={
             "field_name": "admitted_epoch", "field_schema": "integer",
         })
         for start in range(0, len(vectors), 256):
             stop = min(start + 256, len(vectors))
-            self._request("PUT", f"{self.path}/points", params={"wait": "true"}, json={
+            self._request("PUT", f"{self.path}/points", params={"wait": "true"}, timeout=120, json={
                 "batch": {
                     "ids": list(range(start, stop)),
                     "vectors": vectors[start:stop].tolist(),
                     "payloads": [{"admitted_epoch": int(epoch)} for epoch in epochs[start:stop]],
                 },
             })
-        self._request("PATCH", self.path, json={"optimizers_config": {"indexing_threshold": 1}})
+        self._request("PATCH", self.path, timeout=120, json={"optimizers_config": {"indexing_threshold": 1}})
         deadline = time.monotonic() + 300
         while time.monotonic() < deadline:
-            info = self._request("GET", self.path)["result"]
+            info = self._request("GET", self.path, timeout=30)["result"]
             if info["status"] == "green" and info["indexed_vectors_count"] == len(vectors):
                 return
             time.sleep(1)
@@ -374,8 +373,22 @@ class OpenSearchPrefilter(LiveOpenSearchKnnBackend):
         require_version("opensearch", version)
         return {"version": version, "engine": self.engine}
 
+    def create(self):
+        self._request("PUT", f"/{self.name}", timeout=120, json={
+            "settings": {"index": {"knn": True, "number_of_shards": 1, "number_of_replicas": 0}},
+            "mappings": {"properties": {
+                "doc_id": {"type": "keyword"},
+                "point_id": {"type": "integer"},
+                "admitted_epoch": {"type": "long"},
+                "embedding": {"type": "knn_vector", "dimension": self.dim, "method": {
+                    "name": "hnsw", "engine": "faiss", "space_type": "innerproduct",
+                    "parameters": {"ef_construction": 512, "m": 64},
+                }},
+            }},
+        })
+
     def ingest_fixture(self, vectors, epochs):
-        self._request("PUT", f"/{self.name}/_settings", json={
+        self._request("PUT", f"/{self.name}/_settings", timeout=60, json={
             "index.knn.advanced.filtered_exact_search_threshold": 0,
             "index.knn.faiss.efficient_filter.disable_exact_search": True,
         })
@@ -389,7 +402,7 @@ class OpenSearchPrefilter(LiveOpenSearchKnnBackend):
                 }))
             result = self._request(
                 "POST", f"/{self.name}/_bulk", content="\n".join(lines) + "\n",
-                headers={"Content-Type": "application/x-ndjson"},
+                headers={"Content-Type": "application/x-ndjson"}, timeout=120,
             )
             if result["errors"]:
                 raise RuntimeError("OpenSearch fixture bulk ingest failed")
@@ -439,6 +452,7 @@ class PgvectorPrefilter:
 
     def server_info(self):
         with self.conn.cursor() as cursor:
+            cursor.execute("CREATE EXTENSION IF NOT EXISTS vector")
             cursor.execute("SELECT current_setting('server_version_num'), extversion "
                            "FROM pg_extension WHERE extname = 'vector'")
             row = cursor.fetchone()
@@ -451,6 +465,7 @@ class PgvectorPrefilter:
         if not 1 <= dim <= 2000:
             raise ValueError("pgvector vector HNSW supports dimensions 1 through 2000")
         self.dim = dim
+        self.conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
         self.conn.execute(f"CREATE TABLE {self.table} ("
                           f"point_id integer PRIMARY KEY, doc_id text NOT NULL, "
                           f"admitted_epoch integer NOT NULL, embedding vector({dim}) NOT NULL)")
@@ -462,7 +477,11 @@ class PgvectorPrefilter:
             ) as copy:
                 for i, (row, epoch) in enumerate(zip(vectors, epochs, strict=True)):
                     copy.write_row((i, str(i), int(epoch), json.dumps(row.tolist())))
-        self.conn.execute(pgvector_index_sql(self.table, self.dim, PG_HNSW))
+        self.conn.execute("SET maintenance_work_mem = '512MB'")
+        self.conn.execute(
+            f"CREATE INDEX {self.table}_hnsw ON {self.table} USING hnsw (embedding vector_ip_ops) "
+            "WITH (m = 64, ef_construction = 512)"
+        )
         self.conn.execute(f"ANALYZE {self.table}")
 
     def _query(self, query, admission, *, exact, limit, explain=False):
@@ -477,6 +496,8 @@ class PgvectorPrefilter:
         else:
             # Discourage alternate filter scans and inspect the executed plan.
             settings.extend(("SET LOCAL hnsw.iterative_scan = 'relaxed_order'",
+                             "SET LOCAL hnsw.max_scan_tuples = 200000",
+                             "SET LOCAL hnsw.scan_mem_multiplier = 8",
                              "SET LOCAL hnsw.ef_search = %(ef_search)s",
                              "SET LOCAL enable_seqscan = off", "SET LOCAL enable_bitmapscan = off"))
             params["ef_search"] = admission.ef
