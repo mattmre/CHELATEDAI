@@ -87,26 +87,50 @@ class MicroBatchedCausalServer:
         )
         self.model.eval()
         self._eos_id = int(self.tokenizer.eos_token_id)
-        self._close_brace_ids = set(self.tokenizer.encode("}", add_special_tokens=False))
+        # Match ANY BPE token containing '}' (e.g. '}', '"}', '}\n') so JSON early-stop triggers reliably
+        self._close_brace_ids = {
+            int(tid) for tok_str, tid in self.tokenizer.get_vocab().items() if "}" in str(tok_str)
+        }
+        self._compiled_decode = None
+        if device.startswith("cuda"):
+            try:
+                # Compile single-token decode step with dynamic shapes so KV-cache decode eliminates Python overhead
+                def _decode_one(next_tok: torch.Tensor, attn_mask: torch.Tensor, pkv: Any) -> Any:
+                    return self.model(
+                        input_ids=next_tok,
+                        attention_mask=attn_mask,
+                        past_key_values=pkv,
+                        use_cache=True,
+                    )
+
+                self._compiled_decode = torch.compile(_decode_one, mode="default", dynamic=True)
+                print("[w22b:server] Enabled torch.compile(dynamic=True) for decode step", flush=True)
+            except Exception as exc:
+                print(f"[w22b:server] torch.compile skipped ({type(exc).__name__}: {exc})", flush=True)
+                self._compiled_decode = None
+        self._reqs_served = 0
+        self._recent_ms: List[float] = []
         self._worker = threading.Thread(target=self._batch_loop, daemon=True)
         self._worker.start()
 
     def _run_batch(self, prompts: List[str], max_new_tokens: int) -> List[str]:
         import torch
 
+        t_b = time.perf_counter()
         enc = self.tokenizer(prompts, return_tensors="pt", padding=True)
         input_ids = enc["input_ids"].to(self.device)
         attention_mask = enc["attention_mask"].to(self.device)
         batch_size = input_ids.shape[0]
         finished = [False] * batch_size
         generated: List[List[int]] = [[] for _ in range(batch_size)]
+        cap_tokens = min(int(max_new_tokens), 52)
 
         with torch.inference_mode():
             out = self.model(input_ids=input_ids, attention_mask=attention_mask, use_cache=True)
             past_key_values = out.past_key_values
             next_tokens = torch.argmax(out.logits[:, -1, :], dim=-1)
 
-            for step in range(max_new_tokens):
+            for step in range(cap_tokens):
                 tok_list = next_tokens.tolist()
                 all_done = True
                 for i, tid in enumerate(tok_list):
@@ -115,27 +139,52 @@ class MicroBatchedCausalServer:
                             finished[i] = True
                         else:
                             generated[i].append(int(tid))
-                            if tid in self._close_brace_ids and len(generated[i]) >= 8:
-                                # Fast early-stop once valid JSON object closes
+                            if tid in self._close_brace_ids and len(generated[i]) >= 6:
                                 dec = self.tokenizer.decode(generated[i], skip_special_tokens=True)
                                 if dec.count("{") > 0 and dec.count("}") >= dec.count("{"):
                                     finished[i] = True
                     if not finished[i]:
                         all_done = False
-                if all_done or step + 1 >= max_new_tokens:
+                if all_done or step + 1 >= cap_tokens:
                     break
                 attention_mask = torch.cat(
                     [attention_mask, torch.ones((batch_size, 1), dtype=attention_mask.dtype, device=self.device)],
                     dim=1,
                 )
-                out = self.model(
-                    input_ids=next_tokens.unsqueeze(1),
-                    attention_mask=attention_mask,
-                    past_key_values=past_key_values,
-                    use_cache=True,
-                )
+                if self._compiled_decode is not None:
+                    try:
+                        out = self._compiled_decode(next_tokens.unsqueeze(1), attention_mask, past_key_values)
+                    except Exception as exc:
+                        print(f"[w22b:server] compiled decode fallback to eager ({type(exc).__name__}: {exc})", flush=True)
+                        self._compiled_decode = None
+                        out = self.model(
+                            input_ids=next_tokens.unsqueeze(1),
+                            attention_mask=attention_mask,
+                            past_key_values=past_key_values,
+                            use_cache=True,
+                        )
+                else:
+                    out = self.model(
+                        input_ids=next_tokens.unsqueeze(1),
+                        attention_mask=attention_mask,
+                        past_key_values=past_key_values,
+                        use_cache=True,
+                    )
                 past_key_values = out.past_key_values
                 next_tokens = torch.argmax(out.logits[:, -1, :], dim=-1)
+
+        elapsed_ms = (time.perf_counter() - t_b) * 1000.0
+        self._reqs_served += batch_size
+        self._recent_ms.append(elapsed_ms)
+        if self._reqs_served % 400 < batch_size:
+            tail = sorted(self._recent_ms[-100:])
+            p50 = tail[len(tail) // 2]
+            p95 = tail[min(len(tail) - 1, int(0.95 * len(tail)))]
+            print(
+                f"[w22b:progress] reqs_served={self._reqs_served} last_bs={batch_size} "
+                f"batch_p50_ms={p50:.1f} batch_p95_ms={p95:.1f}",
+                flush=True,
+            )
 
         return [self.tokenizer.decode(ids, skip_special_tokens=True).strip() for ids in generated]
 
