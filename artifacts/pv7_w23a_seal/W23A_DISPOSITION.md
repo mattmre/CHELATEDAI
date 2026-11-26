@@ -129,7 +129,17 @@ compute was run.
   steps it is 825, not 962, and I don't know why.
 - **Shuffled-order rebuild:** 81/960 `winner_record_id` mismatches. These are tie-break by insertion order; status and
   value never change.
-- **Self-score:** 85. Tier B has not run yet. Not mergeable.
+- **Tier B round 1 (fresh agent):** 80, severity important. The numbers reproduce exactly and the rule matches the
+  preregistration. The reviewer found the verdict has little power:
+  - On #55, EK5's graphs hold only supersede edges, with 0 copy edges and 0 cycles, so its machinery never runs.
+  - Every #55 conflict item sits in one stratum, which both arms get fully right.
+  - The #55 tie was already known before the preregistration.
+  - These limits are folded into `report.md` (`f757103d`).
+- **Draft PR #370.** BHS_OFFICIAL = 80. Not mergeable.
+- **DEFERRED_SCOPE:**
+  - the PostgreSQL 17 arm;
+  - a matched Conv120 comparison;
+  - the gap between 825 and 962.
 
 ## W22-17 — core-math and prime-ring fixes: PRs open, Tier B pending
 
@@ -179,5 +189,10 @@ compute was run.
   existing council logs.
 - **A separate finding:** the W23A audit found 4 S_A defects that no F-PV7 list had caught (B53:C08, B54:C08,
   B62:C08, B62:C09).
-- **Self-score:** 90. One coder per family, and some rule calls were made after the preregistration; both are
-  disclosed. Tier B has not run yet. Not mergeable.
+- **Tier B round 1 (fresh agent):** 85, severity important. The result reproduces byte for byte. F-PV7 is dead for
+  structural reasons. The overall KILLED is **fragile**:
+  - F-R5 passes all four rules if r5_grok is held to its own declared scope.
+  - F-W8 passes after three plausible recodes under the coder's own tie-break rule.
+  - The fragility note is in the generated report (`fcaffde6`).
+- **Draft PR #371.** BHS_OFFICIAL = 85. Not mergeable.
+- **Carried forward:** a second independent coder for F-W8 and F-R5.
