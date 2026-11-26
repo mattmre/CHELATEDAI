@@ -15,7 +15,11 @@ Preregistration: `artifacts/pv7_w23b_w22_08/PREREGISTRATION.md` (commit `3911ad1
 | F-W4 | all | none | FAIL | PASS | n/e | n/e | no |
 | F-W14 | all | w14_grok, w14_neon, w14_sol, w14_sonnet | PASS | FAIL | FAIL | PASS | no |
 
-Max pairwise overlap per gating unit (K2 threshold 0.80): F-PV7/S_A n/a; F-PV7/S_B n/a; F-W8/all 0.85; F-R5/all 0.82; F-W4/all n/a; F-W14/all 1.00. The overlaps depend on how coarse the canonical IDs are; a different coding could change them, but the coding was frozen before counting and is not re-tuned here.
+Max pairwise overlap per gating unit (K2 threshold 0.80): F-PV7/S_A n/a; F-PV7/S_B n/a; F-W8/all 0.85; F-R5/all 0.82; F-W4/all n/a; F-W14/all 1.00. The overlaps depend on how coarse the canonical IDs are; a different coding could change them. The coding was not re-tuned after counting, but git shows no separation between coding and counting: extraction/CODING_RULES.md was committed together with the results.
+
+**Fragility (Tier B round 1).** The overall KILLED rests on one coder's extraction and is not robust. F-W8 and F-R5 pass K1, K3 and K4 and fail K2 only narrowly (1/13 per pair and 1/17). F-R5 passes all four gates if r5_grok is held to its own declared scope instead of the B1-B27+XC assignment (run_w22_08_capture_recapture.py scope table). F-W8 passes all four gates after three plausible recodes (grok-06 to C07; neon-09 and neon-11 off C10 under tie-break rule 5). The preregistration says ADVANCE if any family passes, so read this verdict as: killed under single-coder extraction, fragile. A second, independent coder for F-W8 and F-R5 is needed before KILLED is final. F-PV7, the primary question, is killed for structural reasons (its peer memos cover disjoint slices, and the judges read them), and that does not depend on coding.
+
+**Not implemented from the queue spec:** seeded miss validation. K4 keeps only the held-out half, and the departures list did not record that.
 
 ## Departures from the preregistration
 
