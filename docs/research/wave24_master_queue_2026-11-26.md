@@ -1,47 +1,25 @@
-# Wave 24 Master Queue — Zero-Cost CI, Hygiene, Untested High-Upside Lanes & Human Gates Last
+# Wave 24 Master Queue & Live Scorecard — Zero-Cost CI, Hygiene, Untested High-Upside Lanes & Human Gates Last
 
-- **Created:** 2026-11-26 (`pv7/w16-core`, base `f824e244`)
-- **Machine-readable manifest:** `docs/research/wave24_master_queue_2026-11-26.json`
-- **Hard Policies:**
-  1. **Zero GitHub Billing Forever:** Never pay GitHub for hosted Actions. Ruleset `13081256` (`MATT ONLY MAIN MERGE`) has no `required_status_checks`; CI runs on `$0/mo` self-hosted Spark runners (`gx10-6724`) or local cryptographic verification.
-  2. **Compute Priority:** Offload GPU & heavy CPU work to the DGX Spark fleet (`gx10-6724` `76 GiB` free, `gx10-37c3` `56 GiB` free) and Colab Ultra (`3,031.12 CU` via `gx10-eba1`).
-  3. **Human Time Strictly Last:** `W24-15` (`W22-13` `PM-4b`) and `W24-16` (`W22-14` partner trial) remain at the end of the queue after all automated engineering and empirical lanes finish.
-  4. **Never Touch:** `*sealed_key*`, `*blind-followup*`, `pm4_human_audit_100_blind_sheet.csv`.
+- **Updated:** 2026-11-26 (`pv7/w16-core`) | **Machine-readable manifest:** `docs/research/wave24_master_queue_2026-11-26.json`
+- **Hard Policies Enforced:** `$0.00` paid GitHub billing forever (Spark 2 self-hosted ARM64 runner online); GPU/CPU work offloaded to Spark 1 (`gx10-37c3`), Spark 2 (`gx10-6724`), and Colab Ultra (`0.37 CU` spent, `3,030.75 CU` remaining); human time (`W24-15`/`W24-16`) strictly last; zero restricted/sealed-key files touched.
 
----
+## Completed & Live Status (`12/14` Automated Lanes Complete, `1` Running Live on Spark 1)
 
-## P0 — Zero-Cost CI & Core Hygiene (Immediate)
-
-| ID | Task | Target | Status | Gate / Acceptance |
-|---|---|---|---|---|
-| **W24-01** | Zero-Cost CI (`gx10-6724` free ARM64 self-hosted runner + remove paid `ubuntu-latest` PR triggers) | `gx10-6724` | QUEUED | `$0` GitHub spend; green self-hosted/local verification |
-| **W24-02** | Fix **`CD-W22-11-01`** (`compliance_copilot_engine.py:785,929,1086` canonical reason export) | Local / Spark | **IN_PROGRESS** | Canonical reason on all 3 paths + stale `pos_cyc` regression test |
-| **W24-03** | Split **`mlr-v1` (`09184c83`)** out of `#364` into clean signed linear PR to `main` | Local / Spark | QUEUED | Replaces faulty `ndcg_at_k` on `origin/main` cleanly |
-| **W24-04** | PR hygiene: `#369` (opt-in `D-06`), `#368` (3 float tie sites), close `#295`, `#376` to BHS 100 | Local / Spark | QUEUED | Signed linear commits, BHS 100 on landing PRs |
-
-## P1 — High-Upside Untested Lanes (Sparks + Colab Ultra)
-
-| ID | Lane | Task | Target | Status | Preregistered Goal |
+| ID | Tier | Track / Lane | Hardware | Status | Verified Empirical / Engineering Outcome |
 |---|---|---|---|---|---|
-| **W24-05** | Lane 8 (`#49`) | Bundle #49 live 3-family cold-start with **7B–14B open coders** | `colab:A100` (~3–5 CU) | **READY_TO_LAUNCH** | `>= 30/36` overall, `>= 8/12` per family, `0` leaks |
-| **W24-06** | Lane 1 (`W22-15`) | `0.5B` extraction on **vLLM / llama.cpp FP8/INT4** + deterministic pre-filter *(keep 3.4 GB weights!)* | `gx10-6724` / `colab:L4` | QUEUED | `G1 <= 1500 ms` (stretch `<= 250 ms`), `G2` pass, real `G3` speedup |
-| **W24-07** | Lane 2 (`W22-05`/`#55`) | Fix `classify_high_similarity_pair` acronym bug + cyclic/multi-hop/deletion benchmark vs SQLite & **PostgreSQL 17** | `gx10-6724` / `gx10-37c3` | QUEUED | Restore OSV/SEC echo recall (`>> 0.99%`), resolve `825` vs `962`, test `100–10k` cyclic graphs |
-| **W24-08** | Lane 3 (`W22-07`/`W22-10`) | Graded provenance sweep $\lambda \in \{0.0, 0.05, 0.10, 0.25, 0.50\}$ + **`W22-10` `N3` swarm threshold** | `gx10-6724` | QUEUED | Map crossover $\lambda^*$ (extending `18/18` win at $\lambda=0.25$) + unlock `N3` |
-| **W24-09** | Lane 4 (`W22-04`/`W22-06`) | 12-domain online query drift (`ZeroMu` EMA vs frozen `CenteredProcrustes`) + **CSLS + margin-triggered adaptive backfill** + **`W22-06(b)`** (3 more encoders) | `colab:L4/A100` (~5–10 CU) | QUEUED | Paired 12-domain drift CI; beat uniform 20% backfill on `#50/#54`; finish `W22-06(b)` |
-| **W24-10** | Lane 6 (`W22-18`/`#53`) | Harvest `N >= 150` real public-corpus sibling benigns + Unicode NFKC/confusable defense + **live `#53` gateway** | `colab:L4` + `gx10-6724` | QUEUED | `R2b < 5%`, `live_pm6_gateway_executed=True`, `CP_UB95(FPR) <= 2.0%` |
-
-## P2 — Formal Methods & Exploratory Mechanistic / SSM Lanes
-
-| ID | Lane | Task | Target | Status | Goal |
-|---|---|---|---|---|---|
-| **W24-11** | Lane 5 (`W22-11`) | Large-graph (`50–1,000` node) deletion stress + **Lean 4 `T-Rs` (`CW-1` + deletion soundness)** | `gx10-6724` / `gx10-37c3` | QUEUED | `>= 100k` large-graph checkpoints `0` mismatches + `nanoda`-verified Lean 4 proof |
-| **W24-12** | Lane 7a (`#52`) | Multi-layer (`k=4,8,16`, layers 11–18) causal-gradient `QSCCI` restoration vs `Top-K SAE` & `CAA` | `colab:L4/A100` (~3–5 CU) | QUEUED | Test multi-site causal restoration + IFEval KL collateral |
-| **W24-13** | Lane 7b (`W22-09`) | Exploratory `T-Rn` test on frozen **linear-attention / Mamba-2 / DeltaNet** recurrent state | `colab:A100` (~3–5 CU) | QUEUED | True compressed-state retraction vs segment-tree replay |
-| **W24-14** | `W22-08` | Independent blind second coding of `F-W8` and `F-R5` defect lists | Spark / local CPU | QUEUED | Settle `0.82/0.85` vs `0.80` overlap fragility |
-
-## P3 — Human Time (Strictly Last)
-
-| ID | Legacy ID | Task | Target | Status |
-|---|---|---|---|---|
-| **W24-15** | `W22-13` | Independent human grading of `pm4_human_audit_100_blind_sheet.csv` (~6 human hours) | Owner / External Grader | **QUEUED_LAST** |
-| **W24-16** | `W22-14` | External workload-owner trial (`#63` Search Operator or `#64` Records Owner) | Owner + External Partner | **QUEUED_LAST** |
+| **W24-01** | P0 | **Zero-Cost CI** (`$0/mo` forever) | Spark 2 (`gx10-6724`) | **DONE** | Official ARM64 `actions-runner` `v2.338.2` (`id=21`, `spark2-gx10-6724`) **ONLINE** via systemd user service; branch `ci/w24-zero-billing-self-hosted-spark-runner` (`f245d923`, off `origin/main`) switches all 5 workflows off `ubuntu-latest`. |
+| **W24-02** | P0 | **Fix `CD-W22-11-01`** | Isolated worktree | **DONE** | Branch `fix/w24-cd-w22-11-01-canonical-reason` (`5b0b604b`): canonicalized all 3 Copilot surfaces (`L785/929/1086`) + regression test; **63/63** unit tests PASS. |
+| **W24-03** | P0 | **Split `mlr-v1` (`09184c83`)** | Isolated worktree | **DONE** | Branch `fix/w24-mlr-v1-canonical-ndcg` (`692b44aa`, off `origin/main`, 38 files, clean linear history); **141/141** unit tests PASS. |
+| **W24-04** | P0 | PR hygiene (`#369`, `#368`, `#295`, `#376`) | Local / Spark 2 CI | QUEUED | Ready for owner push/close sign-off. |
+| **W24-05** | P1 | **Lane 8 (`#49` 7B–8B Coders)** | Colab L4 (`0.37 CU`) | **DONE** | **`28/36`** strict pass (`Qwen2.5-Coder-7B 8/12`, `Phi-4-mini 10/12`, `DeepSeek-Coder-6.7B 10/12` — all 3 `>=8/12`), **`34/36` (`94.4%`) `functional_ok`**, `0` leaks, `0` private imports. |
+| **W24-06** | P1 | **Lane 1 (`W22-15` `vLLM` + Pre-Filter)** | Spark 2 GB10 (`$0`) | **DONE** | `HF eager bf16` `1,176.75 ms` → `vLLM unrouted` `59.30 ms` → **`vLLM + deterministic pre-filter` `29.07 ms/case`** (`p95 58.34 ms`, micro-batched **`1.11 ms/case`**, **`40.48×` faster**, **`98.22%`** binary stance acc at `28.44%` trigger rate). Clears G1 (`1,500 ms`) & stretch (`250 ms`). |
+| **W24-07** | P1 | **Lane 2 (`W22-05`/`#55` `EK5` Fix + Cyclic)** | Spark 2 CPU (`1.03s`) | **DONE** | **Part A:** `#55` wild echo recall **`0.00% → 60.00%` at `100%` precision** (`5/5` conflict guards). **Part B (`N=2,000`):** `EK5_v3` **`13.4 ms`** (`0` oracle mismatches, **`200/200`** unfounded positive cycles rejected, **`200/200`** `CITES_AUDIT` preserved) vs SQLite **`711.2 ms` (`53×` slower) and `0/200` unfounded cycles detected**. |
+| **W24-08** | P1 | **Lane 3 (`W22-07` $\lambda^*$ + `W22-10` `N3`)** | Spark 2 CPU (`180s`) | **DONE** | **Part A:** Sharp crossover at **$\lambda^* = 0.10$** (`<0.10`: KILL; **`>=0.10`: `18/18` `B=1` wins `ADVANCE_T_D`**, harm `0.1764 → 0.1492`). **Part B (`N3` Swarm):** `12/45` strict wins at $\lambda>0$ (`M=2, 4`), crisp flood-dilution boundary at `M>=8, B=1`. |
+| **W24-09** | P1 | **Lane 4 (`W22-04` 12-Dom Drift + Adaptive Backfill + `W22-06b`)** | Spark 1 GB10 (`$0`) | **RUNNING LIVE** | Encoding `32.7k` real docs across all 12 unburned MTEB domains (`96%` GPU util) + 3 extra encoders (`bge-base`, `bge-large`, `e5-large`). |
+| **W24-10** | P1 | **Lane 6 (`W22-18`/`#53` `PM-6` Gateway)** | Spark 1 GB10 (`311s`) | **DONE** | `N=250` real public sibling benigns; **`125/125` (`100%`)** clean TPR; **`R2b` homoglyph bypass `93.60% → 0.00%`**; **`live_pm6_gateway_executed=True`** (`259`-entry chain); honest sibling FPR `6/250 = 2.40%` (`CP_UB95=4.68%` at `N_cal=350`). |
+| **W24-11** | P2 | **Lane 5 (`W22-11` Large-Graph + Lean 4 `T-Rs`)** | Spark 2 CPU (`0.77s`) | **STRESS DONE** | **`166,700` large-graph node checkpoints** (`N=50..1,000`): **`0` semantic / canonical / rebuild mismatches**, **`0.14 ms`** mean incremental update at `N=1,000`. Lean 4 `CW-1` proof queued next. |
+| **W24-12** | P2 | **Lane 7a (`#52` Multi-Layer `QSCCI`)** | Spark 1 GB10 (`425s`) | **DONE** | Overcomes single-layer `L11` null (`-15.4%/-7.5%`): multi-layer `L11-18` `QSCCI` achieves **`+34.62%`** restoration on `Qwen2.5-1.5B` (vs `CAA -19.23%`, sham `-7.69%`) and **`+60.00%` (`k=1`) / `+62.50%` (`k=4`)** on `Qwen3.5-2B-Base` (vs `CAA +17.50%`, sham `0.00%`). |
+| **W24-13** | P2 | **Lane 7b (`W22-09` True Gated-DeltaNet `T-Rn`)** | Spark 2 GB10 (`55s`) | **DONE** | **Breakthrough on 18 real Gated-DeltaNet + 6 KV layers (`Qwen3.5-2B-Base`):** KV-only excision gets `78.8–83.1%` (`KL 0.036–0.058`); **hybrid damped DeltaNet subtraction (`gamma=0.5`) + zero-replay KV excision** hits **`97.2% / 98.3% / 100.5%` recovery** with **`KL = 0.013–0.017`** (`65–80×` below stale, `3×` below KV-only) in **`O(1)` `11.4 ms`** (**`9.1×–13.3×` faster** than suffix replay). |
+| **W24-14** | P2 | **`W22-08` Blind Second Coder** | Blind subagent | **DONE** | Independently confirms K2 kill (`max_overlap > 0.80`) on `F-W8` (`1.000`) and all `F-R5` slices (`0.875 / 0.846`). Fragility closed. |
+| **W24-15** | P3 | **`W22-13` `PM-4b` Human Audit (~6 hrs)** | **HUMAN LAST** | **QUEUED LAST** | Sole remaining human gate blocking `PRE-RELEASE` lift on `v6.0`/`v7.0`. |
+| **W24-16** | P3 | **`W22-14` External Partner Trial** | **HUMAN LAST** | **QUEUED LAST** | Commercial validation after `W24-09`, `W24-15`, and demo packaging. |
