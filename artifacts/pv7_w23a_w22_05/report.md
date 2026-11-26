@@ -12,7 +12,11 @@ plain ledger:
 - **(b)** EK5 has zero conflict-item wins;
 - **(c)** coverage is equivalent, and harm is equivalent at p = 0.01, 0.05 and 0.25.
 
-The verdict is **PROPOSED** until a fresh adversarial Tier B review has run.
+**How to read the verdict.** No clean-graph premium for EK5 was *detected*, but the inputs could hardly have shown
+one. arena60 has no power to separate the arms. On b55, EK5's graphs contain no copy edges and no cycles, so its
+distinctive machinery never runs (limits 1, 6 and 7 below). So this is the preregistered outcome. It is **not**
+positive evidence that a plain ledger equals EK5 on graphs where copying or cycles matter. The status is PROPOSED;
+round-1 Tier B scored it 80 (important).
 
 ## Parity
 
@@ -23,7 +27,9 @@ The verdict is **PROPOSED** until a fresh adversarial Tier B review has run.
 | pooled | 1020 | 480 | 480 | 1.000 | 0 | 0 |
 
 Pooled harm is the same for both arms: 0.6041 at p = 0.01, 0.5797 at p = 0.05 and 0.4576 at p = 0.25. On b55, the error
-rate on determinate items is 0.643 for both arms. That reflects the corpus, not a difference between the arms.
+rate on determinate items is 0.643 for both arms. Both arms share the bundle's public projection, which strips
+`echo_of` (`scripts/run_pv7_w18_6c_wild_revisions.py:100-106`). So the shared failure could come from that projection
+as much as from the corpus. This run does not separate the two causes.
 
 ## Limits on what this shows (read before citing the verdict)
 
@@ -62,6 +68,24 @@ rate on determinate items is 0.643 for both arms. That reflects the corpus, not 
 
    - EK5's admitted sets were never persisted, so no matched set-level comparison is possible.
    - The audit digest matches the expected value, `d395dd94…`.
+6. **On b55, EK5's distinctive machinery never runs.**
+   - EK5's b55 graphs have 360 edges, and every one is a negative supersede edge.
+   - There are 0 COPY or DERIVES edges and 0 cycles.
+   - So echo/copy collapse, refutation-cycle handling and `pos_cyc` never fire. On inputs where the
+     highest-authority live record wins, the two engines are close to bound to agree.
+7. **Condition (b) has almost no power on b55.**
+   - All 120 b55 conflict items sit in one stratum, `equal_authority_vex_ghsa`, where both arms score 240/240.
+   - The other three strata fail the same way for both arms, 180/240 each.
+   - So "zero EK5 conflict wins" rests on items that both arms get trivially right.
+8. **The b55 tie was known before the preregistration.** Bundle #55 had already reported EK5 = SQL at 0.4375, with
+   240/240 family ties (`PREREGISTRATION.md:12-16`). The verdict rests on b55, so it largely re-runs a known result.
+9. **The arena ledger's inputs come from EK5's pipeline.** `arena_ledger_ops` (`w22_05_ledger_comparator.py:154-229`)
+   reads the events and cleaned claims that EK5's grounding step produced. Its WITHDRAW-on-SUPERSEDE/DEBUNK rule was
+   written by hand. The ledger *engine* shares no EK5 code, but its inputs are not independent of EK5.
+10. **There was an earlier run that was not recorded.** The OSV cache already existed when the committed run started
+    (`existed_before_run: true`; it was created at 02:49:50, and the committed run started at 02:52:20). The
+    implementation was committed after the results. So a code change made after seeing results cannot be ruled out.
+    The b55 path uses the bundle's code unchanged, which limits how much this could matter.
 
 ## Inputs that were not available
 
@@ -87,4 +111,20 @@ rate on determinate items is 0.643 for both arms. That reflects the corpus, not 
   (`scratch/osv_cve_seeds.json`, sha256 `5cc7450c…`).
 - **L13 — weaker than it reads:** arena60 cannot separate the arms (limit 1 above). The RETIRE verdict rests on b55
   parity together with the absence of any EK5 win.
-- **Scratch:** `artifacts/pv7_w23a_w22_05/scratch/` holds only the OSV cache and can be removed.
+- **Scratch:** `artifacts/pv7_w23a_w22_05/scratch/` is gitignored and can be removed after review. It holds:
+  - `osv_cve_seeds.json`
+  - `arena_rows.json`
+  - `b55_items.json`
+  - `conv_ku_rows.json`
+  - `full_run_stdout.txt`
+  - the Tier B rerun folder, `tierb_rerun/`
+
+  On this host that folder is
+  `C:\Users\mattm\AppData\Local\Temp\claude\439e695c92b40043\c9f4318c-455f-427a-844a-07562a0a3c42\scratchpad\w22-05\artifacts\pv7_w23a_w22_05\scratch\`
+  (1.2 MB, including the rerun).
+- **The runner can overwrite the committed results.** Its output directory is hard-coded
+  (`scripts/run_pv7_w23a_w22_05_ledger_comparator.py:34-35`), so any re-run overwrites `w22_05_results.json`.
+- **DEFERRED_SCOPE (queue items not delivered):**
+  - the PostgreSQL 17 arm;
+  - a matched Conv120 comparison, which needs EK5's admitted sets to be persisted;
+  - the gap between 825 and 962 diffs, which needs the formal report or the Lean CLI.
