@@ -1,0 +1,171 @@
+{
+  "generated_utc": "2026-11-26T14:23:21.151144+00:00",
+  "n_cases": 8,
+  "provenance": {
+    "full_attn_layers": 6,
+    "gpu_name": "NVIDIA GB10",
+    "hardware_cohort": "spark2_gb10:NVIDIA GB10",
+    "linear_deltanet_layers": 18,
+    "model_id": "Qwen/Qwen3.5-2B-Base",
+    "n_recurrent_tensors": 18,
+    "python_version": "3.12.3",
+    "recurrent_attr": "layers[*].recurrent_states",
+    "sample_recurrent_shape": [
+      1,
+      16,
+      128,
+      128
+    ],
+    "spine_claim_registry_sha256": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+    "torch_version": "2.14.1+cu130",
+    "wall_seconds_total": 55.2
+  },
+  "results_by_suffix_len": [
+    {
+      "by_arm": {
+        "deltanet_sub_g0.5": {
+          "mean_kl_vs_cf": 0.7401,
+          "mean_margin_recovery_frac": 0.1374,
+          "mean_op_ms": 17.88,
+          "speedup_vs_replay": 5.86,
+          "state_rel_l2_after": 0.16966,
+          "state_rel_l2_before": 0.18357
+        },
+        "deltanet_sub_g1.0": {
+          "mean_kl_vs_cf": 0.5014,
+          "mean_margin_recovery_frac": 0.2955,
+          "mean_op_ms": 11.19,
+          "speedup_vs_replay": 9.35,
+          "state_rel_l2_after": 0.27257,
+          "state_rel_l2_before": 0.18357
+        },
+        "hybrid_deltanet_g0.5_plus_kv_excise": {
+          "mean_kl_vs_cf": 0.0165,
+          "mean_margin_recovery_frac": 0.9724,
+          "mean_op_ms": 11.45,
+          "speedup_vs_replay": 9.14,
+          "state_rel_l2_after": 0.16966,
+          "state_rel_l2_before": 0.18357
+        },
+        "hybrid_deltanet_g1.0_plus_kv_excise": {
+          "mean_kl_vs_cf": 0.0372,
+          "mean_margin_recovery_frac": 1.1443,
+          "mean_op_ms": 11.36,
+          "speedup_vs_replay": 9.21,
+          "state_rel_l2_after": 0.27257,
+          "state_rel_l2_before": 0.18357
+        },
+        "kv_excise_only": {
+          "mean_kl_vs_cf": 0.0581,
+          "mean_margin_recovery_frac": 0.7882,
+          "mean_op_ms": 10.41,
+          "speedup_vs_replay": 10.05,
+          "state_rel_l2_after": 0.18357,
+          "state_rel_l2_before": 0.18357
+        }
+      },
+      "mean_exact_replay_ms": 104.69,
+      "stale_mean_kl_vs_cf": 1.0552,
+      "stale_mean_margin_gap": 6.5352,
+      "suffix_tokens": 28
+    },
+    {
+      "by_arm": {
+        "deltanet_sub_g0.5": {
+          "mean_kl_vs_cf": 0.6902,
+          "mean_margin_recovery_frac": 0.0999,
+          "mean_op_ms": 10.91,
+          "speedup_vs_replay": 10.53,
+          "state_rel_l2_after": 0.18041,
+          "state_rel_l2_before": 0.14976
+        },
+        "deltanet_sub_g1.0": {
+          "mean_kl_vs_cf": 0.5034,
+          "mean_margin_recovery_frac": 0.2362,
+          "mean_op_ms": 10.88,
+          "speedup_vs_replay": 10.56,
+          "state_rel_l2_after": 0.31152,
+          "state_rel_l2_before": 0.14976
+        },
+        "hybrid_deltanet_g0.5_plus_kv_excise": {
+          "mean_kl_vs_cf": 0.0126,
+          "mean_margin_recovery_frac": 0.9829,
+          "mean_op_ms": 11.45,
+          "speedup_vs_replay": 10.03,
+          "state_rel_l2_after": 0.18041,
+          "state_rel_l2_before": 0.14976
+        },
+        "hybrid_deltanet_g1.0_plus_kv_excise": {
+          "mean_kl_vs_cf": 0.0347,
+          "mean_margin_recovery_frac": 1.1358,
+          "mean_op_ms": 11.45,
+          "speedup_vs_replay": 10.03,
+          "state_rel_l2_after": 0.31152,
+          "state_rel_l2_before": 0.14976
+        },
+        "kv_excise_only": {
+          "mean_kl_vs_cf": 0.0378,
+          "mean_margin_recovery_frac": 0.8185,
+          "mean_op_ms": 10.45,
+          "speedup_vs_replay": 10.99,
+          "state_rel_l2_after": 0.14976,
+          "state_rel_l2_before": 0.14976
+        }
+      },
+      "mean_exact_replay_ms": 114.86,
+      "stale_mean_kl_vs_cf": 0.9172,
+      "stale_mean_margin_gap": 6.2617,
+      "suffix_tokens": 109
+    },
+    {
+      "by_arm": {
+        "deltanet_sub_g0.5": {
+          "mean_kl_vs_cf": 0.7795,
+          "mean_margin_recovery_frac": 0.1358,
+          "mean_op_ms": 11.07,
+          "speedup_vs_replay": 13.73,
+          "state_rel_l2_after": 0.18765,
+          "state_rel_l2_before": 0.13508
+        },
+        "deltanet_sub_g1.0": {
+          "mean_kl_vs_cf": 0.5017,
+          "mean_margin_recovery_frac": 0.3164,
+          "mean_op_ms": 10.85,
+          "speedup_vs_replay": 14.0,
+          "state_rel_l2_after": 0.33601,
+          "state_rel_l2_before": 0.13508
+        },
+        "hybrid_deltanet_g0.5_plus_kv_excise": {
+          "mean_kl_vs_cf": 0.0142,
+          "mean_margin_recovery_frac": 1.0049,
+          "mean_op_ms": 11.39,
+          "speedup_vs_replay": 13.34,
+          "state_rel_l2_after": 0.18765,
+          "state_rel_l2_before": 0.13508
+        },
+        "hybrid_deltanet_g1.0_plus_kv_excise": {
+          "mean_kl_vs_cf": 0.0721,
+          "mean_margin_recovery_frac": 1.198,
+          "mean_op_ms": 11.49,
+          "speedup_vs_replay": 13.22,
+          "state_rel_l2_after": 0.33601,
+          "state_rel_l2_before": 0.13508
+        },
+        "kv_excise_only": {
+          "mean_kl_vs_cf": 0.0362,
+          "mean_margin_recovery_frac": 0.8308,
+          "mean_op_ms": 10.49,
+          "speedup_vs_replay": 14.48,
+          "state_rel_l2_after": 0.13508,
+          "state_rel_l2_before": 0.13508
+        }
+      },
+      "mean_exact_replay_ms": 151.91,
+      "stale_mean_kl_vs_cf": 1.1256,
+      "stale_mean_margin_gap": 6.5547,
+      "suffix_tokens": 325
+    }
+  ],
+  "schema_version": "w24_13_deltanet_state_retraction_v1",
+  "wave_item_id": "W24-13"
+}
