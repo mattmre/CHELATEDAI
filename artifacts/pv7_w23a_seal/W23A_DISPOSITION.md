@@ -28,10 +28,11 @@ below counts as evidence; every result is a local command run.
     missing. Both receipts are tracked in git. `tests/test_pv7_w21_live_receipts.py:80` asserts that a missing
     receipt is reported as absent, not passed. The live outcome is reported as `FAILED`, and no consumer turns it
     into a pass.
-  - **Stale scorecard hashes.**
-    - The scorecard blob is `799aebd83896`, both at `34125969` and at the head.
-    - `192855cdfd2d` is still in the PR #366 body.
-    - `7954f9fcf0c7` is in `WAVES_1_TO_21_MASTER_EVIDENCE_AND_PR_INDEX.md:4`.
+  - **Scorecard digests.** The docs cite the scorecard's embedded content digest, `scorecard_sha256`, not the
+    sha256 of the file. The file's sha256 is `799aebd83896`.
+    - The current embedded digest is `7954f9fcf0c7`, and that is what `WAVES_1_TO_21_MASTER_EVIDENCE_AND_PR_INDEX.md:4`
+      cites, so the index is correct.
+    - The PR #366 body cited the stale `192855cdfd2d`. It was updated to `7954f9fcf0c7…` on 2026-11-26.
     - `6a2a254b49e6` appears only in historical council logs, which are left as written.
 
 ## W22-02 — claim-coverage audit: proposed downgrades
