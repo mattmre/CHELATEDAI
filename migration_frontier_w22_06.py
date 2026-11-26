@@ -7,7 +7,9 @@ Sub-tests implemented here:
   (c) leave-one-domain-out centering-gain law;
   (d) whole-query top-k split-conformal containment (in-domain and leave-one-domain-out);
   (e) retained-bit / sample ledger (OpenAI #140).
-Sub-test (b) (chain vs direct refit) is DEFERRED_SCOPE: it needs encoders that are not cached.
+Sub-test (b) (chain vs direct refit) is DEFERRED_SCOPE: the bge-small / mpnet / bge-m3 encoders
+are present in the local HF cache, but their EMBEDDINGS of this corpus are not cached, and the
+preregistration (and task) barred any encoding in this run.
 """
 
 from __future__ import annotations
@@ -156,22 +158,31 @@ def calibrate_margin(
 
 
 def flip_pair_stats(
-    calibrated_row: np.ndarray,
+    served_row: np.ndarray,
     native_row: np.ndarray,
     keys: np.ndarray,
     *,
     k: int,
     margin: float,
+    a: float = 0.0,
+    b: float = 1.0,
 ) -> Dict[str, int]:
-    """Per-query counts of top-k membership errors and observation-identical flip pairs."""
-    served = set(topk_indices(calibrated_row, keys, k).tolist())
+    """Per-query counts of top-k membership errors and observation-identical flip pairs.
+
+    ``served_row`` holds the RAW served (fused) scores: S_k is the served top-k under the
+    pipeline's own ranking (prereg sections 1-2). The affine DEV calibration ``c = a + b*served``
+    is used ONLY for the margin comparison |c_i - c_j| <= margin, never for ranking, so a
+    negative slope ``b`` cannot invert the served top-k.
+    """
+    served = set(topk_indices(served_row, keys, k).tolist())
     native = set(topk_indices(native_row, keys, k).tolist())
     intruders = sorted(served - native)
     missing = sorted(native - served)
+    calibrated = a + b * np.asarray(served_row, dtype=np.float64)
     n_pairs = 0
     n_explainable = 0
     for j in missing:
-        hits = sum(1 for i in intruders if abs(float(calibrated_row[i]) - float(calibrated_row[j])) <= margin)
+        hits = sum(1 for i in intruders if abs(float(calibrated[i]) - float(calibrated[j])) <= margin)
         n_pairs += hits
         if hits:
             n_explainable += 1

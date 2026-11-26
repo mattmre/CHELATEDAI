@@ -73,6 +73,20 @@ class TestMarginFlips(unittest.TestCase):
         self.assertEqual(st2["n_missing_margin_explainable"], 0)
         self.assertEqual(st2["n_flip_pairs"], 0)
 
+    def test_negative_slope_ranks_by_served_not_calibrated(self):
+        # Regression for Tier B round 1: with b < 0 the calibrated scores invert the order;
+        # S_k must still be the served top-k (d0, d1), not the served bottom-k.
+        keys = doc_tiebreak_keys(["d0", "d1", "d2", "d3"])
+        served = np.array([0.90, 0.80, 0.20, 0.10])
+        native = np.array([0.90, 0.10, 0.80, 0.20])  # native top-2 = d0, d2
+        st = flip_pair_stats(served, native, keys, k=2, margin=0.01, a=1.0, b=-0.5)
+        self.assertEqual(st["n_missing"], 1)  # served-bottom ranking would miss both natives
+        # calibrated: d1 -> 0.60, d2 -> 0.90; |diff| = 0.30
+        self.assertEqual(st["n_missing_margin_explainable"], 0)
+        st2 = flip_pair_stats(served, native, keys, k=2, margin=0.31, a=1.0, b=-0.5)
+        self.assertEqual(st2["n_missing_margin_explainable"], 1)
+        self.assertEqual(st2["n_flip_pairs"], 1)
+
     def test_no_error_no_flip(self):
         keys = doc_tiebreak_keys(["a", "b", "c"])
         row = np.array([0.3, 0.2, 0.1])

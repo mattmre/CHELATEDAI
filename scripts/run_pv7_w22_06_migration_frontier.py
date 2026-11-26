@@ -133,12 +133,14 @@ def _domain(group: str, dom: Dict[str, Any], recorded_cells: Dict[str, float], d
 
     # (a) margin + flips
     cal = calibrate_margin(p["fused_dev"], p["native_dev"], keys)
-    calibrated = cal["a"] + cal["b"] * p["fused_eval"]
     flips: List[Dict[str, int]] = []
     cal_scores: List[int] = []
     test_scores: List[int] = []
     for i, qid in enumerate(qids):
-        st = flip_pair_stats(calibrated[i], p["native_eval"][i], keys, k=K_DEFAULT, margin=cal["margin"])
+        # S_k is ranked by the RAW served scores; calibration (a, b) only enters the margin test.
+        st = flip_pair_stats(
+            p["fused_eval"][i], p["native_eval"][i], keys, k=K_DEFAULT, margin=cal["margin"], a=cal["a"], b=cal["b"]
+        )
         flips.append(st)
         # (d) containment score on the RAW fused row (affine calibration with b>0 preserves order;
         # the raw row is used so the score is exactly the served ranking).
