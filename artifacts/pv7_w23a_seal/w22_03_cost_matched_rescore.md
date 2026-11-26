@@ -69,16 +69,20 @@ Key pattern: `benchmarks.{FiQA2018|SciFact}.{1024|4096}.cases.{engine}.direction
    - There are **8** direction groups (2 datasets × 2 dims × 2 directions), not 7.
    - **Vs raw cosine** (`Uncalibrated_Raw_Merge`): Chelated wins nDCG in **all 8** groups with LCB95 > 0. The smallest is FiQA 1024 d384→d1024, +0.0227 (LCB95 0.0088). The largest is SciFact 1024 d1024→d384, +0.3687.
    - **Vs RRF:** Chelated wins nDCG in all 8, with LCB95 > 0.
-   - **Vs DEV z-score:** Chelated wins in 7 of 8. In SciFact 4096 d384→d4096 DEV z-score beats Chelated: −0.0258, one-sided UCB95 **−0.0036**, so the loss is significant one-sided (two-sided p = 0.053).
+   - **Vs DEV z-score:** Chelated wins in 7 of 8 at one-sided LCB95 > 0, but one of the 7 is marginal. In FiQA 4096
+    d384→d4096 the delta is +0.0141 with LCB95 **+0.0004**, LCB97.5 −0.0022, two-sided p = 0.091. Under the
+    artifact's own Bonferroni-2 band (`p0125_bonf2` −0.0045) it is a tie. So the robust count is 6 of 8. In SciFact 4096 d384→d4096 DEV z-score beats Chelated: −0.0258, one-sided UCB95 **−0.0036**, so the loss is significant one-sided (two-sided p = 0.053).
    - Raw cosine ties on recall in one group: FiQA 1024 d384→d1024, +0.023, LCB −0.0004, p = 0.105.
    - RRF and DEV tie on recall in several groups, e.g. FiQA 4096 d384→d4096 recall: vs RRF −0.0103 (p = 0.535), vs DEV −0.0011.
 6. **Stale resurrection.**
    - `stale_resurrection_rate` = 0.0 for chelated.
    - `raw_engine_stale_hit_rate` = 0.0, so the raw allowlist baseline ties chelated.
-   - The only baseline that leaks is `lagged_replica_only_stale_hit_rate`, at 5.2–8.2%.
+   - The only baseline that leaks is `lagged_replica_only_stale_hit_rate`. On SciFact it is 5.2–8.2% at 10% and 50%
+    retraction, and **31–36% at 90% retraction** (for example 0.3634 for opensearch 4096 d4096→d384). On FiQA it is
+    `null` in every cell, so FiQA has no stale-hit baseline.
 
 **Verdict: PARTIAL.**
-- **Survives:** the scorecard's actual claim. Chelated CSLS merge quality beats raw cosine and RRF in all 8 direction groups, and DEV z-score in 7 of 8, at shortlist-matched cost.
+- **Survives:** the scorecard's actual claim. Chelated CSLS merge quality beats raw cosine and RRF in all 8 direction groups at shortlist-matched cost. Against DEV z-score it wins 7 of 8 one-sided, but one of those (FiQA 4096 d384→d4096, p = 0.091) is marginal, so 6 of 8 is robust.
 - **Not shown:** any latency or deployment advantage. That is consistent with the scorecard's own disclaimer, so suspending it changes nothing in the scorecard.
 - **Stale hits:** the raw allowlist ties on stale hits, which is also already disclosed ("raw-engine 0% stale is zero by allowlist construction").
 - **New:** one disclosure to add. DEV z-score significantly beats Chelated in SciFact 4096 d384→d4096.
@@ -117,11 +121,13 @@ Keys used: `arm_metrics`, `small_and_mid_reader_telemetry`, `per_case_prediction
   - `Chelated_70B_minus_Bare_70B_k5` and `Chelated_70B_minus_Bare_70B_k17`: `mean_delta` = 0.0, p = 1.0, CI ±0.0602.
   - Mid-7B vs Bare-70B k5: Holm-adjusted p = 1.0.
 - **Per-case agreement.**
-  - Chelated-70B agrees with Bare k17 on 58 of 60 cases and with Bare k5 on 57 of 60.
-  - The disagreements:
-    - iam_token_forgery_505: bare abstains.
-    - cobalt_aero_dod: chelated abstains.
-    - One formatting difference on k5 ('REDOSONLY').
+  - Chelated-70B agrees with Bare k17 on 58 of 60 cases and with Bare k5 on 57 of 60, by exact string match.
+  - Vs k17, the 2 disagreements are:
+    - `sec_financial_rumor_cobalt_aero_dod`: chelated abstains, bare answers CONTRACT_ACTIVE_ON_SCHEDULE.
+    - `cybersec_cve_rumor_cve_2024_27351_orm_sqli`: a formatting difference only (chelated REDOS_ONLY_…, bare
+      REDOSONLY_…).
+  - Vs k5, the same 2, plus `cloud_sre_rumor_iam_token_forgery_505`, where bare abstains.
+  - An earlier draft put the REDOSONLY difference on k5 only. It is in both.
 - **Memory.**
   - Bare-70B: 38.084 GiB. Mid-7B reader: 14.279 GiB.
   - The Nemotron-30B extractor's memory is not stored, so I don't know the end-to-end VRAM. VRAM cannot be matched.
@@ -181,7 +187,17 @@ An earlier draft gave the ≤2/17 values under the ≤1/17 label. A Tier B revie
 **Holm tests** (`pm6_posthoc_statistical_reanalysis.json`):
 - Arm 9 minus Arm 6 AUROC: −0.0107 (Nemotron), −0.0208 (Qwen); adjusted p = 1.0.
 - Arm 9 minus Arm 8: −0.0039 and −0.0138; adjusted p = 1.0.
-- The only comparisons that survive Holm are vs Arm 3: +0.4736 and +0.4758.
+- In the full 12-test family, three comparisons survive Holm:
+  - Arm 9 vs Arm 3: +0.4736 (Nemotron) and +0.4758 (Qwen).
+  - The cross-lingual ablation `phase3:de:paired_bootstrap_c_vs_a`: +0.1522, Holm-adjusted p = 0.029. It is about
+    German cross-lingual configuration C vs A, not about Arm 9 vs the conventional arms.
+  - An earlier draft said only the Arm 3 comparisons survive. That missed this one.
+- **Arm 5 ≡ Arm 9 on R3/R5.** In `wave14_d11_pm6_manifest.json`, Arm 5 (gate 2 only, ZeroMu CSLS) and Arm 9 (the full
+  dual gate) have identical R3 suppression and R5 FPR in both generators:
+  - Nemotron: 0.9375 and 2/32.
+  - Qwen: 0.8824 and 2/17.
+
+  So on these metrics gate 1 adds nothing on top of gate 2.
 - `min_n_to_certify` at 0 errors = 149 benign families. Both generators are far below this (32 and 17).
 
 ### #53 RCPS closure
@@ -252,6 +268,18 @@ Artifacts: `pv7_w22b_b62_d13_colab_l4/colab_l4_provenance.json`, `pv7_w20_d13_ma
 | ZeroMu+EK5_v3 (chelated) | 8 | 0.1667 | 59.382 | 0 |
 | ZeroMu+SQLite | 8 | 0.1667 | 59.037 | 0 |
 | full_restart_rebuild (`full_restart_comparator`) | 0 (48 late or timed out) | 0 | 0.0 | 0 |
+| UncCSLS+EK5_v3 (recomputed from `cells[]`) | 6 | 0.125 | 45.58 | — |
+| UncCSLS+SQLite (recomputed from `cells[]`) | 6 | 0.125 | 45.96 | — |
+
+The two UncCSLS rows are not in `arm_summary`. I recomputed them from `cells[]` (regime "both", pool 4, both
+branches) as Σ on-time jobs / Σ `window_duration_ms`. The same method reproduces all five `arm_summary` rows above
+exactly.
+- **Per branch:**
+  - Branch A: ZeroMu leads at about 164 JPM, vs about 144 for Conv and about 127 for UncCSLS.
+  - Branch B: every arm scores 0.
+  - ZeroMu loses on the pooled measure because its windows are longer.
+- So the chelated arm wins the per-cell comparison on one branch and loses the pooled one. That is a further reason
+  the comparison is a tie, not a win.
 
 Effects (`primary_2x2_interaction`):
 - `simple_main_effects_pooled_jpm.zeromu_gain_with_ek5` = **−3.5875 JPM**.
@@ -296,4 +324,4 @@ Sham control (`sham_reopen_isolation`, `control_valid` = false):
 - **D6:** latency for the 90%-retraction cells, per-query rows, separately timed baseline merges, replicate runs.
 - **D10-B:** extractor VRAM, per-case latency and tails, and any composed run of the fast 0.5B extractor with a reader.
 - **D11:** any result at N ≥ 149 benign families, and live-gateway FPR and latency for #53.
-- **D13:** the UncCSLS+SQLite and UncCSLS+EK5_v3 cells are listed in `system_cells`, but no arm_summary entry for them was found under `primary_2x2_interaction`. There is also no same-hardware, same-model replicate of the Colab run.
+- **D13:** the UncCSLS cells have no `arm_summary` entry, but they are in `cells[]`, and their numbers are recomputed in the table above. An earlier draft said no data existed for them, which was wrong. There is still no same-hardware, same-model replicate of the Colab run, and no per-arm CI.

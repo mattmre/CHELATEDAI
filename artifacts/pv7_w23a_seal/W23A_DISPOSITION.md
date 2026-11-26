@@ -1,6 +1,6 @@
 # Wave 23A disposition (W22-01..W22-05, W22-17)
 
-Date: 2026-11-26. Spine branch `pv7/w16-core`, head `7ffbd0df` when this was written.
+Date: 2026-11-26. Spine branch `pv7/w16-core`. First written at `7ffbd0df`. Round-1 corrections are in `2c125bef`, and round-2 corrections are in the commit that adds this line.
 Source of the queue: `docs/research/waves-handoff-wave22-breakthrough-audit-and-queue-additions-2026-11-25.md`
 in the main checkout.
 
@@ -15,9 +15,20 @@ concrete corrections, and all of them were checked against the artifacts and fol
   - Raw rows are untracked in git.
 - **W22-03:** #41 moves to PARTIAL, the #41 counts are fixed, the Qwen ≤1/17 row is fixed, #62 is a tie, and each
   claim now cites where it is made.
-- **W22-16:** SELECT and REPORT are separate splits, and the fixture scope is k=4.
+- **W22-16:** SELECT and REPORT are separate splits. Round 1 also asked to scope the kill to k=4; round 2 showed
+  that was wrong.
 
-No tier should move until a round-2 reviewer has seen the corrected reports.
+**Tier B round 2 has been done too**, by a fresh reviewer on `2c125bef`:
+
+| Report | Round 1 | Round 2 | What round 2 found |
+|---|---|---|---|
+| W22-02 | not scored | 98 | Nits only. |
+| W22-03 | not scored | 90 | Six omissions, all fixed: SciFact stale rate is 31–36% at 90% retraction and FiQA has none; REDOSONLY differs vs k17 too; a third Holm survivor (phase3:de c_vs_a, p 0.029); Arm 5 ≡ Arm 9; the UncCSLS cells do exist (recomputed); the FiQA DEV win is marginal (p 0.091). |
+| W22-16 | 93 | 85 | The round-1 "kill is only at k=4" caveat was wrong, because the identical selection also holds at k=1. The SAE wrong-sign excuse applies only to Qwen3.5. A line citation was off by two. All fixed. |
+| This file | not scored | 88 | The defects above, plus a stale head line and missing round-1 scores. Fixed. |
+
+I re-checked every round-2 finding against the artifacts myself before editing. None of these scores is 100, so
+every verdict stays PROPOSED. No tier moves until a round-3 reviewer clears the corrected text.
 
 CI note: GitHub Actions has not run any job since 2026-11-22 because of an account billing block. No CI result
 below counts as evidence; every result is a local command run.
@@ -79,7 +90,7 @@ Full report: `w22_03_cost_matched_rescore.md`.
 
 | Bundle | Verdict | Finding | New vs scorecard? |
 |---|---|---|---|
-| #41 D6 | **PARTIAL** | Merge quality survives: Chelated beats raw cosine and RRF in all 8 direction groups, and DEV z-score in 7 of 8. DEV z-score significantly beats Chelated in SciFact 4096 d384→d4096 (UCB95 −0.0036). Latency is not shown, because the timers are unmatched and the scorecard already says "no pure ANN latency claim". | New: the DEV z-score loss. |
+| #41 D6 | **PARTIAL** | Merge quality survives: Chelated beats raw cosine and RRF in all 8 direction groups, and DEV z-score in 7 of 8 one-sided (6 of 8 robustly; FiQA 4096 d384→d4096 has p 0.091). DEV z-score significantly beats Chelated in SciFact 4096 d384→d4096 (UCB95 −0.0036). Latency is not shown, because the timers are unmatched and the scorecard already says "no pure ANN latency claim". | New: the DEV z-score loss. |
 | #45 D10-B | SUSPEND the deployment reading | Bare 70B at k17 ties Chelated exactly (0.98333 EM, p=1.0) and is about 5× faster. | Already disclosed. |
 | #46 D11 + #53 | SUSPEND the "better suppressor" reading | At matched FPR, raw cosine has equal or higher TPR than Arm 9 at every level. #53's best arm is ZeroMu with raw cosine (0.50% FPR, 18.2% TPR), not ZeroMu with CSLS (0.67%, 12.7%). | #46 already disclosed. #53 new: which arm the headline FPR belongs to. |
 | #62 D13 | **TIE** with conventional arms | Chelated scores 59.38 JPM vs 62.87 and 62.97 for the conventional arms, with 8 vs 7 on-time jobs and no CI. Only the full-restart win is real. The sham control is invalid. | New: the anti-L4 note omits the conventional arms. |
@@ -101,10 +112,24 @@ compute was run.
   - per-domain CIs, which the strict kill rule needs.
 - No embeddings are cached locally, so the missing cells need GPU re-encoding on the 3090 or Colab.
 
-## W22-05 — bitemporal SQL ledger comparator and negation-cycle census: NOT STARTED
+## W22-05 — bitemporal SQL ledger comparator and negation-cycle census: preregistered rule says RETIRE (PROPOSED)
 
-This is about 10 hours of engineering. An implementer agent is working on it on branch
-`pv7/w23a-w22-05-ledger-comparator`. It is not done until it has its own PR and a Tier B review.
+- **Branch:** `pv7/w23a-w22-05-ledger-comparator`. Preregistration `cfd40d6d` was committed before any result;
+  the implementation is `1c9176f7`.
+- **Verdict under the preregistered rule:** `RETIRE_EK5_CLEAN_GRAPH_PREMIUM`. EK5 and an ordinary SQLite bitemporal
+  ledger agree on all 1,020 items: arena 60/60 for both arms, and #55 420/960 for both, failing on the same cuts.
+  Harm is identical at every p.
+- **Limits:**
+  - The arena cannot tell the arms apart. An authority-only ledger also scores 60/60.
+  - So this shows "no measured clean-graph premium on these inputs", not that one could never exist.
+- **Negation-cycle census:**
+  - Arena: 30/60 graphs have a mutual-REFUTE 2-cycle (every contested and rumor case).
+  - #55: 0 of 240.
+- **Not reproduced:** the 962 explanation-diff figure. At 6 steps the count is 153, which matches the citation. At 12
+  steps it is 825, not 962, and I don't know why.
+- **Shuffled-order rebuild:** 81/960 `winner_record_id` mismatches. These are tie-break by insertion order; status and
+  value never change.
+- **Self-score:** 85. Tier B has not run yet. Not mergeable.
 
 ## W22-17 — core-math and prime-ring fixes: PRs open, Tier B pending
 
@@ -138,3 +163,21 @@ This is about 10 hours of engineering. An implementer agent is working on it on 
 - Not done in W23A:
   - the PR #293 (CD-R13-01) re-probe;
   - closing out PR #295 (CD-R16-01). Closing a PR is outward-facing, so it waits for the owner.
+
+## W23B early result: W22-08 capture-recapture — KILLED (PROPOSED)
+
+- **Branch:** `pv7/w23b-w22-08-capture-recapture`. Preregistration `3911ad1c`; implementation `c105b6fe`.
+- **Result:** none of the five reviewer-list families passes all four kill rules (K1 independence, K2 overlap,
+  K3 finite estimate, K4 bound).
+  - F-PV7 S_A and S_B die on K1. The final judges read the peer memos, so only one list in each stratum is
+    independent.
+  - F-W8 and F-R5 die only on K2. Their overlaps are 0.85 and 0.82, against a 0.80 cutoff, so a different defect-ID
+    granularity might change this.
+  - F-W14 dies on K2 and K3.
+  - F-W4 dies on K1.
+- **What this means:** a Chao-style estimate of "how many defects all reviewers missed" cannot be supported from the
+  existing council logs.
+- **A separate finding:** the W23A audit found 4 S_A defects that no F-PV7 list had caught (B53:C08, B54:C08,
+  B62:C08, B62:C09).
+- **Self-score:** 90. One coder per family, and some rule calls were made after the preregistration; both are
+  disclosed. Tier B has not run yet. Not mergeable.

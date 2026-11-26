@@ -26,12 +26,19 @@ Date: 2026-11-26. This is a CPU-only audit of evidence that already exists. No n
   `mismatch_no_greater_than_controls` are also `false`.
 - Identical winners is the first clause of the kill criterion. **The nuisance-ranking advantage is killed in the
   SAE basis.**
-- **The scope of this kill is narrow:**
-  - v4 is a small label-oracle fixture.
-  - Selection ran at **k=4**, not the k=1 named in the criterion.
-  - It is one model, one layer and one SAE.
-- So the kill applies to that fixture and that k. It does not show that nuisance-penalized selection can never
-  separate from contrastive selection at k=1 or at a larger scale.
+- **The kill fired at the criterion's own k=1.** The v4 selection grid scored both selectors at k = 1, 4 and 8 for
+  α = 0.5, 1, 2 and 4 (`aggregates.cell_endpoints["SELECT|grid|{chelated,contrastive}|null|k|α"]`):
+  - At **k=1**, the chelated and contrastive endpoints are identical for every α. For example, at α=4 both have
+    `bidirectional_causal_contrast` 0.4826 and `canonical_nuisance_mismatch` 0.2188.
+  - At **k=4** they are identical for every α too.
+  - They first differ at **k=8**: at α=0.5, for example, `mean_correct_gain` is +0.0174 for chelated and −0.0069 for
+    contrastive.
+  - The frozen choice (k=4, α=4) is therefore one of the identical cells, not a special case.
+- **Correction history:** round 1 of this audit said the selection ran "at k=4, not the k=1 named in the criterion".
+  That was wrong, and a round-2 Tier B reviewer caught it: the grid includes k=1.
+- **The scope that remains:** v4 is a small label-oracle fixture with one model, one layer and one SAE. The kill
+  does not show that nuisance-penalized selection can never separate from contrastive selection on a larger fixture
+  or another model.
 
 ## Finding 2 — the W22C "QSCCI win" is selected on its own outcome and does not test W22-16
 
@@ -39,7 +46,7 @@ Date: 2026-11-26. This is a CPU-only audit of evidence that already exists. No n
 
 - **How the direction is chosen (lines 507–517).** `qscci_dir = unit(mean_SELECT(d margin / d h_11))`. This is the
   first-order steepest-ascent direction of the logit margin (` positive` minus ` negative`).
-- **What REPORT measures (lines 548–556).** `_eval_report_arm` injects every arm at the same L2 dose and scores the
+- **What REPORT measures (lines 546–556; the arms are called at 566–570).** `_eval_report_arm` injects every arm at the same L2 dose and scores the
   family-mean change in **that same margin**.
 - **SELECT and REPORT are separate splits, so this is not data leakage.** The direction is estimated on SELECT
   prompts and scored on held-out REPORT prompts. The problem is that the selection *objective* is the same quantity
@@ -56,8 +63,14 @@ Date: 2026-11-26. This is a CPU-only audit of evidence that already exists. No n
 - **The "native" arm is not a neuron.** `k1_native_mlp_write_site` is a dense direction over 2,048 dimensions. The
   literal single-coordinate neuron (`k1_single_coordinate_mlp_neuron`, also chosen by argmax |grad|) gets 0.109,
   vs 0.027 for the SAE and 0.037 for the sham.
-- **The SAE comparator is weak.** It is a self-trained SAE, not the official W32K one, and its selected latent has
-  a select difference of **−0.164** (the wrong sign).
+- **The SAE comparator is a self-trained SAE, not the official W32K one** (`topk_sae_training`: 120 steps, k_active 16).
+  How weak it is depends on the model:
+  - **Qwen3.5-2B-Base:** the selected latent's `selected_latent_select_diff` is **−0.164**, the wrong sign. It still
+    scores 0.027 on REPORT, below the sham's 0.037.
+  - **Qwen2.5-1.5B:** the select difference is **+0.384**, the right sign, so the "wrong-sign latent" excuse does not
+    apply. It scores **−0.012** on REPORT (CI [−0.033, +0.010]), against +0.012 for the sham and −0.020 for CAA.
+  - So on Qwen2.5 a correctly signed SAE latent fails on the scored margin as well. That fits the
+    selection-on-outcome reading above: neither SAE nor CAA was selected for margin ascent.
 - **Parts of the kill criterion were never measured in W22C:**
   - hard-negative misfires;
   - collateral KL per arm (only the QSCCI hook is measured);
@@ -65,10 +78,14 @@ Date: 2026-11-26. This is a CPU-only audit of evidence that already exists. No n
 
 ## Disposition
 
-- **Nuisance-ranking advantage: KILLED** on the v4 fixture at k=4. The identical-winner clause fired with the
-  official SAE. See the scope note under Finding 1.
-- A fresh Tier B review scored this audit 93. The two additions it asked for are folded in: SELECT and REPORT are
-  separate splits, and the fixture scope is k=4.
+- **Nuisance-ranking advantage: KILLED** on the v4 fixture. The identical-winner clause fired with the official SAE
+  at k=1 and at k=4, and the selectors diverge only at k=8. See Finding 1 for the remaining scope (one small fixture,
+  one model, layer and SAE).
+- **Tier B history:**
+  - Round 1 scored this audit 93 and asked for two additions. SELECT and REPORT being separate splits is folded in.
+    Its "fixture scope is k=4" request was itself wrong.
+  - Round 2 scored it 85. It found that k=4 error, the Qwen2.5 SAE numbers, and a line citation off by two. All three
+    are fixed above.
 - **W22C bundle #52's "QSCCI beats CAA/SAE" headline: should be SUSPENDED** as selection-on-outcome.
   - What survives is a narrower statement: a gradient-chosen write direction moves the target margin more than
     non-gradient directions at an equal dose, with low collateral KL (0.0069 nats on Qwen3.5).
