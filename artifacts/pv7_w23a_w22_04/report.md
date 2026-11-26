@@ -97,13 +97,45 @@ The cost clause holds by construction (prereg section 3). Both Procrustes varian
   - nDCG@10 only;
   - the other 3 encoders were not rerun.
 - No mocks or stubs in the production path. The unit tests are synthetic and are not evidence for the verdict.
-- No Tier B review has been run.
+- Tier B round 1 is recorded below.
 
-DEFERRED_SCOPE: none. All 240 cells were run.
+## Tier B round 1 (fresh adversarial sub-agent; findings folded in by the orchestrator)
+
+Tier B re-ran the full factorial on CPU from the cached embeddings. All 240 cell means and all 24 kill-rule paired CIs at seed 1601 match the JSON exactly (max diff 0.0). It spot-checked more than 50 report numbers against the JSON and found no mismatch. It could not overturn KILL. Findings, all nit:
+
+1. **The verdict depends on the comparator, and this was not stated.** At seed 1601:
+
+   | Comparator | WITHIN | Verdict |
+   |---|---|---|
+   | Either Procrustes (preregistered rule, as run) | 10/12 | KILL |
+   | Centered only | 9/12 | not killed |
+   | Uncentered only | 2/12 | not killed |
+   | Centered only, marginal CI | 12/12 | KILL |
+
+   climate-fever counts only because ZeroMu ties the weaker comparator.
+2. **Bootstrap-seed sweep (500 seeds).** The preregistered rule gives KILL on 99.4% of seeds, and the WITHIN counts were 9:3, 10:78, 11:270, 12:149. Centered-only gives KILL on 85% of seeds. Seed 1601 sits at the low end. The domains that flip are stats (402/500), english (178/500), climate-fever (12/500) and unix (3/500).
+3. **The preregistration was not blind.** The per-domain point estimates of the decisive CSLS cells were already in the source manifests and in `W23A_DISPOSITION.md`. "Before any result existed" means before any W22-04 computation. The choices actually made were the stricter ones.
+4. **The cost table is hard-coded and partly inaccurate** (runner lines 87-97):
+   - Ridge also stores `mu_x` and `mu_y`.
+   - Centered's scale scalar is missing.
+   - No runtime or memory figure is measured.
+   - The queue's "fallback" cost item is not addressed.
+   
+   The claim that Procrustes stores no more state than ZeroMu still holds by reading the code.
+5. **RRF over separate shards interleaves them 5:5** (equal ranks tie across shards), even though only 20% of documents are native. This design choice explains the low RRF cell means.
+6. **The decisive margins are far below the encoding reproduction noise.** The english and stats CI lower bounds are 4e-5 and 7e-5, while re-encoding moved cell values by up to 0.013. The manifest deltas lean towards more WITHIN. No GPU re-encode was run to test this.
+7. **Run 1 started on code 34 s after `48dd4075`.** It produced no results, and the later fix touched only model loading.
+
+Tier B evidence: `scratch/tierb/` (gitignored), including `seed_sweep.json` and `per_query_ndcg.pkl`.
+
+DEFERRED_SCOPE: none. All 240 cells were run. A GPU re-encode determinism check is not done (Tier B finding 6).
 BHS_SELF_DRAFT: 95
 BHS_SELF_DRAFT_AGENT: claude-opus-5-5 (W22-04 implementer subagent)
-BHS_TIER_B: not run
-BHS_OFFICIAL: pending
+BHS_TIER_B: 95
+BHS_TIER_B_AGENT: fresh general-purpose sub-agent ac8b68744bae8d933
+BHS_TIER_B_SEVERITY: nit
+BHS_OFFICIAL: 95. This does not merge.
+LOOP_ITERATIONS: 1
 
 ## Scratch receipt (removable)
 
