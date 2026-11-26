@@ -196,3 +196,47 @@ compute was run.
   - The fragility note is in the generated report (`fcaffde6`).
 - **Draft PR #371.** BHS_OFFICIAL = 85. Not mergeable.
 - **Carried forward:** a second independent coder for F-W8 and F-R5.
+
+## W23B/W23C: W22-07, W22-09 and W22-11 after Tier B round 1
+
+All three are draft PRs against `pv7/w16-core`. None can merge, because BHS is below 100.
+
+| Item | PR | Verdict (PROPOSED) | Self | Tier B | Official |
+|---|---|---|---|---|---|
+| W22-07 copy twins | #372 | `KILL_T_D`, zero-provenance-signal regime only | 92 | 88 (important) | 88 |
+| W22-09 retraction boundary | #373 | KILLED, carried by K2 on #60 | 90 | 85 (important) | 85 |
+| W22-11 WFS deletion stress | #374 | `CLEAN_1M_CANONICAL_FROZEN` | 92 | 88 (important) | 88 |
+
+- **W22-07:**
+  - The λ=0 twins are genuinely blinded. Text-only balanced accuracy is at most 0.513, and the legacy fixtures
+    #55/#20/#38 leak at 1.000.
+  - A5 (Bayesian copy model) is at least as good as A6 (T-D): H(0.5) 0.172 vs 0.176, CI on the difference
+    [−0.021, +0.028].
+  - **Tier B limits:**
+    - The primary cell cannot exercise A6's targeting or its pricing.
+    - Seed 20261127 on its own gives ADVANCE.
+    - A5 and A6 differ on 77/720 families, a net of 3.
+    - At λ=0.25 A6 wins all 18 B=1 cells.
+  - Read the kill as "no T-D premium without provenance signal".
+- **W22-09:**
+  - A flat KV checkpoint with suffix replay matches #60's retraction. Three Tier B re-runs gave latency ratios of
+    0.39–0.78×.
+  - The K1 firings are demoted:
+    - `P51-DIGEST` is a coverage gap in the `checkpoint_replay_exact` metric. #51's answers come from `inc_store`, so
+      no wrong answer can be served through it.
+    - `PEK5-ASOF` is a defect only under bitemporal semantics.
+  - The titled "compressed neural state" does not exist in any bundle.
+- **W22-11:**
+  - 1,266,000 mutation checkpoints, with 0 semantic and 0 C1 mismatches. CW-1 is frozen.
+  - The raw `pos_cyc`/`reason` telemetry is history-dependent: 3.08M one-way diffs.
+  - Only about 0.53M checkpoints are on graphs larger than 11 nodes.
+  - **New carried debt `CD-W22-11-01`:** `demo_workbench/compliance_copilot_engine.py:785/929/1086` shows raw
+    `store.reason` to users. A stale `pos_cyc` therefore reads "retracted by a higher-authority notice" where the
+    canonical answer is "circular support only".
+  - The Lean precondition is met by the numbers. Funding it is the owner's call.
+
+## W22-10: what runs
+
+- **N3 swarm-threshold part: NOT RUN.** The queue makes it conditional on W22-07 passing. W22-07 killed T-D in the
+  zero-signal regime, so the condition is not met.
+- **#60 KV-guard scope-bound part:** not conditional on W22-07. It is CPU-only and is queued next.
