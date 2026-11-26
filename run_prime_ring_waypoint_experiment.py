@@ -10,6 +10,44 @@ The campaign deliberately separates four objects that are easy to conflate:
 
 This is synthetic method development.  It is not production evidence, a
 novelty claim, or a Rader-transform benchmark.
+
+Numerical-tie contract (``PRW-NUMERICAL-TIE-CONTRACT-001``)
+-----------------------------------------------------------
+The dense carrier scorer ranks exact integers, never raw float FFT output.
+
+1. Scope.  Query and reference carriers must be bipolar (every entry +/-1).
+   The query is checked directly; each reference layer must have squared norm
+   ``L``.  Anything else fails closed with :class:`CampaignValidationError`.
+   Every campaign query (planted, bit-flipped, non-cyclic, unrelated) and
+   every Legendre/Rademacher template is bipolar.
+2. Exact quantity.  For bipolar layers the cyclic correlation count
+   ``c = sum_x q[x] r[x - s]`` is an integer with ``|c| <= L`` and
+   ``c == L (mod 2)``; Hamming distance is ``(L - c) / 2`` per layer.
+3. Declared float error bound.  With unit roundoff ``u = 2**-53`` and
+   ``t = ceil(log2(2L - 1))`` (the power-of-two Bluestein size NumPy's
+   pocketfft uses for prime ``L``), the computed rfft/irfft correlation obeys
+   ``|c_hat - c| <= ||c_hat - c||_2 <= K * t * u * sqrt(L) * ||q||_2 *
+   ||r||_2 = K * t * u * L**1.5``.  The ``t * u`` per-transform relative
+   factor is the standard FFT bound (Higham, *Accuracy and Stability of
+   Numerical Algorithms*, 2nd ed., Thm. 24.2); ``K = 64`` is a declared
+   conservative constant covering the forward/forward/inverse composition,
+   Bluestein's inner transforms, the spectral product, and twiddle error.  It
+   is not a tight theorem about pocketfft.  At the campaign ceiling
+   ``L = 4691`` the bound is about ``3.2e-8``; residuals observed at
+   ``L in {4091, 4096, 4691}`` were below ``1e-12``.
+4. Exact recovery.  The bound must be below ``0.25`` (half of the one-half
+   unique-rounding radius), otherwise the scorer refuses.  The computed value
+   is rounded to the nearest integer only if its residual is within the bound;
+   a larger residual fails closed instead of being snapped.
+5. Ranking and tie-break.  Policy objectives are integer sums
+   ``sum_l m_l c_l``; type scores are the integer maximum over shift and mask.
+   Types tie iff their integer objectives are equal, and the frozen rule
+   (lowest canonical type ID wins) is applied to those integers.  Reported
+   ``score``/``margin`` floats are ``count / (layers * L)``, so equal counts
+   are bit-identical floats and unequal counts (minimum gap one count) stay
+   strictly ordered; there is no score-space tolerance band, so no false
+   ties.  :mod:`prime_ring_tie_contract_audit` checks exact-Hamming, direct,
+   and FFT parity on the 336 leading midpoint ties of the PRW-T1R bank.
 """
 
 from __future__ import annotations
@@ -127,6 +165,10 @@ CAMPAIGN_ESTIMATED_RAW_PROVENANCE_ROW_BYTES = 512
 CAMPAIGN_ESTIMATED_LIVE_ROW_BYTES = 8 * 1024
 CAMPAIGN_ESTIMATED_ARTIFACT_BASE_BYTES = 1024 * 1024
 DEFAULT_CONTROL_MIN_TRUE_UNLOCK_RECALL = 0.50
+PRW_NUMERICAL_TIE_CONTRACT_ID = "PRW-NUMERICAL-TIE-CONTRACT-001"
+FLOAT64_UNIT_ROUNDOFF = 2.0 ** -53
+FFT_INTEGER_ROUNDING_CONSTANT = 64.0
+FFT_INTEGER_ROUNDING_CEILING = 0.25
 DEFAULT_OUTPUT = (
     Path("artifacts")
     / "method-dev"
@@ -778,31 +820,148 @@ def _build_carrier_templates(
     return templates, base, provenance, ring_templates
 
 
-def _correlation_bank(
+def fft_integer_rounding_bound(length: int) -> float:
+    """Return the declared a-priori float64 error bound for one bipolar count.
+
+    See ``PRW_NUMERICAL_TIE_CONTRACT_ID`` in the module docstring.  The bound
+    is ``K * t * u * sqrt(L) * ||q||_2 * ||r||_2`` with ``||q||_2 * ||r||_2 =
+    L`` for bipolar layers, ``u = 2**-53``, ``t`` the log2 size of the
+    smallest power of two holding a length-``2L - 1`` Bluestein convolution,
+    and the declared conservative constant ``K = 64``.
+    """
+
+    ring = _plain_int(length, "length", minimum=1)
+    transform_depth = max(1, (2 * ring - 1 - 1).bit_length())
+    return (
+        FFT_INTEGER_ROUNDING_CONSTANT
+        * transform_depth
+        * FLOAT64_UNIT_ROUNDOFF
+        * math.sqrt(ring)
+        * ring
+    )
+
+
+def _exact_bipolar_correlation_counts(
     query: np.ndarray,
     reference_ffts: np.ndarray,
     reference_norms: np.ndarray,
     length: int,
 ) -> np.ndarray:
-    """Score a raw query against every candidate/layer/rotation."""
+    """Return exact integer cyclic correlation counts for a bipolar bank.
+
+    Entry ``[type, layer, shift]`` equals ``sum_x q[layer, x] *
+    r[type, layer, x - shift]``.  For bipolar inputs this is an integer, so the
+    float FFT result is rounded to that integer after its residual is checked
+    against :func:`fft_integer_rounding_bound`.  Any violation fails closed.
+    """
 
     if query.ndim != 2 or query.shape[1] != length:
         raise CampaignValidationError("query carrier shape violates bank contract")
     query = np.asarray(query, dtype=np.float64)
     if not np.all(np.isfinite(query)):
         raise CampaignValidationError("query carrier contains non-finite values")
-    query_norms = np.linalg.norm(query, axis=1)
-    if np.any(query_norms <= 0.0) or not np.all(np.isfinite(query_norms)):
-        raise CampaignValidationError("query carrier layers must have positive norm")
+    if not np.all(np.abs(query) == 1.0):
+        raise CampaignValidationError(
+            "numerical-tie contract requires a bipolar (+/-1) query carrier"
+        )
+    reference_norms = np.asarray(reference_norms, dtype=np.float64)
+    if reference_norms.ndim != 2 or reference_norms.shape[1] != query.shape[0]:
+        raise CampaignValidationError("reference norms violate bank contract")
+    # A bipolar layer has squared norm exactly ``length``; sqrt/square round
+    # trips stay within a few ulps, far inside the one-half integer guard.
+    if not np.all(np.abs(reference_norms * reference_norms - length) <= 0.25):
+        raise CampaignValidationError(
+            "numerical-tie contract requires bipolar (+/-1) reference layers"
+        )
+    bound = fft_integer_rounding_bound(length)
+    if not bound < FFT_INTEGER_ROUNDING_CEILING:
+        raise CampaignValidationError(
+            "declared FFT rounding bound is too loose for exact integer recovery"
+        )
     query_fft = np.fft.rfft(query, axis=1)
     products = query_fft[np.newaxis, :, :] * np.conjugate(reference_ffts)
-    correlations = np.fft.irfft(products, n=length, axis=2)
-    correlations /= (
-        reference_norms * query_norms[np.newaxis, :]
-    )[:, :, np.newaxis]
-    if not np.all(np.isfinite(correlations)):
+    raw = np.fft.irfft(products, n=length, axis=2)
+    if not np.all(np.isfinite(raw)):
         raise CampaignValidationError("carrier correlation produced non-finite values")
-    return np.clip(correlations, -1.0, 1.0)
+    counts = np.rint(raw)
+    residual = float(np.max(np.abs(raw - counts))) if raw.size else 0.0
+    if residual > bound:
+        raise CampaignValidationError(
+            "FFT correlation residual {} exceeds the declared integer rounding "
+            "bound {}".format(residual, bound)
+        )
+    counts = counts.astype(np.int64)
+    if np.any(np.abs(counts) > length) or np.any((counts - length) % 2 != 0):
+        raise CampaignValidationError(
+            "bipolar correlation counts violate the |c| <= L, c == L (mod 2) "
+            "lattice"
+        )
+    return counts
+
+
+def _correlation_bank(
+    query: np.ndarray,
+    reference_ffts: np.ndarray,
+    reference_norms: np.ndarray,
+    length: int,
+) -> np.ndarray:
+    """Score a raw query against every candidate/layer/rotation.
+
+    Values are exact lattice points ``count / length`` with integer ``count``
+    (see ``PRW_NUMERICAL_TIE_CONTRACT_ID``), so equal mathematical correlations
+    are bit-identical floats.
+    """
+
+    counts = _exact_bipolar_correlation_counts(
+        query, reference_ffts, reference_norms, length
+    )
+    return counts / float(length)
+
+
+def _correlation_lattice_counts(correlations: np.ndarray) -> np.ndarray:
+    """Recover exact integer counts from a lattice correlation bank.
+
+    Fails closed unless every value is exactly ``count / length``; that is the
+    only input the integer decoders below may rank.
+    """
+
+    if correlations.ndim != 3:
+        raise CampaignValidationError("correlation bank must be three-dimensional")
+    length = int(correlations.shape[2])
+    counts = np.rint(correlations * length).astype(np.int64)
+    if not np.array_equal(counts / float(length), correlations):
+        raise CampaignValidationError(
+            "correlation bank is not on the exact count/length lattice required "
+            "by the numerical-tie contract"
+        )
+    return counts
+
+
+def _top_two_integer_semantics(
+    counts: np.ndarray,
+    denominator: int,
+) -> Tuple[int, float, float, int]:
+    """Exact-integer version of the frozen lowest-canonical-type tie rule.
+
+    ``counts`` are exact integer type objectives; reported floats are
+    ``count / denominator``.  Ties are integer equality, never float equality.
+    """
+
+    if counts.ndim != 1 or counts.size < 2:
+        raise CampaignValidationError("bank score vector must contain >=2 types")
+    if counts.dtype.kind not in ("i", "u"):
+        raise CampaignValidationError("integer tie semantics require integer counts")
+    maximum = int(np.max(counts))
+    exact_ties = np.flatnonzero(counts == maximum)
+    winner = int(exact_ties[0])
+    ordered = np.sort(counts)
+    margin_count = int(ordered[-1] - ordered[-2])
+    return (
+        winner,
+        maximum / float(denominator),
+        margin_count / float(denominator),
+        int(exact_ties.size),
+    )
 
 
 def _top_two_semantics(scores: np.ndarray) -> Tuple[int, float, float, int]:
@@ -825,30 +984,34 @@ def _decode_dense_bank(
     """Return per-bank dense shared-shift results for one mask policy."""
 
     type_count, layers, length = correlations.shape
+    # Numerical-tie contract: rank exact integer objectives, then report
+    # ``objective / (layers * length)``.  Shift/mask argmax ties keep the
+    # first shift, then first mask in the declared codebook, as before.
+    counts = _correlation_lattice_counts(correlations)
     if decoder_policy == "free256":
-        by_shift = np.mean(np.abs(correlations), axis=1)
+        by_shift = np.sum(np.abs(counts), axis=1)
         shifts = np.argmax(by_shift, axis=1)
-        type_scores = by_shift[np.arange(type_count), shifts]
+        type_counts = by_shift[np.arange(type_count), shifts]
         masks = np.vstack(
             [
-                np.where(correlations[t, :, shifts[t]] >= 0.0, 1, -1)
+                np.where(counts[t, :, shifts[t]] >= 0, 1, -1)
                 for t in range(type_count)
             ]
         ).astype(np.int8)
         mask_candidate_count = 256
     else:
-        allowed = np.asarray(policy_masks(decoder_policy, layers), dtype=np.float64)
-        objectives = np.einsum(
-            "ml,tln->tmn", allowed, correlations, optimize=True
-        ) / layers
+        allowed = np.asarray(policy_masks(decoder_policy, layers), dtype=np.int64)
+        objectives = np.einsum("ml,tln->tmn", allowed, counts)
         flattened = objectives.reshape(type_count, -1)
         best = np.argmax(flattened, axis=1)
         mask_index = best // length
         shifts = best % length
-        type_scores = flattened[np.arange(type_count), best]
+        type_counts = flattened[np.arange(type_count), best]
         masks = allowed[mask_index].astype(np.int8)
         mask_candidate_count = int(allowed.shape[0])
-    winner, top_score, margin, tie_count = _top_two_semantics(type_scores)
+    winner, top_score, margin, tie_count = _top_two_integer_semantics(
+        type_counts, layers * length
+    )
     return {
         "predicted_type": winner,
         "score": top_score,
@@ -859,16 +1022,20 @@ def _decode_dense_bank(
         "candidate_type_count": type_count,
         "mask_candidate_count": mask_candidate_count,
         "search_candidate_count": int(type_count * length * mask_candidate_count),
-        "working_array_bytes": int(correlations.nbytes),
+        "working_array_bytes": int(correlations.nbytes + counts.nbytes),
     }
 
 
 def _decode_independent_layers(correlations: np.ndarray) -> Dict[str, Any]:
     """Degenerate factorized control; it intentionally has no shared phase."""
 
-    layer_best = np.max(np.abs(correlations), axis=2)
-    scores = np.mean(layer_best, axis=1)
-    winner, top_score, margin, tie_count = _top_two_semantics(scores)
+    _type_count, layers, length = correlations.shape
+    counts = _correlation_lattice_counts(correlations)
+    layer_best = np.max(np.abs(counts), axis=2)
+    type_counts = np.sum(layer_best, axis=1)
+    winner, top_score, margin, tie_count = _top_two_integer_semantics(
+        type_counts, layers * length
+    )
     return {
         "predicted_type": winner,
         "score": top_score,
@@ -3227,8 +3394,12 @@ def _resource_accounting(
         if decoder_policy == "free256"
         else type_count * mask_count * length * 8
     )
+    # The numerical-tie contract keeps one int64 count bank beside the float
+    # correlation bank.
+    exact_count_bytes = type_count * layers * length * 8
     estimated_peak_decoder_bytes = (
         correlation_bytes
+        + exact_count_bytes
         + query_fft_bytes
         + products_bytes
         + objective_bytes
@@ -3279,6 +3450,7 @@ def _resource_accounting(
             "value": estimated_peak_decoder_bytes,
             "components": {
                 "correlation_bank": correlation_bytes,
+                "exact_integer_count_bank": exact_count_bytes,
                 "query_fft": query_fft_bytes,
                 "fft_products": products_bytes,
                 "policy_objectives_or_by_shift": objective_bytes,
