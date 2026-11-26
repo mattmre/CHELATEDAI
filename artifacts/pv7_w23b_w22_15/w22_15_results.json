@@ -1,0 +1,448 @@
+{
+  "cpu_replay": {
+    "baseline_recorded_replay": {
+      "full_manifest_scratch_sha256": "a7ba738446f62d27928d6c56f24f1955266f8d0ad7aa91609ea0b30e26d77f8f",
+      "full_restart_comparator": {
+        "event_regime": "both",
+        "full_restart_late_or_timed_out_jobs": 192,
+        "full_restart_rebuild_pooled_jpm": 0.0,
+        "full_restart_stale_commits": 0,
+        "jpm_advantage_over_full_restart": 763.2567,
+        "pool_size": 4,
+        "zeromu_ek5_late_or_timed_out_jobs": 0,
+        "zeromu_ek5_pooled_jpm": 763.2567
+      },
+      "gates": {
+        "all_eligible_jobs_accounted": true,
+        "beats_full_restart_rebuild_jpm": true,
+        "conventional_migration_stall_equalized": true,
+        "ek5_incremental_equals_full_parity": true,
+        "primary_metric_is_ontime_cited_correct_rate": true,
+        "sham_reopen_control_valid": true,
+        "sqlite_reopen_symmetric_with_ek5": true,
+        "zero_stale_commits_on_zeromu_ek5": true
+      },
+      "live_model_calls": 0,
+      "mode": "stage1-controlled-replay",
+      "router_stats": null,
+      "sham_reopen_isolation": {
+        "control_name": "KEEP_2_sham_subtask_reopen_interrupt",
+        "control_valid": true,
+        "isolated_checkpoint_reopen_overhead_ms": 71.994,
+        "net_ek5_lineage_invalidation_delta_ms": 5.102,
+        "no_change_mean_latency_ms": 199.013,
+        "pool_size": 4,
+        "sham_eligible_jobs": 192,
+        "sham_mean_subtasks_reopened": 1.0,
+        "sham_on_time_cited_correct_jobs": 192,
+        "sham_reopen_mean_latency_ms": 271.007,
+        "sham_stale_commits": 0,
+        "system_id": "ZeroMu+EK5_v3",
+        "withdrawal_mean_subtasks_reopened": 1.0,
+        "withdrawal_only_mean_latency_ms": 276.109
+      },
+      "status": "stage1-replay-pass",
+      "total_cells_executed": 1120,
+      "total_eligible_jobs_executed": 26880,
+      "wall_seconds": 24.983,
+      "worker_backend": "stage1-controlled-replay",
+      "zeromu_ek5_stale_commits_total": 0
+    },
+    "generated_utc": "2026-11-26T09:38:40.313589+00:00",
+    "grid": "full default grid",
+    "selective_recorded_replay": {
+      "full_manifest_scratch_sha256": "fd5f8870a86f9b93b228b282e566ba2f73814da908276a5d4e03adad6b887d22",
+      "full_restart_comparator": {
+        "event_regime": "both",
+        "full_restart_late_or_timed_out_jobs": 156,
+        "full_restart_rebuild_pooled_jpm": 90.1281,
+        "full_restart_stale_commits": 0,
+        "jpm_advantage_over_full_restart": 673.1286,
+        "pool_size": 4,
+        "zeromu_ek5_late_or_timed_out_jobs": 0,
+        "zeromu_ek5_pooled_jpm": 763.2567
+      },
+      "gates": {
+        "all_eligible_jobs_accounted": true,
+        "beats_full_restart_rebuild_jpm": true,
+        "conventional_migration_stall_equalized": true,
+        "ek5_incremental_equals_full_parity": true,
+        "primary_metric_is_ontime_cited_correct_rate": true,
+        "sham_reopen_control_valid": true,
+        "sqlite_reopen_symmetric_with_ek5": true,
+        "zero_stale_commits_on_zeromu_ek5": true
+      },
+      "live_model_calls": 0,
+      "mode": "stage1-controlled-replay",
+      "router_stats": {
+        "initial_calls": 107520,
+        "reasons": {
+          "cited_source_not_admissible": 10752,
+          "reused_no_amendment": 13056
+        },
+        "reopen_calls": 23808,
+        "reopen_reextracted": 10752,
+        "reopen_reused": 13056
+      },
+      "sham_reopen_isolation": {
+        "control_name": "KEEP_2_sham_subtask_reopen_interrupt",
+        "control_valid": true,
+        "isolated_checkpoint_reopen_overhead_ms": 36.837,
+        "net_ek5_lineage_invalidation_delta_ms": 40.259,
+        "no_change_mean_latency_ms": 199.013,
+        "pool_size": 4,
+        "sham_eligible_jobs": 192,
+        "sham_mean_subtasks_reopened": 1.0,
+        "sham_on_time_cited_correct_jobs": 192,
+        "sham_reopen_mean_latency_ms": 235.85,
+        "sham_stale_commits": 0,
+        "system_id": "ZeroMu+EK5_v3",
+        "withdrawal_mean_subtasks_reopened": 1.0,
+        "withdrawal_only_mean_latency_ms": 276.109
+      },
+      "status": "stage1-replay-pass",
+      "total_cells_executed": 1120,
+      "total_eligible_jobs_executed": 26880,
+      "wall_seconds": 25.597,
+      "worker_backend": "stage1-controlled-replay+selective-trigger",
+      "zeromu_ek5_stale_commits_total": 0
+    },
+    "stage": "cpu-replay"
+  },
+  "decision": {
+    "gates": {
+      "G1": {
+        "below_recorded_bare70b_k5": false,
+        "measured": true,
+        "pass": false,
+        "selective_mean_e2e_ms": 3607.264,
+        "stretch_lt_500ms": false,
+        "threshold_ms": 1500.0
+      },
+      "G2": {
+        "abs_floor": 57,
+        "full_correct": 56,
+        "measured": true,
+        "pass": true,
+        "selective_correct": 57
+      },
+      "G3": {
+        "measured": false,
+        "reason": "live62 stage produced no stage_live62.json (run stopped before completion; see scratch/live62.log)"
+      }
+    },
+    "verdict": "KILL"
+  },
+  "dev_recall": {
+    "assert_trigger_rate": 0.2667,
+    "by_target_stance": {
+      "ASSERT": {
+        "n": 30,
+        "triggered": 8
+      },
+      "DEBUNK_RUMOR": {
+        "n": 30,
+        "triggered": 30
+      },
+      "REFUTE": {
+        "n": 30,
+        "triggered": 30
+      },
+      "SUPERSEDE": {
+        "n": 30,
+        "triggered": 30
+      }
+    },
+    "generated_utc": "2026-11-26T09:39:54.815197+00:00",
+    "n_dev": 120,
+    "non_assert_n": 90,
+    "non_assert_triggered": 90,
+    "overall_trigger_rate": 0.8167,
+    "recall_non_assert": 1.0,
+    "stage": "dev-recall"
+  },
+  "generated_utc": "2026-11-26T10:08:40.478591+00:00",
+  "git_sha": "f2afa488e9752d2268b398864229b8042c4cb86b",
+  "item": "W22-15",
+  "live62": null,
+  "preregistration": "artifacts/pv7_w23b_w22_15/PREREGISTRATION.md",
+  "recorded_comparators": {
+    "bare_70b_mean_query_ms_k17": 5361.28,
+    "bare_70b_mean_query_ms_k5": 3257.82,
+    "bare_70b_source": "artifacts/wave11_d10_5m_real_cutover_and_70b_scale/part_b_70b_sweep_summary.json",
+    "d10b_chelated_e2e_ms_per_case": 26596.47,
+    "d7_chelated_v4_e2e_ms_per_case": 10373.31,
+    "d9a_deterministic_frozen_d1_accuracy": 0.9667,
+    "d9a_extract_ms_per_case_mean": 2104.008,
+    "d9a_merged_sha_prefix": "4cef79a7"
+  },
+  "schema_version": "pv7_w23b_w22_15_results_v1",
+  "stage_files": [
+    "stage_cpu_replay.json",
+    "stage_dev_recall.json",
+    "stage_suite_a.json",
+    "stage_train.json"
+  ],
+  "suite_a": {
+    "arms": {
+      "FULL": {
+        "docs_indexed_total": 1020,
+        "docs_total": 1020,
+        "frozen_d1_accuracy": 0.9333,
+        "frozen_d1_correct": 56,
+        "latency_ms": {
+          "e2e_ms": {
+            "max": 6970.07,
+            "mean": 4995.807,
+            "min": 3558.98,
+            "n": 60,
+            "p50": 4916.34,
+            "p95": 6196.067
+          },
+          "extract_ms": {
+            "max": 6713.31,
+            "mean": 4729.97,
+            "min": 3382.372,
+            "n": 60,
+            "p50": 4637.833,
+            "p95": 5894.642
+          },
+          "read_ms": {
+            "max": 116.15,
+            "mean": 53.681,
+            "min": 26.557,
+            "n": 60,
+            "p50": 49.442,
+            "p95": 83.816
+          },
+          "reader_ms": {
+            "max": 0.178,
+            "mean": 0.012,
+            "min": 0.002,
+            "n": 60,
+            "p50": 0.008,
+            "p95": 0.015
+          },
+          "route_ms": {
+            "max": 0.0,
+            "mean": 0.0,
+            "min": 0.0,
+            "n": 60,
+            "p50": 0.0,
+            "p95": 0.0
+          },
+          "write_ack_ms": {
+            "max": 302.879,
+            "mean": 212.145,
+            "min": 140.046,
+            "n": 60,
+            "p50": 213.685,
+            "p95": 289.013
+          }
+        },
+        "leaked_stale": 3,
+        "n_cases": 60,
+        "strict_exact_correct": 56,
+        "threads_triggered": 60
+      },
+      "SELECTIVE": {
+        "docs_indexed_total": 288,
+        "docs_total": 1020,
+        "frozen_d1_accuracy": 0.95,
+        "frozen_d1_correct": 57,
+        "latency_ms": {
+          "e2e_ms": {
+            "max": 5969.337,
+            "mean": 3607.264,
+            "min": 2439.235,
+            "n": 60,
+            "p50": 3530.927,
+            "p95": 4560.197
+          },
+          "extract_ms": {
+            "max": 5839.612,
+            "mean": 3473.039,
+            "min": 2339.936,
+            "n": 60,
+            "p50": 3401.959,
+            "p95": 4397.39
+          },
+          "read_ms": {
+            "max": 71.397,
+            "mean": 38.992,
+            "min": 25.494,
+            "n": 60,
+            "p50": 34.617,
+            "p95": 61.674
+          },
+          "reader_ms": {
+            "max": 0.023,
+            "mean": 0.007,
+            "min": 0.001,
+            "n": 60,
+            "p50": 0.008,
+            "p95": 0.011
+          },
+          "route_ms": {
+            "max": 1.144,
+            "mean": 0.126,
+            "min": 0.071,
+            "n": 60,
+            "p50": 0.106,
+            "p95": 0.148
+          },
+          "write_ack_ms": {
+            "max": 179.825,
+            "mean": 95.099,
+            "min": 49.324,
+            "n": 60,
+            "p50": 90.216,
+            "p95": 155.043
+          }
+        },
+        "leaked_stale": 2,
+        "n_cases": 60,
+        "strict_exact_correct": 57,
+        "threads_triggered": 60
+      }
+    },
+    "bge_m3": {
+      "config_tokenizer_revision": "5617a9f61b028005a4858fdac845db406aefb181",
+      "dir": "C:\\Users\\mattm\\AppData\\Local\\Temp\\claude\\439e695c92b40043\\c9f4318c-455f-427a-844a-07562a0a3c42\\scratchpad\\w22-15\\artifacts\\pv7_w23b_w22_15\\scratch\\bge_m3_local",
+      "model_safetensors_sha256": "993b2248881724788dcab8c644a91dfd63584b6e5604ff2037cb5541e1e38e7e",
+      "weights_revision": "9a0624b896d81da7492a910ffa53731274b6cf3d"
+    },
+    "extractor_merged_dir_scratch": "C:\\Users\\mattm\\AppData\\Local\\Temp\\claude\\439e695c92b40043\\c9f4318c-455f-427a-844a-07562a0a3c42\\scratchpad\\w22-15\\artifacts\\pv7_w23b_w22_15\\scratch\\lora\\merged_bf16",
+    "extractor_warmup_ms": 4749.87,
+    "generated_utc": "2026-11-26T09:55:07.282978+00:00",
+    "gpu_at_start": {
+      "gpu_name": "NVIDIA GeForce RTX 3090",
+      "memory_used_mib": 218,
+      "other_python_on_gpu": [],
+      "utilization_pct": 0
+    },
+    "gpu_name": "NVIDIA GeForce RTX 3090",
+    "router": {
+      "authority_min": 3,
+      "stems": [
+        "supersed",
+        "replac",
+        "revision",
+        "revise",
+        "restat",
+        "updated guidance",
+        "debunk",
+        "refut",
+        "denial",
+        "denied",
+        "deny",
+        "counter-filing",
+        "counter filing",
+        "disput",
+        "audit",
+        "bulletin",
+        "retract",
+        "rescind",
+        "withdraw",
+        "amend",
+        "correction"
+      ]
+    },
+    "stage": "suite-a",
+    "suite_a_sha256": "cb6bc0082b5850f4edfea668d1ecb2a73fe6f898b7476e34ed11036cb378765b",
+    "torch": "2.5.1+cu121"
+  },
+  "train": {
+    "base_model_repo_id": "Qwen/Qwen2.5-0.5B-Instruct",
+    "dev_metrics": {
+      "by_archetype_full_accuracy": {
+        "baseline_prelim_assert": 1.0,
+        "party_a_adversarial_refute": 1.0,
+        "party_b_two_value_counter_filing_refute": 0.95,
+        "rumor_seed_assert": 1.0,
+        "secondary_echo_assert": 1.0,
+        "three_value_lineage_supersede": 1.0,
+        "tier1_rumor_despite_denial_assert": 1.0,
+        "two_value_authoritative_debunk": 1.0,
+        "two_value_revision_supersede": 1.0
+      },
+      "by_stance_full_accuracy": {
+        "ASSERT": 1.0,
+        "DEBUNK_RUMOR": 1.0,
+        "REFUTE": 0.9667,
+        "SUPERSEDE": 1.0
+      },
+      "entity_accuracy": 1.0,
+      "full_tuple_accuracy": 0.9917,
+      "hard_negative_contrast_accuracy": 0.9888,
+      "json_valid_rate": 1.0,
+      "ms_per_17doc_batch_mean": 2467.824,
+      "ms_per_17doc_batch_p50": 2422.56,
+      "ms_per_17doc_batch_p95": 2896.255,
+      "ms_per_doc_mean": 164.522,
+      "n_dev": 120,
+      "peak_vram_mib": 1295.3,
+      "stance_accuracy": 1.0,
+      "tokens_generated": 5834,
+      "tokens_generated_mean_per_doc": 48.62,
+      "value_exact_accuracy": 0.9917
+    },
+    "generated_utc": "2026-11-26T09:44:27.309096+00:00",
+    "gpu_at_start": {
+      "gpu_name": "NVIDIA GeForce RTX 3090",
+      "memory_used_mib": 1722,
+      "other_python_on_gpu": [],
+      "utilization_pct": 0
+    },
+    "label": "retrained, not byte-identical to D9-A",
+    "merged_weights_combined_sha256": "2a2f71559ed845f89683fd538fe9e9f9000a6148c22d3c3486426dfd0b3162b5",
+    "recorded_d9a_merged_sha_prefix": "4cef79a7",
+    "stage": "train",
+    "train_dev_disjoint": {
+      "dev_n": 120,
+      "entity_overlap": 0,
+      "text_overlap": 0,
+      "train_dev_disjoint_passed": true,
+      "train_n": 600,
+      "value_overlap": 0
+    },
+    "train_summary": {
+      "adapter_dir": "C:\\Users\\mattm\\AppData\\Local\\Temp\\claude\\439e695c92b40043\\c9f4318c-455f-427a-844a-07562a0a3c42\\scratchpad\\w22-15\\artifacts\\pv7_w23b_w22_15\\scratch\\lora\\lora_adapter",
+      "base_model_id": "C:\\Users\\mattm\\.cache\\huggingface\\hub\\models--Qwen--Qwen2.5-0.5B-Instruct\\snapshots\\7ae557604adf67be50417f59c2c2f167def9a775",
+      "dtype": "torch.bfloat16",
+      "epochs": 3,
+      "learning_rate": 0.0002,
+      "lora_alpha": 32,
+      "lora_r": 16,
+      "merged_model_dir": "C:\\Users\\mattm\\AppData\\Local\\Temp\\claude\\439e695c92b40043\\c9f4318c-455f-427a-844a-07562a0a3c42\\scratchpad\\w22-15\\artifacts\\pv7_w23b_w22_15\\scratch\\lora\\merged_bf16",
+      "merged_weights_sha256": {
+        "added_tokens.json": "f0acedf99e19ec0a5b797ffbd0b94328172ccd90f7f385bbc521cda2701b03ab",
+        "chat_template.jinja": "8aa40ce145adb73cb3a75194dc0224702a95850ec5275cabb728496bbd749fc6",
+        "config.json": "7f74d90d93520f69a85b19a89640022c278ae85f5708e65976cc0923bff4b8ae",
+        "generation_config.json": "9328e8d5d81b158678593facc4929b90fe6db0cb7b5571a1dddec0ec9c991d71",
+        "merges.txt": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5",
+        "model.safetensors": "e6ec42a19dc0b87b6d6652ddc89d8c360aea4140028b0813b5a3da4417a2c5f6",
+        "special_tokens_map.json": "57255613bbe23c9497211ca68561ff429a51e871dbaf5a59998fa4c8f7fe168a",
+        "tokenizer.json": "5eee858c5123a4279c3e1f7b81247343f356ac767940b2692a928ad929543214",
+        "tokenizer_config.json": "2f950ba6d3190e9fccdb38570802b49e8a16f65bc638c58a0e5c779903e6b987",
+        "vocab.json": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+      },
+      "peak_vram_mib": 7854.8,
+      "reload_max_abs_logit_diff": 0.0,
+      "reload_parity_below_1e4": true,
+      "seed": 42,
+      "total_params": 502830976,
+      "train_loss": 0.09176,
+      "train_seconds": 112.76,
+      "trainable_params": 8798208,
+      "vs_base_max_abs_logit_shift": 12.296875
+    },
+    "train_wall_seconds": 123.792
+  },
+  "verifier_62": {
+    "applicability": "verifies the committed W20 #62 bundle artifacts only; it does not read W22-15 outputs",
+    "exit_code": 0,
+    "passed": true,
+    "status": "stage1-replay-pass"
+  }
+}

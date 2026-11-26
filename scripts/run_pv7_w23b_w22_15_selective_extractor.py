@@ -82,6 +82,54 @@ RECORDED = {
 LIVE_REGIMES = ("no_change", "sham_subtask_reopen_interrupt", "withdrawal_only")
 
 
+def local_snapshot(repo_id: str) -> str:
+    """Resolve a cached HF snapshot dir. transformers 4.57 calls `model_info()` for hub ids even when
+    HF_HUB_OFFLINE=1 (tokenizer mistral-regex check), so all loads use the local snapshot path."""
+    from huggingface_hub import snapshot_download
+
+    return str(snapshot_download(repo_id, local_files_only=True))
+
+
+BGE_M3_SAFETENSORS_REVISION = "9a0624b896d81da7492a910ffa53731274b6cf3d"  # HF refs/pr/130 (safetensors conversion)
+_BGE_SKIP = {"pytorch_model.bin", "colbert_linear.pt", "sparse_linear.pt", "long.jpg", "imgs", "onnx", "README.md"}
+
+
+def bge_m3_local_dir() -> Dict[str, Any]:
+    """Assemble an offline bge-m3 dir in scratch: main-ref config/tokenizer + safetensors weights from refs/pr/130.
+
+    torch 2.5.1 cannot `torch.load` the main-ref `pytorch_model.bin` under transformers 4.57 (requires torch>=2.6);
+    online, transformers fetches the safetensors conversion PR automatically. Offline it does not, so the same
+    files are assembled here. Disclosed as a departure in report.md.
+    """
+    import shutil
+
+    from huggingface_hub import snapshot_download
+
+    main_dir = Path(snapshot_download("BAAI/bge-m3", local_files_only=True))
+    st_dir = Path(snapshot_download("BAAI/bge-m3", revision=BGE_M3_SAFETENSORS_REVISION, local_files_only=True))
+    dst = SCRATCH / "bge_m3_local"
+    if not (dst / "model.safetensors").is_file():
+        dst.mkdir(parents=True, exist_ok=True)
+        for src in main_dir.iterdir():
+            if src.name in _BGE_SKIP:
+                continue
+            if src.is_dir():
+                shutil.copytree(src, dst / src.name, dirs_exist_ok=True)
+            else:
+                shutil.copyfile(src, dst / src.name)
+        shutil.copyfile(st_dir / "model.safetensors", dst / "model.safetensors")
+    h = hashlib.sha256()
+    with open(dst / "model.safetensors", "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    return {
+        "dir": str(dst),
+        "config_tokenizer_revision": main_dir.name,
+        "weights_revision": st_dir.name,
+        "model_safetensors_sha256": h.hexdigest(),
+    }
+
+
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -287,7 +335,7 @@ def stage_train() -> Dict[str, Any]:
     disjoint = assert_train_dev_disjoint(splits["train"], splits["dev"])
     t0 = time.perf_counter()
     summary = train_fast_claim_extractor_lora(
-        base_model_id=BASE_MODEL,
+        base_model_id=local_snapshot(BASE_MODEL),
         train_examples=splits["train"],
         output_dir=SCRATCH / "lora",
         probe_examples=splits["dev"][:4],
@@ -310,6 +358,7 @@ def stage_train() -> Dict[str, Any]:
         "merged_weights_combined_sha256": combined,
         "recorded_d9a_merged_sha_prefix": RECORDED["d9a_merged_sha_prefix"],
         "label": "retrained, not byte-identical to D9-A",
+        "base_model_repo_id": BASE_MODEL,
         "train_dev_disjoint": disjoint,
         "dev_metrics": dev_metrics,
         "train_wall_seconds": train_wall,
@@ -350,7 +399,8 @@ def stage_suite_a() -> Dict[str, Any]:
         for c in cases
     ]
 
-    bge = SentenceTransformer("BAAI/bge-m3", device="cuda")
+    bge_prov = bge_m3_local_dir()
+    bge = SentenceTransformer(bge_prov["dir"], device="cuda")
     bge.max_seq_length = 384
 
     def enc(texts: Sequence[str], _bge: Any = bge) -> Any:
@@ -463,6 +513,7 @@ def stage_suite_a() -> Dict[str, Any]:
         "suite_a_sha256": sha,
         "extractor_merged_dir_scratch": merged_dir,
         "extractor_warmup_ms": warm_ms,
+        "bge_m3": bge_prov,
         "router": {"stems": list(AMENDMENT_CONFLICT_STEMS), "authority_min": AUTHORITY_TRIGGER_MIN},
         "arms": arms,
     }
@@ -483,7 +534,7 @@ def stage_live62(port: int) -> Dict[str, Any]:
 
     gpu_name = torch.cuda.get_device_name(0)
     cohort = f"local:{gpu_name}"
-    engine = MicroBatchedCausalServer(BASE_MODEL, device="cuda", max_batch_size=8, batch_wait_ms=3.0)
+    engine = MicroBatchedCausalServer(local_snapshot(BASE_MODEL), device="cuda", max_batch_size=8, batch_wait_ms=3.0)
     srv, _ = start_openai_server(engine, BASE_MODEL, port)
     url = f"http://127.0.0.1:{port}/v1"
     grid = {
@@ -574,7 +625,7 @@ def decide(suite_a: Optional[Dict[str, Any]], live: Optional[Dict[str, Any]]) ->
             "pass": bool(sc >= 57 and sc >= fc - 1),
         }
     if live is None or "selective_live" not in live:
-        gates["G3"] = {"measured": False, "reason": "live62 stage not run (GPU not available)"}
+        gates["G3"] = {"measured": False, "reason": "live62 stage produced no stage_live62.json (run stopped before completion; see scratch/live62.log)"}
     else:
         g3 = live["selective_live"]["g3"]
         gates["G3"] = {"measured": True, **g3}
