@@ -731,10 +731,19 @@ def _repo_import_blocked(repo_root: Path) -> bool:
     _ensure_kernel_path(repo_root)
     from chelated_kernel.profiles import probe_import_barrier
 
+    # A module already cached in sys.modules is returned by __import__ without
+    # consulting the gate's meta-path finder, so a prior in-process import of the
+    # probed module (e.g. another test) would make the barrier look open. Evict it
+    # for the probe and restore it afterwards so the check is order-independent.
+    probed = "antigravity_engine"
+    cached = sys.modules.pop(probed, None)
     try:
-        probe_import_barrier("antigravity_engine")
+        probe_import_barrier(probed)
     except ImportError as exc:
         return "repo-internal import blocked" in str(exc)
+    finally:
+        if cached is not None:
+            sys.modules[probed] = cached
     return False
 
 

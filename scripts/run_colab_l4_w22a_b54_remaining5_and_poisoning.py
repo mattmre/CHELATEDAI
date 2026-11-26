@@ -43,7 +43,6 @@ from benchmark_utils import canonicalize_id  # noqa: E402
 from chelated_loft_and_zero_write_ni import PREREGISTERED_NI_MARGIN, compute_exact_tango_ni  # noqa: E402
 from chelated_pv7_spine.bridge_merge_harness import (  # noqa: E402
     CSLSMerge,
-    CenteredProcrustes,
     UncenteredProcrustes,
     ZeroMuPolarBridge,
     evaluate_4hop_chain,
@@ -1120,7 +1119,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     print(f"[w22a] Scrubbed post-encode row collisions: {scrubbed}", flush=True)
 
     prior7_path = REPO_ROOT / "artifacts" / "pv7_colab_l4_closure_20261125" / "colab_l4_closure_manifest.json"
-    print(f"[w22a] Evaluating 5x3 factorial, prompt-shift, 4-hop, 20x500 draws, contamination, & 12-domain pool ...", flush=True)
+    print("[w22a] Evaluating 5x3 factorial, prompt-shift, 4-hop, 20x500 draws, contamination, & 12-domain pool ...", flush=True)
     results = evaluate_remaining5_and_pool_12(
         domain_bundles,
         prior7_manifest_path=prior7_path if prior7_path.is_file() else None,

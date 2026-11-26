@@ -147,6 +147,12 @@ packages = ["egv", "egv.evaluation", "egv.variation", "egv.training", "egv.campa
 [tool.ruff]
 target-version = "py39"
 line-length = 120
+# Retained evidence: verbatim copy of the worker that executed on the Spark node
+# (written by scripts/run_overnight_r5_spark37c3.py). Linting it would require
+# rewriting evidence, so it is excluded by exact path rather than edited.
+extend-exclude = [
+    "artifacts/flagship1-night1/20261122-r5b-completion/spark37c3/r5_s2_pm3_live_upstream_comparators/_pm3_mem0_worker.py",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "W"]
