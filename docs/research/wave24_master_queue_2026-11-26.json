@@ -1,0 +1,180 @@
+{
+  "schema_version": "wave24.master_queue.v1",
+  "created_at_utc": "2026-11-26T12:15:00Z",
+  "spine_branch": "pv7/w16-core",
+  "base_commit": "f824e244",
+  "policy": {
+    "github_paid_billing": "FORBIDDEN_FOREVER_ZERO_DOLLAR_ONLY",
+    "compute_preference": [
+      "dgx_spark_gx10_6724_lan_10.0.0.194",
+      "dgx_spark_gx10_37c3_100.109.172.18",
+      "dgx_spark_gx10_eba1_100.78.162.54_colab_ultra_dispatcher"
+    ],
+    "human_time_scheduling": "STRICTLY_LAST_P3_ONLY",
+    "brutal_honesty_rulebook": "v3.3",
+    "never_touch_paths": [
+      "*sealed_key*",
+      "*blind-followup*",
+      "pm4_human_audit_100_blind_sheet.csv"
+    ]
+  },
+  "fleet_snapshot": {
+    "gx10-6724": {"ip": "10.0.0.194", "gpu": "NVIDIA GB10", "free_ram_gib": 76, "free_disk_gb": 214, "status": "ONLINE_IDLE"},
+    "gx10-37c3": {"ip": "100.109.172.18", "gpu": "NVIDIA GB10", "free_ram_gib": 56, "free_disk_gb": 324, "status": "ONLINE_VLLM_NEMOTRON_IDLE"},
+    "gx10-eba1": {"ip": "100.78.162.54", "gpu": "NVIDIA GB10", "free_ram_gib": 41, "free_disk_gb": 152, "status": "ONLINE_COLAB_DISPATCHER"},
+    "colab_ultra": {"dispatcher": "gx10-eba1:~/.local/bin/colab --auth=adc", "balance_cu": 3031.12, "active_sessions": 0}
+  },
+  "items": [
+    {
+      "id": "W24-01",
+      "tier": "P0",
+      "title": "Zero-Cost CI Replacement (Free Self-Hosted Spark Runner + Zero Paid GitHub Actions)",
+      "compute_target": "gx10-6724 (linux-arm64 self-hosted runner)",
+      "status": "QUEUED",
+      "cost_usd": 0,
+      "rationale": "Live ruleset 13081256 (MATT ONLY MAIN MERGE) has zero required_status_checks. Replace ubuntu-latest hosted minutes permanently with $0/mo self-hosted Spark runner or workflow_dispatch + local cryptographic verification.",
+      "acceptance": "Zero GitHub billing dependency; workflows execute on self-hosted Spark runner (or manual dispatch only) with green local/self-hosted verification."
+    },
+    {
+      "id": "W24-02",
+      "tier": "P0",
+      "title": "Fix CD-W22-11-01 User-Facing Stale Reason Telemetry in Compliance Copilot Engine",
+      "compute_target": "local / gx10-6724",
+      "status": "IN_PROGRESS",
+      "rationale": "demo_workbench/compliance_copilot_engine.py:785,929,1086 displays raw lazy store.reason instead of canonical reason from chelated_pv7_spine.ek5_reason_canonicalizer.export_canonical_ek5_audit_trace.",
+      "acceptance": "All three UI/API response surfaces emit canonical reasons; regression test proves stale pos_cyc mutation never mislabels UNFOUNDED_CYCLE as REFUTED; existing copilot + IP-clean tests pass."
+    },
+    {
+      "id": "W24-03",
+      "tier": "P0",
+      "title": "Split mlr-v1 (09184c83) Out of PR #364 into Clean Signed Linear PR Against main",
+      "compute_target": "local / gx10-6724",
+      "status": "QUEUED",
+      "rationale": "origin/main still contains faulty ndcg_at_k in benchmark_utils.py:161 and drift_recovery_metrics.py; PR #364 cannot clear MATT ONLY MAIN MERGE as a 209k-line unsigned merge-commit branch.",
+      "acceptance": "Minimal linear signed PR targeting main fixing metric lineage + tests, ready for owner review/merge."
+    },
+    {
+      "id": "W24-04",
+      "tier": "P0",
+      "title": "PR Hygiene: Land #369 (Opt-In D-06), Finish #368 (3 Float Tie Sites), Close #295, Clear #376 to BHS 100",
+      "compute_target": "gx10-6724 / local",
+      "status": "QUEUED",
+      "acceptance": "D-06 exposed as opt-in flag preserving C3/C3b goldens; all 3 prime-ring float tie sites closed; #376 Tier B nits resolved to BHS 100."
+    },
+    {
+      "id": "W24-05",
+      "tier": "P1",
+      "lane": "Lane 8 (#49 SDK Cold-Start)",
+      "title": "Bundle #49 Live 3-Family Cold-Start with 7B-14B Open Coding Models",
+      "compute_target": "colab:A100 (via gx10-eba1, ~3-5 CU)",
+      "status": "READY_TO_LAUNCH",
+      "models": [
+        "Qwen/Qwen2.5-Coder-7B-Instruct",
+        "mistralai/Mistral-7B-Instruct-v0.3",
+        "Qwen/Qwen2.5-14B-Instruct (or DeepSeek-Coder-V2-Lite-Instruct / Gemma-2-9B-it — 3 strictly unrelated ungated families)"
+      ],
+      "acceptance": ">=30/36 overall pass, >=8/12 per family, 0 private imports, 100% unsupported-capability canary blocking, 0 cross-tenant leaks."
+    },
+    {
+      "id": "W24-06",
+      "tier": "P1",
+      "lane": "Lane 1 (W22-15 Fast-Path Serving)",
+      "title": "W22-15 Fast-Path 0.5B Extraction on vLLM / llama.cpp FP8/INT4 + Deterministic Pre-Filter",
+      "compute_target": "gx10-6724 (GB10 GPU) / colab:L4",
+      "status": "QUEUED",
+      "preserve_scratch": "Do NOT delete 3.4 GB W22-15 D9-A/merged/bge_m3_local model weights until this lane completes.",
+      "acceptance": "Preregistered G1 <= 1500 ms (stretch <= 250 ms/case), G2 quality pass, G3 statistically significant end-to-end latency win over unrouted arm."
+    },
+    {
+      "id": "W24-07",
+      "tier": "P1",
+      "lane": "Lane 2 (W22-05 / #55 EK5 vs SQL/PG17)",
+      "title": "Fix EK5 classify_high_similarity_pair Acronym Bug + Cyclic Multi-Hop Copy & Dynamic Deletion Benchmark vs SQLite & PostgreSQL 17",
+      "compute_target": "gx10-6724 / gx10-37c3",
+      "status": "QUEUED",
+      "acceptance": "OSV/SEC echo recall jumps from 0.99% without breaking conflict precision; resolve 825 vs 962 diff discrepancy; benchmark EK5 vs SQLite + PG17 recursive CTEs on 100-10,000 node cyclic + CITES_AUDIT + dynamic deletion graphs."
+    },
+    {
+      "id": "W24-08",
+      "tier": "P1",
+      "lane": "Lane 3 (W22-07 lambda>0 + W22-10 N3)",
+      "title": "Graded Partial-Provenance Signal Sweep (lambda in {0.0, 0.05, 0.10, 0.25, 0.50}) + W22-10 N3 Swarm Threshold",
+      "compute_target": "gx10-6724 CPU",
+      "status": "QUEUED",
+      "acceptance": "Map exact crossover threshold lambda* where T-D (A6) beats A5 (building on 18/18 B=1 win at lambda=0.25); run W22-10 N3 swarm-threshold experiment in lambda > 0 regime."
+    },
+    {
+      "id": "W24-09",
+      "tier": "P1",
+      "lane": "Lane 4 (W22-04 Drift + Adaptive Backfill + W22-06b)",
+      "title": "12-Domain Online Prompt/Query Drift (ZeroMu EMA vs Frozen CenteredProcrustes), CSLS + Margin-Triggered Adaptive Backfill, and W22-06(b) 3 Extra Encoders",
+      "compute_target": "colab:L4 / colab:A100 (~5-10 CU)",
+      "status": "QUEUED",
+      "acceptance": "(a) Paired 12-domain CI under non-stationary query drift; (b) margin-triggered 15-20% backfill vs uniform 20% random backfill on #50/#54 incl. DBPedia & Climate-FEVER; (c) 3 extra encoders completing W22-06(b)."
+    },
+    {
+      "id": "W24-10",
+      "tier": "P1",
+      "lane": "Lane 6 (W22-18 / #53 PM-6 Firewall)",
+      "title": "Public-Corpus Real Sibling Benigns (N>=150) + Unicode NFKC/Confusable Defense + Live #53 Streaming Gateway",
+      "compute_target": "colab:L4 + gx10-6724 (~2-3 CU)",
+      "status": "QUEUED",
+      "acceptance": "N>=150 unburned public-corpus topically-adjacent sibling benigns; R2b homoglyph bypass < 5%; live_pm6_gateway_executed=True end-to-end with CP_UB95(FPR) <= 2.0%."
+    },
+    {
+      "id": "W24-11",
+      "tier": "P2",
+      "lane": "Lane 5 (W22-11 Large-Graph + Lean 4 T-Rs)",
+      "title": "Large-Graph (50-1,000 Node) Incremental WFS Deletion Stress + Lean 4 Formalization of CW-1 & Deletion Soundness",
+      "compute_target": "gx10-6724 / gx10-37c3",
+      "status": "QUEUED",
+      "acceptance": ">=100,000 checkpoints on 50-1,000 node graphs with 0 semantic mismatches; Lean 4 theorems verified by external nanoda kernel in /formal."
+    },
+    {
+      "id": "W24-12",
+      "tier": "P2",
+      "lane": "Lane 7a (#52 Multi-Layer QSCCI)",
+      "title": "Multi-Layer (k=4,8,16 across Layers 11-18) Causal-Gradient QSCCI Write-Site Restoration vs Top-K SAE & CAA",
+      "compute_target": "colab:L4 / colab:A100 (~3-5 CU)",
+      "status": "QUEUED",
+      "acceptance": "Measure causal activation-patching restoration ratio across k=1,4,8,16 on Qwen2.5-1.5B and Qwen3.5-2B-Base with matched norm and IFEval collateral KL check."
+    },
+    {
+      "id": "W24-13",
+      "tier": "P2",
+      "lane": "Lane 7b (W22-09 True Recurrent/SSM State)",
+      "title": "Exploratory T-Rn Test on Frozen Linear-Attention / Mamba-2 / DeltaNet Recurrent State Retraction",
+      "compute_target": "colab:A100 (~3-5 CU)",
+      "status": "QUEUED",
+      "acceptance": "Compare bounded low-rank recurrent state retraction vs segment-tree checkpoint replay on an actual recurrent/SSM model (not KV-cache)."
+    },
+    {
+      "id": "W24-14",
+      "tier": "P2",
+      "lane": "W22-08 Blind Second Coder",
+      "title": "Independent Blind Second Coding of F-W8 and F-R5 Reviewer Defect Lists",
+      "compute_target": "local / spark CPU",
+      "status": "QUEUED",
+      "acceptance": "Resolve 0.82/0.85 vs 0.80 K2 overlap fragility with inter-coder agreement (Cohen kappa)."
+    },
+    {
+      "id": "W24-15",
+      "tier": "P3_HUMAN_LAST",
+      "lane": "W22-13 (PM-4b Human Audit)",
+      "title": "Independent Human Grading of pm4_human_audit_100_blind_sheet.csv (~6 Human Hours)",
+      "compute_target": "HUMAN_OWNER_LAST",
+      "status": "QUEUED_LAST",
+      "acceptance": "Independent grader completes blind sheet without touching sealed key; clears sole remaining human gate blocking PRE-RELEASE lift on v6.0/v7.0."
+    },
+    {
+      "id": "W24-16",
+      "tier": "P3_HUMAN_LAST",
+      "lane": "W22-14 (External Partner Trial)",
+      "title": "Outside Workload-Owner Trial (#63 Search Operator or #64 Records Owner)",
+      "compute_target": "HUMAN_OWNER_LAST",
+      "status": "QUEUED_LAST",
+      "depends_on": ["W24-02", "W24-07", "W24-09", "W24-10", "W24-15"],
+      "acceptance": "External partner validation on packaged CSLS + adaptive backfill, fixed EK5/CITES_AUDIT, and live #53 gateway."
+    }
+  ]
+}
