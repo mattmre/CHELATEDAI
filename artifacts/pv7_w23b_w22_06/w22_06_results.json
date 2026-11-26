@@ -36,8 +36,8 @@
       }
     }
   },
-  "generated_utc": "2026-11-26T10:02:16.314853+00:00",
-  "git_sha_at_run": "793a4f29859dd3f2fde5b8e8a2fe7e1cb5a06ac4",
+  "generated_utc": "2026-11-26T10:16:16.820710+00:00",
+  "git_sha_at_run": "8ff93b0f450a5d7fc1fcffc534df9864dd3abf3b",
   "hardware": {
     "cpu_count": 16,
     "cuda_visible_devices": "",
@@ -2654,9 +2654,9 @@
         "frac_missing_margin_explainable": 1.0,
         "frac_queries_with_any_error": 1.0,
         "frac_queries_with_flip": 1.0,
-        "mean_missing_per_query": 10.0,
-        "n_missing_margin_explainable": 350,
-        "n_missing_total": 350,
+        "mean_missing_per_query": 7.171428571428572,
+        "n_missing_margin_explainable": 251,
+        "n_missing_total": 251,
         "n_queries": 35
       },
       "group": "prior7",
@@ -2903,16 +2903,16 @@
       "domains_with_frac_explainable_ge_0_50": 12,
       "margin_vulnerability_phenomenon": "PRESENT",
       "n_domains": 12,
-      "pooled_frac_missing_margin_explainable": 0.9954519143306045,
+      "pooled_frac_missing_margin_explainable": 0.9954143738535934,
       "pooled_frac_queries_with_flip": 0.9968615143193409
     },
     "pooled": {
-      "frac_missing_margin_explainable": 0.9954519143306045,
+      "frac_missing_margin_explainable": 0.9954143738535934,
       "frac_queries_with_any_error": 0.9972538250294233,
       "frac_queries_with_flip": 0.9968615143193409,
-      "mean_missing_per_query": 4.744213417026285,
-      "n_missing_margin_explainable": 12038,
-      "n_missing_total": 12093,
+      "mean_missing_per_query": 4.705374656728129,
+      "n_missing_margin_explainable": 11939,
+      "n_missing_total": 11994,
       "n_queries": 2549
     }
   },
@@ -3114,5 +3114,5 @@
     "verdict": "KILL"
   },
   "subtest_e_bit_ledger_note": "per-domain ledgers under per_domain[*].ledger; descriptive, no kill rule",
-  "wall_seconds": 314.5
+  "wall_seconds": 196.2
 }
