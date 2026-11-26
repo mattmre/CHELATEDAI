@@ -39,7 +39,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from chelated_pv7_spine.claim_registry import claim_registry_sha256  # noqa: E402
 
-DEFAULT_MODEL = "Qwen/Qwen2.5-1.5B-Instruct"
+DEFAULT_MODEL = "Qwen/Qwen2.5-0.5B-Instruct"
 
 
 def sha256_bytes(data: bytes) -> str:
@@ -380,11 +380,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             return (time.perf_counter() - t_c) * 1000.0
 
         warmup_latencies: List[float] = []
-        for r_idx in range(3):
-            with ThreadPoolExecutor(max_workers=4) as pool:
-                lats = list(pool.map(_warmup_call, range(4)))
+        # Warm BOTH batch_size=4 and batch_size=1 so torch.compile never JIT-stalls during single-field reopens!
+        for label, workers in (("bs4_jit", 4), ("bs1_jit", 1), ("bs4_warm", 4), ("bs1_warm", 1)):
+            with ThreadPoolExecutor(max_workers=workers) as pool:
+                lats = list(pool.map(_warmup_call, range(workers)))
             warmup_latencies.extend(lats)
-            print(f"[w22b:warmup] round {r_idx + 1} 4-concurrent latencies_ms={[round(x, 1) for x in lats]}", flush=True)
+            print(f"[w22b:warmup] {label} latencies_ms={[round(x, 1) for x in lats]}", flush=True)
 
         # Run the UNMODIFIED production runner `scripts/run_pv7_w20_d13_pooled_agent_loops.py`!
         args.output_dir.mkdir(parents=True, exist_ok=True)
