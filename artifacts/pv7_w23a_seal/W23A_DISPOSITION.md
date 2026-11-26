@@ -239,4 +239,26 @@ All three are draft PRs against `pv7/w16-core`. None can merge, because BHS is b
 
 - **N3 swarm-threshold part: NOT RUN.** The queue makes it conditional on W22-07 passing. W22-07 killed T-D in the
   zero-signal regime, so the condition is not met.
-- **#60 KV-guard scope-bound part:** not conditional on W22-07. It is CPU-only and is queued next.
+- **#60 KV-guard scope-bound part:** not conditional on W22-07. It is CPU-only. It ran and is draft PR #375
+  (BHS_OFFICIAL 85).
+
+## Wave 23 close-out (2026-11-26)
+
+All are draft PRs. None can merge, because BHS is below 100. CI has not run on any of them (GitHub Actions is
+billing-blocked).
+
+| Item | PR | Base | Verdict (PROPOSED) | Self | Tier B | Official |
+|---|---|---|---|---|---|---|
+| W22-04 bridge × merge factorial | #376 | `pv7/w16-core` | KILL of the unique ZeroMu claim; CSLS retained. 10/12 WITHIN, exactly at threshold (99.4% of 500 bootstrap seeds give KILL; Centered-only 9/12, 85%) | 95 | 95 (nit) | 95 |
+| W22-06 migration frontier | #377 | stacked on #376 | (a) SUPPORTED but near-tautological; (b) DEFERRED; (c) KILL, R2_LODO −0.476; (d) KILL, median K* 329/393; (e) descriptive | 90 | 88 (important, fixed) | 88 |
+| W22-10 #60 KV-guard scope bound | #375 | `pv7/w16-core` | T-K stays killed, under both criteria for different reasons | 85 | 88 (important) | 85 |
+| W22-15 selective-trigger extractor | #378 | `pv7/w16-core` | KILL under the D2 serving stack (G1 3607 ms vs 1500 ms; G2 PASS; G3 unmeasured). No routing saving once arms are interleaved. vLLM/FP8 premise untested | 90 | 85 (important) | 85 |
+
+- **The old W22-04 note above** (missing cells need GPU re-encoding) is superseded: #376 encoded with real
+  Qwen3-Embedding-8B and a second encoder on the 3090.
+- **W22-12: SKIPPED.** It is conditional on an upstream track surviving, and every upstream track was killed.
+- **W22-18: BLOCKED on owner items.**
+  - There are no N ≥ 150 real sibling benigns. The corpus has only 25 `_BENIGN_PAIRS` templates
+    (`pm6_verbatim_canary_corpus.py:690`).
+  - There is no live #53 gateway: `live_pm6_gateway_executed` is hardcoded False.
+- **W22-13 / W22-14:** external, not run here.
