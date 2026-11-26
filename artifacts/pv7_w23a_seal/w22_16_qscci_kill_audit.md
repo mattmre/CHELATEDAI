@@ -26,6 +26,12 @@ Date: 2026-11-26. This is a CPU-only audit of evidence that already exists. No n
   `mismatch_no_greater_than_controls` are also `false`.
 - Identical winners is the first clause of the kill criterion. **The nuisance-ranking advantage is killed in the
   SAE basis.**
+- **The scope of this kill is narrow:**
+  - v4 is a small label-oracle fixture.
+  - Selection ran at **k=4**, not the k=1 named in the criterion.
+  - It is one model, one layer and one SAE.
+- So the kill applies to that fixture and that k. It does not show that nuisance-penalized selection can never
+  separate from contrastive selection at k=1 or at a larger scale.
 
 ## Finding 2 — the W22C "QSCCI win" is selected on its own outcome and does not test W22-16
 
@@ -35,6 +41,9 @@ Date: 2026-11-26. This is a CPU-only audit of evidence that already exists. No n
   first-order steepest-ascent direction of the logit margin (` positive` minus ` negative`).
 - **What REPORT measures (lines 548–556).** `_eval_report_arm` injects every arm at the same L2 dose and scores the
   family-mean change in **that same margin**.
+- **SELECT and REPORT are separate splits, so this is not data leakage.** The direction is estimated on SELECT
+  prompts and scored on held-out REPORT prompts. The problem is that the selection *objective* is the same quantity
+  as the reported *endpoint*. Held-out evaluation does not remove that advantage.
 - **Why it wins by construction.** At a fixed norm, the gradient direction maximizes the first-order change in the
   margin. CAA (the class-mean difference) and the SAE latent are selected for class separation, not for margin
   ascent, so they are not competing on the scored quantity. The Qwen3.5 result (QSCCI 1.131 vs CAA 0.008, cosine
@@ -56,7 +65,10 @@ Date: 2026-11-26. This is a CPU-only audit of evidence that already exists. No n
 
 ## Disposition
 
-- **Nuisance-ranking advantage: KILLED.** The v4 identical-winner clause fired with the official SAE.
+- **Nuisance-ranking advantage: KILLED** on the v4 fixture at k=4. The identical-winner clause fired with the
+  official SAE. See the scope note under Finding 1.
+- A fresh Tier B review scored this audit 93. The two additions it asked for are folded in: SELECT and REPORT are
+  separate splits, and the fixture scope is k=4.
 - **W22C bundle #52's "QSCCI beats CAA/SAE" headline: should be SUSPENDED** as selection-on-outcome.
   - What survives is a narrower statement: a gradient-chosen write direction moves the target margin more than
     non-gradient directions at an equal dose, with low collateral KL (0.0069 nats on Qwen3.5).

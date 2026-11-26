@@ -5,18 +5,30 @@
 - Kill criterion applied: any deployment-advantage claim is SUSPENDED where raw cosine, linear routing, bare 70B, full restart, or another conventional arm ties or beats Chelated at matched cost, latency and coverage.
 - Artifact paths below are relative to `D:\GITHUB\CHELATEDAI-PV7-SPINE\artifacts\`.
 
-| # | Item | Verdict |
-|---|---|---|
-| 41 | D6 exact-fallback serving | **SUSPEND** (deployment and latency claim) |
-| 45 | D10-B chelated vs bare 70B | **SUSPEND** |
-| 46 / 53 | D11 PM-6 arms, plus RCPS closure | **SUSPEND** |
-| 62 | D13 pooled agent loops | **SUSPEND** |
+| # | Item | Verdict | Already disclosed in the scorecard? |
+|---|---|---|---|
+| 41 | D6 exact-fallback serving | **PARTIAL.** The merge-quality claim survives. A latency or deployment advantage is not shown. | Mostly. The scorecard already says "70/70 exact scans ... no pure ANN latency claim". |
+| 45 | D10-B chelated vs bare 70B | **SUSPEND** any deployment-advantage reading | Yes. The 0.00 pp tie and 3.26 s / 5.36 s vs 26.60 s are in the scorecard row, so this suspend adds nothing new. |
+| 46 / 53 | D11 PM-6 arms, plus RCPS closure | **SUSPEND** any "chelated arm is the better suppressor" reading | #46: yes ("parity/loss vs Arm 6 raw cosine ... with higher R5 FPR"). #53: partly. The anti-L4 note gives "0.50%/0.67% FPR" without saying that the better figure belongs to the raw-cosine arm. |
+| 62 | D13 pooled agent loops | **No advantage over conventional arms shown** (a tie, not a loss) | No. The anti-L4 note reports "beating full_restart 59.38 vs 0.00 JPM" and omits the conventional Conv+SQLite and Conv+EK5_v3 arms in the same run. |
+
+**Correction history.** A fresh Tier B reviewer checked the first draft of this report. Its corrections are folded in below:
+- #41 was moved from SUSPEND to PARTIAL;
+- the #41 counts were fixed (24/28, 8 direction groups);
+- the Qwen ≤1/17 row was fixed;
+- #62 was moved from "beats" to "tie";
+- every **Claim.** line now cites where the claim is made.
+
+The scorecard citations are line numbers in `docs/research/COMPLETE_64_BUNDLE_EVIDENCE_SCORECARD.json` (embedded digest `7954f9fcf0c7`).
 
 ---
 
 ## #41 D6 — chelated certified path vs "~940 ms exact fallback"
 
-**Claim.** The chelated served path (exact-fallback certificate) is a deployable advantage over a conventional backend, framed against a "~940 ms exact fallback".
+**Claim.** In the scorecard (bundle at line 489), the claim is cross-engine merge quality plus 0% stale resurrection. Examples: "FiQA 4096->384 CSLS=0.3068 vs DEV_ZScore=0.2563 [+5.05 pp] & Raw=0.1962".
+- The scorecard **already disclaims latency**: "70/70 exact scans, single-host single-run with no replicates -> no pure ANN latency claim".
+- The deployment framing against a "~940 ms exact fallback" appears only in `docs/research/council-logs/post_v7_panel_r1_fable52_medium.md:21`, which marks it unverified.
+- So the latency part of this re-score tests a reading that the scorecard does not make.
 
 **Conventional baselines.** Two:
 - The same backend's initial ANN shortlist, with no certificate.
@@ -32,45 +44,59 @@ Key pattern: `benchmarks.{FiQA2018|SciFact}.{1024|4096}.cases.{engine}.direction
    - `service_rtt.p95_ms` = 940.02 (p50 125).
    - `served_routes` = opensearch_knn_score_exact.
    - `exact_fallback_fraction_of_shard_queries` = 1.0.
-   - The conventional ANN shortlist for the same cell (`initial_backend_requests_rtt_sum`) has p50/p95 of 25/31 ms. That is about 30× faster at p95.
-   - The only other source of "940 ms" is `docs/research/council-logs/post_v7_panel_r1_fable52_medium.md:21`, which marks it unverified.
+   - For the same cell, `initial_backend_requests_rtt_sum` has p50/p95 of 25/31 ms.
+   - **These two timers are not matched.**
+     - `service_rtt` times the whole served request: shortlist, certificate, exact fallback and merge.
+     - `initial_backend_requests_rtt_sum` times only the initial backend calls.
+     - The ratio is an upper bound on the overhead of the certificate plus fallback, not a like-for-like ANN-vs-chelated latency.
+   - The "Chelated shortlist" baseline is still Chelated CSLS. It is only scored on the shortlist, before the certificate runs, so it is not a conventional arm.
 2. **Coverage.**
    - Fallback fraction is 1.0 in 62 of 70 cells.
-   - The other 8 are `pgvector_exact_vector4096` cells, at 0.845 and 0.934. They are already exact.
-   - So every served path is an exact scan, which means the certificate never uses the fast path.
-3. **Latency across the 56 cells that have both RTTs.**
+   - The other 8 are all `pgvector_exact_vector4096` cells:
+     - 6 at 0.5 (SciFact 4096, both directions, retraction 0/10/50);
+     - 2 at 0.845 and 0.934 (FiQA 4096, 0% retraction).
+   - That backend is exact by construction, so every served path is an exact scan. The scorecard already discloses this ("70/70 exact scans").
+3. **Latency across the 56 cells that have both RTTs** (unmatched timers, see item 1).
    - Median served p50/p95: 32.8/52.2 ms. Median initial shortlist: 14.5/20.5 ms.
    - Ratio of served p95 to shortlist p95: median 2.7×, minimum 1.7×, maximum 50.9×.
    - The 14 cells at 90% retraction have no initial-RTT key, so I don't know their latency.
 4. **Quality at matched shortlist.**
-   - Served `quality.ndcg_at_10` equals `initial_shortlist_quality.ndcg_at_10` in 22 of 28 cells at 0% retraction.
-   - The largest served-minus-shortlist gain is +0.0022 nDCG (recall +0.0053, qdrant FiQA 4096 d4096→d384).
-   - So the certificate buys essentially no nDCG for 1.7–50.9× the p95 latency.
-5. **Merge quality vs conventional merges on the same shortlist** (`...paired_bootstrap_wave6`, Chelated minus baseline).
-   - Vs raw cosine (`Uncalibrated_Raw_Merge`), nDCG wins in all 7 direction groups. Examples:
-     - FiQA 4096 d384→d4096: +0.0382 (LCB95 0.0217).
-     - SciFact 4096 d4096→d384: +0.2765.
+   - The served Chelated nDCG@10 mean equals the shortlist Chelated mean in **24 of 28** cells at 0% retraction.
+   - An earlier draft said 22/28. That count compared whole `ndcg_at_10` dicts, and in 2 cells only a baseline mean differed.
+   - The largest served-minus-shortlist gain is +0.0022 nDCG (qdrant FiQA 4096 d4096→d384).
+   - So the certificate buys essentially no nDCG. Its stated purpose is the stale-resurrection guarantee, not nDCG.
+5. **Merge quality vs conventional merges on the same shortlist** (`...paired_bootstrap_wave6`, Chelated minus baseline, 0% retraction, n = 190 queries).
+   - There are **8** direction groups (2 datasets × 2 dims × 2 directions), not 7.
+   - **Vs raw cosine** (`Uncalibrated_Raw_Merge`): Chelated wins nDCG in **all 8** groups with LCB95 > 0. The smallest is FiQA 1024 d384→d1024, +0.0227 (LCB95 0.0088). The largest is SciFact 1024 d1024→d384, +0.3687.
+   - **Vs RRF:** Chelated wins nDCG in all 8, with LCB95 > 0.
+   - **Vs DEV z-score:** Chelated wins in 7 of 8. In SciFact 4096 d384→d4096 DEV z-score beats Chelated: −0.0258, one-sided UCB95 **−0.0036**, so the loss is significant one-sided (two-sided p = 0.053).
    - Raw cosine ties on recall in one group: FiQA 1024 d384→d1024, +0.023, LCB −0.0004, p = 0.105.
-   - DEV z-score beats chelated on nDCG in SciFact 4096 d384→d4096: −0.0258, p = 0.053.
    - RRF and DEV tie on recall in several groups, e.g. FiQA 4096 d384→d4096 recall: vs RRF −0.0103 (p = 0.535), vs DEV −0.0011.
 6. **Stale resurrection.**
    - `stale_resurrection_rate` = 0.0 for chelated.
    - `raw_engine_stale_hit_rate` = 0.0, so the raw allowlist baseline ties chelated.
    - The only baseline that leaks is `lagged_replica_only_stale_hit_rate`, at 5.2–8.2%.
 
-**Verdict: SUSPEND (deployment/latency advantage).**
-- At matched coverage, the conventional ANN shortlist serves the same nDCG (22 of 28 cells identical, maximum delta +0.0022) at 1.7–50.9× lower p95.
-- The raw allowlist ties on stale hits.
-- Only a narrow claim survives: merge-quality over uncalibrated raw cosine, at shortlist-matched cost. Two limits apply to that:
-  - Baseline-merge latency was never timed separately, because all merges share one shortlist.
+**Verdict: PARTIAL.**
+- **Survives:** the scorecard's actual claim. Chelated CSLS merge quality beats raw cosine and RRF in all 8 direction groups, and DEV z-score in 7 of 8, at shortlist-matched cost.
+- **Not shown:** any latency or deployment advantage. That is consistent with the scorecard's own disclaimer, so suspending it changes nothing in the scorecard.
+- **Stale hits:** the raw allowlist ties on stale hits, which is also already disclosed ("raw-engine 0% stale is zero by allowlist construction").
+- **New:** one disclosure to add. DEV z-score significantly beats Chelated in SciFact 4096 d384→d4096.
+- **Limits:**
+  - Baseline-merge latency was never timed separately.
   - There are no per-query rows and no replicate runs.
-- I don't know the latency for the 90%-retraction cells.
+  - I don't know the latency for the 90%-retraction cells.
 
 ---
 
 ## #45 D10-B — Bare 70B vs Chelated 70B
 
-**Claim.** The chelated pipeline (Nemotron-30B extractor plus reader) is worth deploying over a bare 70B reader.
+**Claim.** This is the deployment reading tested here: that the chelated pipeline (Nemotron-30B extractor plus reader) is worth deploying over a bare 70B reader.
+- **The scorecard does not make this claim.**
+  - The scorecard row (bundle at line 537) already reports the tie: "0.00 pp delta (Tango CI95=[-6.02, +6.02 pp], Holm p=1.0)".
+  - It also reports the latency gap: "24.75-26.60s/case e2e vs 3.26s Bare-70B k=5".
+- So this suspend is of an already-disclosed item.
+- The only scorecard-level argument for the chelated pipeline is the small-reader path (Mid-7B at 14.28 GiB vs 38.08 GiB). That would have to be argued on amortized extractor cost, and no stored artifact argues that.
 
 **Conventional baseline.** Bare-70B at k = 5 and at k = 17.
 
@@ -110,7 +136,9 @@ Keys used: `arm_metrics`, `small_and_mid_reader_telemetry`, `per_case_prediction
 
 ## #46 D11 (PM-6 nine-arm) + #53 PM-6 RCPS closure
 
-**Claim.** The chelated full dual gate (Arm 9) is the right deployable suppressor of withdrawn content (R3) at a controlled benign false-refusal rate (R5).
+**Claim.** This is the reading tested here: that the chelated full dual gate (Arm 9) is the right deployable suppressor of withdrawn content (R3) at a controlled benign false-refusal rate (R5).
+- **#46 already discloses the counter-evidence.** Its scorecard row (bundle at line 549) says: "On English R3, Arm 9 shows parity/loss vs Arm 6 raw cosine ... & Arm 8 linear bridge ... with higher R5 FPR". It also says the R5 gate fails.
+- **#53** (bundle at line 684, and the anti-L4 governance note at line 2) reports "0.50%/0.67% FPR, CP_UB95=1.29%/1.52%" without naming the arms. The new information below is that the better pair belongs to the raw-cosine RCPS arm.
 
 **Conventional baselines.**
 - Arm 6: Gate-1 + Gate-2 raw cosine.
@@ -145,7 +173,10 @@ I computed these from the stored ROC arrays at `nine_arm_matrix_by_generator.{ge
 | Nemotron | 1/32 | 0.000 | **1.000** | 0.9375 | 0.9375 |
 | Nemotron | 2/32 | 0.000 | **1.000** | 0.9688 | 0.9375 |
 | Qwen (N = 17/17) | 0 | 0.000 | **0.9412** | **0.9412** | 0.8235 |
-| Qwen | ≤ 1/17 | 0.000 | **1.000** | 0.9412 | 0.8824 |
+| Qwen | ≤ 1/17 | 0.000 | **0.9412** | **0.9412** | 0.8235 |
+| Qwen | ≤ 2/17 | 0.000 | **1.000** | 0.9412 | 0.8824 |
+
+An earlier draft gave the ≤2/17 values under the ≤1/17 label. A Tier B reviewer caught this, and it was recomputed from the ROC arrays.
 
 **Holm tests** (`pm6_posthoc_statistical_reanalysis.json`):
 - Arm 9 minus Arm 6 AUROC: −0.0107 (Nemotron), −0.0208 (Qwen); adjusted p = 1.0.
@@ -184,7 +215,10 @@ Key: `track_a_pm6_benign_fpr_calibration_closure.arms.{arm}`.
 
 ## #62 D13 — pooled agent loops: Spark #3 replay-fail vs Wave 22 Colab L4
 
-**Claim.** ZeroMu + EK5_v3 (chelated incremental re-ingest) delivers more on-time, cited, correct jobs per minute (JPM) than conventional or full-restart handling under encoder change plus withdrawal.
+**Claim.** What the scorecard says:
+- The anti-L4 governance note (scorecard line 2) and the #62 row (bundle at line 860, `live_worker_outcome_colab_l4` at line 851) report that the chelated arm is "beating full_restart 59.38 vs 0.00 JPM".
+- Neither mentions the conventional Conv+SQLite and Conv+EK5_v3 arms from the same run.
+- The reading tested here is whether ZeroMu + EK5_v3 beats *conventional* handling, not only full restart.
 
 **Conventional baselines.** All within the same run:
 - Conv+SQLite.
@@ -241,15 +275,18 @@ Sham control (`sham_reopen_isolation`, `control_valid` = false):
 - The Spark run fails because every arm, conventional and chelated alike, is slower than the SLA. It is uninformative about chelation, not evidence against it.
 - The Colab run is the only informative one:
   - The chelated arm beats full restart (59.38 vs 0.00 JPM). Full restart is the weakest conventional baseline.
-  - The chelated arm loses to the fully conventional Conv+SQLite arm (59.38 vs 62.87 JPM, −3.48) and to Conv+EK5_v3 (62.97).
-  - Its on-time rate advantage is 1 job in 48 (8 vs 7), and the rate interaction is exactly 0.0.
-- The "59.38 vs 0.00" headline compares against the strawman baseline only.
+  - Against the fully conventional Conv+SQLite arm it is a **tie**:
+    - JPM: 59.38 vs 62.87 (−3.48), with no per-arm CI stored;
+    - on-time jobs: 8 vs 7 of 48, also with no CI.
+  - Conv+EK5_v3 is at 62.97 JPM.
+  - The rate interaction is exactly 0.0. Neither direction of the difference is supported.
+- The "59.38 vs 0.00" headline compares against the weakest baseline only.
 - The sham control is invalid: a sham reopen alone costs about 1.44 s and pushes every sham job past the SLA. So the run also cannot attribute latency to EK5 lineage invalidation vs checkpoint reopen.
-- The 560 ms SLA value was not found as a JSON key in these three artifacts. I used it as given in the task brief; its exact definition is in the runner script, which I did not inspect.
+- The 560 ms SLA is recorded in the scorecard's #62 `tuning` field (line 855): "The preregistered 560.0 ms deadline and stall constants were NEVER retuned".
 
-**Verdict: SUSPEND.**
-- A conventional arm (Conv+SQLite) beats Chelated on JPM in the same run, at matched hardware, model, jobs and SLA.
-- The full-restart win is real but is against the weakest baseline.
+**Verdict: no advantage over conventional arms shown.**
+- The chelated arm ties the conventional arms.
+- The full-restart win is real, but it is against the weakest baseline. The scorecard's anti-L4 note should add the conventional arms beside it.
 - Neither run passes overall, and both are status replay-fail.
 
 ---

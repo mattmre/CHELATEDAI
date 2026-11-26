@@ -28,12 +28,13 @@ This section is read from the code, not from what the scorecard claims.
 5. **Nothing else verifies these bundles:**
    - `scripts/verifiers.d/47..64_verifier.py` cover fragments #47-#64 only. A grep found **no reference to any sealed bundle directory** in them or in `scripts/audit_findings.py`.
    - `scripts/score_pm4_human_audit.py` references the PM-4 sheet, but `verify_all_offline.py` does not invoke it (PM-4b human grading is still pending).
-   - No unit test under `tests/` or `test_*.py` loads a sealed manifest.
+   - `verify_part7` (`scripts/verify_all_offline.py:621`) and `verify_pristine_mirror` (:636) are also hash-only: they compare file sha256 values against a manifest and recompute nothing.
+   - `tests/test_verify_all_offline.py` does load the D6 and D8 sealed manifests (copied in at :37-39, used at :244-250), but only to check that tampering is detected. No test recomputes a headline from raw rows. (An earlier draft of this report wrongly said no test loads a sealed manifest. A Tier B reviewer caught it.)
 
 ### Raw-row availability
 
 Checked on disk in both `CHELATEDAI-PV7-SPINE` and `D:\GITHUB\CHELATEDAI`:
-- **Ordinals 1-12 (9 historical bundles):** raw CSV/JSONL is **present** but **not hashed by the receipt**. The scorecard itself discloses "historical CSV unhashed". The headline could be recomputed, but the rows are not bound to the seal.
+- **Ordinals 1-12 (9 historical bundles):** raw CSV/JSONL is **present** but **not hashed by the receipt**. The scorecard itself discloses "historical CSV unhashed". The headline could be recomputed, but the rows are not bound to the seal. They are also **untracked in git**: `is_raw_gitignored` (`scripts/verify_all_offline.py:245`) treats every raw suffix as gitignored, and `git ls-files artifacts` lists 0 `.csv`/`.jsonl` files. A fresh checkout therefore has no raw rows for any ordinal, so these files are only "recoverable" on this machine.
 - **Ordinals 16-42 (20 bundles):** the receipt hashes 1-2 raw row files each, but **none of them is present in either checkout**. The verifier skips them as optional, so the headline cannot be recomputed offline.
 - **Ordinals 17, 40, 41 and 43** reference no raw rows at all.
 
