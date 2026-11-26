@@ -164,5 +164,38 @@ class BaselineTests(unittest.TestCase):
         self.assertTrue(np.array_equal(m.wo[0], build_model(6001).wo[0]))  # no aliasing mutation
 
 
+class TestRunnerArgs(unittest.TestCase):
+    """Tier B round 1, F5: --out / --results keep earlier evidence from being overwritten."""
+
+    @classmethod
+    def setUpClass(cls):
+        sys.path.insert(0, str(_ROOT / "scripts"))
+        import run_w22_10_kv_guard_bound as runner
+
+        cls.runner = runner
+
+    def test_defaults_unchanged(self):
+        r = self.runner
+        a = r.parse_args([])
+        self.assertEqual(r.scratch_dir(a), r.OUT_DIR / "scratch" / "full")
+        self.assertEqual(r.results_path(a, r.scratch_dir(a)), r.OUT_DIR / "w22_10_results.json")
+        q = r.parse_args(["--quick"])
+        self.assertEqual(r.scratch_dir(q), r.OUT_DIR / "scratch" / "quick")
+        self.assertEqual(r.results_path(q, r.scratch_dir(q)), r.OUT_DIR / "scratch" / "quick" / "w22_10_results_quick.json")
+
+    def test_out_and_results_override(self):
+        r = self.runner
+        with tempfile.TemporaryDirectory() as td:
+            a = r.parse_args(["--quick", "--out", td, "--results", str(Path(td) / "x.json")])
+            self.assertEqual(r.scratch_dir(a), Path(td))
+            self.assertEqual(r.results_path(a, r.scratch_dir(a)), Path(td) / "x.json")
+            b = r.parse_args(["--out", td])
+            self.assertEqual(r.results_path(b, r.scratch_dir(b)), r.OUT_DIR / "w22_10_results.json")
+
+    def test_bound_reports_soft_cap_diagnostics(self):
+        self.assertEqual(kg._soft(10.0), 2.0)
+        self.assertLess(kg._soft(0.1), 2.0)
+
+
 if __name__ == "__main__":
     unittest.main()

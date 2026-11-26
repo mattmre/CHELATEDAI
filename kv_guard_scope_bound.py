@@ -304,7 +304,10 @@ def receiver_activation_bound(
     B = s2 * rev.wout_col_max
     d = D_MODEL
     flops = P + 6 * P * d + N_LAYERS * (2 * S * d + 6 * (P + S) * d) + 100
-    inter = {"e0": e0, "e1": e1, "dK0": dK0, "dV0": dV0, "dK1": dK1, "dV1": dV1, "s1": s1, "s2": s2}
+    inter = {"e0": e0, "e1": e1, "dK0": dK0, "dV0": dV0, "dK1": dK1, "dV1": dV1, "s1": s1, "s2": s2,
+             # Diagnostics only (do not enter B): score-shift deltas fed to _soft and whether its trivial cap of 2 fired.
+             "delta0": float(delta0), "d0s": float(d0s), "d1s": float(d1s),
+             "cap0": float(_soft(delta0) >= 2.0), "cap_s0": float(_soft(d0s) >= 2.0), "cap_s1": float(_soft(d1s) >= 2.0)}
     return float(B), inter, int(flops)
 
 

@@ -2,7 +2,7 @@
 
 Preregistration: ``artifacts/pv7_w23b_w22_10/PREREGISTRATION.md``. CPU only, no network.
 
-Usage: ``python scripts/run_w22_10_kv_guard_bound.py [--quick]``
+Usage: ``python scripts/run_w22_10_kv_guard_bound.py [--quick] [--out DIR] [--results FILE]``
 Writes ``artifacts/pv7_w23b_w22_10/w22_10_results.json`` (evidence) and bulk data under
 ``artifacts/pv7_w23b_w22_10/scratch/`` (gitignored).
 """
@@ -17,7 +17,7 @@ import platform
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 _ROOT = Path(__file__).resolve().parents[1]
@@ -207,6 +207,16 @@ def aggregate(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
         "argmax_positions": int(arr("S").sum()), "argmax_certified": int(arr("argmax_certified").sum()),
         "argmax_cert_violations": int(arr("argmax_cert_violations").sum()),
         "argmax_stale_mismatch": int(arr("argmax_stale_mismatch").sum()),
+        # Argmax-level oracle ceiling (added Tier B round 1, F1): rows where stale-KV reuse preserves every
+        # suffix argmax, i.e. the most a perfectly tight argmax-level guard could accept.
+        "argmax_oracle_rows": int(sum(r["argmax_stale_mismatch"] == 0 for r in rows)),
+        "argmax_oracle_row_rate": float(np.mean([r["argmax_stale_mismatch"] == 0 for r in rows])),
+        "argmax_oracle_position_rate": float(1.0 - arr("argmax_stale_mismatch").sum() / arr("S").sum()),
+        "argmax_bound_certified_position_rate": float(arr("argmax_certified").sum() / arr("S").sum()),
+        # _soft trivial-cap hit rates (Tier B round 1, F2): 1.0 means that derivation step was vacuous on every row.
+        "soft_cap_rate": {k: float(arr(f"b_{k}").mean()) for k in ("cap0", "cap_s0", "cap_s1")},
+        "soft_cap_any_rate": float(np.mean([max(r["b_cap0"], r["b_cap_s0"], r["b_cap_s1"]) > 0 for r in rows])),
+        "soft_cap_all_rate": float(np.mean([min(r["b_cap0"], r["b_cap_s0"], r["b_cap_s1"]) > 0 for r in rows])),
         "median_wall_s": {
             "full_prefill": float(np.median(arr("t_full"))), "bound_case_part": float(np.median(arr("t_bound"))),
             "tlrh_kv": float(np.median(arr("t_tlrh"))),
@@ -217,11 +227,40 @@ def aggregate(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
-def main() -> int:
+def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     ap = argparse.ArgumentParser()
     ap.add_argument("--quick", action="store_true", help="2 repos, model seed 6001 only (smoke)")
-    args = ap.parse_args()
-    scratch =OUT_DIR / "scratch" / ("quick" if args.quick else "full")
+    ap.add_argument(
+        "--out",
+        type=Path,
+        default=None,
+        help="bulk/scratch directory for rows.jsonl and .kvblk files (default: "
+        "artifacts/pv7_w23b_w22_10/scratch/{quick,full}); pass a fresh dir to keep earlier runs intact",
+    )
+    ap.add_argument(
+        "--results",
+        type=Path,
+        default=None,
+        help="results JSON path (default: <OUT_DIR>/w22_10_results.json; quick: <scratch>/w22_10_results_quick.json)",
+    )
+    return ap.parse_args(argv)
+
+
+def scratch_dir(args: argparse.Namespace) -> Path:
+    if args.out is not None:
+        return Path(args.out)
+    return OUT_DIR / "scratch" / ("quick" if args.quick else "full")
+
+
+def results_path(args: argparse.Namespace, scratch: Path) -> Path:
+    if args.results is not None:
+        return Path(args.results)
+    return (scratch / "w22_10_results_quick.json") if args.quick else (OUT_DIR / "w22_10_results.json")
+
+
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    args = parse_args(argv)
+    scratch = scratch_dir(args)
     scratch.mkdir(parents=True, exist_ok=True)
     cases = select_cases(2 if args.quick else 20)
     seeds = (PRIMARY_SEED,) if args.quick else MODEL_SEEDS
@@ -276,8 +315,8 @@ def main() -> int:
         "wall_seconds": time.time() - started,
         "scratch_rows": str(rows_path),
     }
-    name = "w22_10_results_quick.json" if args.quick else "w22_10_results.json"
-    target = (scratch / name) if args.quick else (OUT_DIR / name)
+    target = results_path(args, scratch)
+    target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(out, indent=1, sort_keys=True), encoding="utf-8")
     print(json.dumps(decision, indent=1))
     print(f"wrote {target}")
