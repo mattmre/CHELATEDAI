@@ -563,7 +563,13 @@ class AntigravityEngine:
             return np.array([])
 
     def _chelate_toxicity(self, local_cluster):
-        """Phase 2: The Antigravity Mechanism (Binding Toxic Dimensions)."""
+        """Phase 2: The Antigravity Mechanism (Binding Toxic Dimensions).
+
+        Degenerate neighbourhoods for the variance path (a single vector,
+        duplicate vectors, or tied per-dimension variances) and any split that
+        selects no dimension return the identity mask instead of an all-zero
+        mask that would erase the query (D-07).
+        """
         if len(local_cluster) == 0:
             return np.ones(self.vector_size)
 
@@ -575,6 +581,12 @@ class AntigravityEngine:
         # Calculate Variance per dimension
         dim_variance = np.var(local_cluster, axis=0)
 
+        # All variances tied (duplicate neighbours give pure float round-off,
+        # isotropic clusters give identical values): the percentile split would
+        # be decided by rounding noise or select nothing, so keep every dimension.
+        if np.ptp(dim_variance) <= 1e-12:
+            return np.ones(self.vector_size)
+
         if hasattr(self, 'invert_chelation') and self.invert_chelation:
             # INVERTED: Keep Top P% (High Variance), Mask Bottom (Noise)
             # Threshold at (100 - P)th percentile
@@ -584,6 +596,9 @@ class AntigravityEngine:
             # ORIGINAL: Keep Bottom P% (Stable), Mask Top (Toxic)
             threshold = np.percentile(dim_variance, self.chelation_p)
             mask = (dim_variance < threshold).astype(float)
+
+        if not np.any(mask):
+            return np.ones(self.vector_size)
 
         return mask
 
@@ -622,8 +637,10 @@ class AntigravityEngine:
             # 3. Chelate
             mask = self._chelate_toxicity(local_cluster_np)
 
-            # 4. Apply Mask
+            # 4. Apply Mask (never hand back an erased query)
             q_chelated = q_vec * mask
+            if np.linalg.norm(q_chelated) <= 1e-12:
+                return q_vec
             return q_chelated
         except (ResponseHandlingException, UnexpectedResponse) as e:
             self.logger.log_error("qdrant", f"Qdrant error in get_chelated_vector: {e}", exception=e)
