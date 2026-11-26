@@ -1,0 +1,99 @@
+# Wave 25–28 Master Research & Engineering Queue — Gate-0 Falsifiers, Theory/Formal Expansions & Product Moats
+
+```yaml
+queue_id: wave25-plus-master-queue-2026-11-26
+created_date: 2026-11-26
+status: QUEUED_NOT_EXECUTED
+release_status_preserved: PRE-RELEASE / HUMAN AUDIT & CLEAN-RERUN GATES PENDING
+baseline_heads:
+  pv7_spine_wave24_complete: "D:/GITHUB/CHELATEDAI-PV7-SPINE @ ecc9f97a (13/13 Wave 24 automated lanes + W24-10b/13b)"
+  method_dev_repo: "D:/GITHUB/CHELATEDAI @ 65c9085c"
+panel_consensus:
+  - Gemini 4 Neon (Medium) [coordinator & synthesis]
+  - Claude Fable 5.2 (High) [adversarial script/manifest audit & Wave 26+ expansion]
+  - GPT-6.2 Astra (High) [mathematical/statistical rigor, systems architecture & Wave 26+ expansion]
+policies:
+  github_paid_billing: "$0.00 FOREVER (self-hosted Spark 2 ARM64 runner only)"
+  fleet: "3x DGX Spark GB10 (128 GB UMA) + Desktop RTX 3090 (24 GB) + Colab Ultra (3,030.75 CU)"
+  human_time: "STRICTLY LAST (Wave 28)"
+  brutal_honesty_rulebook: "v3.3"
+```
+
+---
+
+## 1. Unanimous Three-Model Wave 24 Audit & Mandatory Relabelings
+
+Before spending any Wave 26+ compute, both independent panelists audited the Wave 24 scripts and manifests (`ecc9f97a`) and surfaced concrete claim tightenings that govern Wave 25:
+
+1. **`W24-13b` (`T-Rn` Gated-DeltaNet + KV Retraction) → Relabel as `exploratory positive, n=8, mechanism unconfirmed`:**
+   - At `2,053` tokens, **untouched KV-only has lower recurrent-state relative L2 error (`0.1149`) than damped subtraction (`0.1344`) and exact-decay (`0.1366`)**, even while next-token KL improves (`0.0250 → 0.0084`). The logit gain is therefore not yet shown to be mediated by restoring counterfactual state.
+   - `exact_decay` uses only scalar $\exp(\sum g)$, omitting the directional erase-projector product $\prod (I - \beta k k^\top)$ and upper-layer input dependence.
+   - All `8` cases repeat one unrelated filler sentence (zero dirty-cone interference), $\gamma$ was selected post hoc on the evaluation cases, the KV copy scales with surviving length (not $O(1)$ end-to-end), and no bf16/fp32 noise floor, correction-notice, or segment-tree baseline was run.
+2. **`W24-12` (`QSCCI` Multi-Layer Restoration) → Relabel as `exploratory, quantization-limited`:**
+   - `8` REPORT families with `1/64` quantization steps; `k=1` and `k=16` are identical to 4 decimals on both models while `k=4/8` dip non-monotonically; rank-1 uses the mean output gradient of the same Yes/No margin later scored; CAA loses by construction because REPORT inverts SELECT's tag nuisance.
+3. **`W24-09` (Flagship #1 Retrieval):**
+   - Individual Tango NI passed on `7/12` adaptive and `8/12` uniform domains; the `-0.0120` LCB95 is **pooled** over `1,865` queries on binary **`hit@10`** using a qrel-preferential corpus loader. Adaptive backfill is null vs uniform (`-0.003 pp`). The `+31–39 pp` `CSLS` lift needs a 2-parameter per-source affine calibration control to separate hubness from score-scale mismatch.
+4. **`W24-10b` (`PM-6` Gateway):**
+   - The NFKC-normalized 5-token span guard drove both `100%` TPR and all `3/250` sibling FPs (`ZeroMu` alone had `0/250` FP and `2.4–17.6%` TPR). At `1.2%` true FPR, `N_eval=500` has only ~28% power to clear `CP_UB95 <= 2.0%` (`<=4/500`); **`N_eval >= 2,000–3,000`** fresh source-disjoint benigns is required.
+5. **`W24-07` & `W24-11` (`T-Rs` / `EK5`):**
+   - `Theorem5_IncrementalWFS_CW1` assumes `AffectedClosed` and calls full-graph `gammaFast` intersected with the cone; runtime locality additionally needs a verified cone finder + sparse evaluator refinement. Folding `Theorem5` into `Spec.lean` requires versioning the SHA lock. SQLite cannot express WFS—true comparators are **XSB incremental tabling** and DuckDB/Postgres + DBSP Lean positioning.
+6. **`W24-08` (`T-D` $\lambda^*$):**
+   - `0.10` is the first passing grid point, where the primary harm-difference CI spans `[-0.0312, +0.0151]` (`strict_ci_crossover = null`). Treat `0.10` as a simulation-grid boundary, not a statistically located universal threshold.
+
+**Operating Rule:** Execute **Wave 25** (`W25-01`..`W25-06`) first. Do **not** launch 8K–32K `T-Rn` scale-ups (`W26-01`), `QSCCI × T-Rn` stacking (`W27-01`), or 3-node distributed revocation (`W27-02`) until their respective Wave 25 Gate-0 / Step-0 / `#62` prerequisites pass.
+
+---
+
+## 2. Wave 25 — Gate-0 Falsifiers, Claim Hygiene & Operational Closure
+
+| Wave ID | Prio | Title | Connects To | Compute / Node | Strongest Conventional Baseline | Sharpest Kill / Advance Criterion | Honest Tier |
+|---|---|---|---|---|---|---|---|
+| **`W25-01`** | P0 | **Wave 24 Operational PR Closure (`W24-04`)** | `W24-01..04`, `CD-W22-11-01`, `mlr-v1` | Local + Spark 2 CI (`$0`) | N/A (repo hygiene) | Push & land zero-cost Spark 2 CI (`f245d923`), canonical EK5 reason fix (`5b0b604b`), clean `mlr-v1` (`692b44aa`), `#368`/`#369`/`#376`; close `#295`. Keep merges, human audit, and partner trials distinct. | **Engineering Hygiene** |
+| **`W25-02`** | P0 | **`T-Rn` Gate 0: Noise Floor, State Alignment, Dict Audit & `n>=200` Dirty-Cone Falsifier** | `W24-13b`, `W22-09` | Desktop CPU + Spark 2 GB10 (`~2–4 h`) | KV-excise-only, appended correction notice, order-preserving affine segment tree, vLLM/optimized suffix replay | Measure bf16/fp32 KL noise floor; compute per-layer/head least-squares $\gamma^*$ & $\cos(\Delta, S_{\text{full}}-S_{\text{cf}})$; audit `recurrent_states` keys; run `n>=200` ($\ge 3$ templates, natural + dependent dirty-cone suffixes, $\gamma$ frozen on SELECT, unrelated-fact collateral KL). **Kill:** hybrid-minus-KV-only KL CI includes `0`, `<3×` noise floor, or correction notice matches it. | **Gate-0 Falsifier** |
+| **`W25-03`** | P0 | **`QSCCI` Step 0: Powered `fp32` Replication & Cross-Encoding Invariance** | `W24-12`, `#52` | RTX 3090 (fp32) + Spark 1 GB10 (`~4–6 h`) | Nuisance-balanced CAA, mean answer-gradient steering, supervised low-rank discriminant, DAS, attribution patching, full-site ceiling | Dump per-pair logits (diagnose `k=1 == k=16`); run `n>=200` family-disjoint pairs in fp32 (3 seeds, rank/layers frozen on SELECT, 2 non-Qwen families); freeze intervention and test reversed labels, randomized in-context answer codes, and free-form entity answers. **Kill:** balanced-CAA LCB95 $\le 0$, `<50%` ceiling, or sign reversal following original answer token. | **Gate-0 Falsifier / Publishable Paper** |
+| **`W25-04`** | P1 | **`#62` Pooled Agent Loops Re-Run on `W24-06` `29 ms` vLLM Fast-Path** | `#62`, `W24-06`, `EK5` | Spark 2 GB10 (`~2 h`) | Full restart/rebuild, conventional versioned ledger + retriever, sham-reopen control | Keep original `560 ms` arrival-to-completion SLA, queueing, retries, misses, and sham-reopen primary. Report end-to-end supersede recall including pre-filter misses. **Advance:** `8/8` gates PASS with positive on-time JPM LCB95 vs full restart and conventional arms. | **Product Moat / Gate for `W27-02`** |
+| **`W25-05`** | P1 | **`#48` HNSW Pushdown on Qrel-Independent Full Real Corpora** | `#48`, `D6`, `W24-09` | Spark 1 GB10 (`~3 h`) | Filterable HNSW + post-filter oversampling + CenteredProcrustes + uniform backfill | Freeze HNSW params on DEV; build $\ge 1$ full corpus independently of REPORT qrels; charge build, backfill, overfetch, CSLS, and exact fallbacks. **Advance:** served latency or cost win at matched `hit@10` **and** graded `nDCG@10` (per-domain + pooled). | **Product Moat** |
+| **`W25-06`** | P1 | **`PM-6` `W24-10b` `G6` Powered Calibration (`N>=2,000`) & Span-Guard Ablation** | `W24-10b`, `#53`, `D11` | Spark 1 & 2 GB10 (`~2 h`) | Normalized 5-token span guard alone (no embedding/gateway overhead) | Freeze threshold on DEV; evaluate on `N_eval >= 2,000` (target `3,000`) fresh source-disjoint sibling benigns (no peeking, source-clustered CIs). **Advance:** `CP_UB95 <= 2.0%` (`G6`) **and** combined gateway beats span guard alone on recall at matched FPR. | **Product Moat** |
+
+---
+
+## 3. Wave 26 — High-Upside Theory, Formal Verification & Core Expansions (Gated on Wave 25)
+
+| Wave ID | Prio | Title | Connects To | Compute / Node | Strongest Conventional Baseline | Sharpest Kill / Advance Criterion | Honest Tier |
+|---|---|---|---|---|---|---|---|
+| **`W26-01`** | P1 | **Retraction Half-Life Law, Operator-Exact Surgery & Minimum Retained-Bits Lower Bound** *(Merges Fable W26-01 + Astra W26-02)* | `W25-02`, `W24-13b`, `W22-09`, OpenAI `#140` | Gate A: Desktop CPU; Gate B: Spark 2 GB10 (`2–4 GPU-h`, conditional) | Order-preserving affine segment tree, optimized checkpoint/replay frontier, KV-excise-only at matched retained bytes | Prove lower bound on retained bits before retracted fact is known (for error $\le \varepsilon$) + constructive scheme within $\log$ factor; test true transition operator $\prod \alpha_t (I - \beta_t k_t k_t^\top)$ + certified-or-replay router up to `8K–32K` tokens. **Kill:** operator-exact surgery state L2 $\ge$ untouched on REPORT, or standard checkpoints attain the bound everywhere tested. **Advance:** $\ge 60\%$ certified at KL $\le 2\times$ noise floor and router beats lexical heuristic by $\ge 0.05$ AUROC. | **Breakthrough Candidate** *(≤5% odds if multi-layer cert non-vacuous; otherwise Publishable Paper)* |
+| **`W26-02`** | P1 | **Proof-Carrying `EK5` Updates & Verified Sparse Cone Refinement** *(Merges Astra W26-01 + Fable W26-02 + Lane B)* | `W24-11` (`Theorem5`), `EK5 v3`, `CITES_AUDIT`, `W26-01` | Local Lean 4 + `nanoda_bin`; Spark 3 CPU | **XSB incremental tabling** with stored justifications, DuckDB/Postgres CTEs, DBSP Lean comparison, authenticated graph diffs | Version `Spec.lean` SHA lock; prove verified cone finder + sparse evaluator refinement (`0 sorry`, `nanoda_bin`); emit root-bound update certificates for `{T, F, U}` + unfounded cycles. **Kill:** 1 accepted false certificate kills soundness. **Advance:** p95 verification work $\le 10\%$ of full rebuild on $\le 1\%$ localized edits, smaller receipts than baseline justifications, $10^6$ clean checkpoints. | **Publishable Paper** *(Strongest paper bet)* |
+| **`W26-03`** | P2 | **Value of the Next Provenance Check & Natural-Prevalence Real-Graph Cascades** *(Merges Astra W26-03 + Fable W26-06)* | `W24-08` ($\lambda^*$), `N3`, `EK5 v3`, `#64` | Spark 3 CPU (128 GB UMA, `$0`) | Bayes-optimal DP (small), copy-aware Bayesian ledger + greedy VoI (scale), one-hop retracted-ancestor heuristic, XSB tabling, DuckDB CTE | Freeze predicted buy/stop boundary before revealing 2 held-out topologies; run real-graph cascade benchmark on Retraction Watch/Crossref + OpenAlex (acyclic) and Wikipedia/news circular reporting (cyclic), reporting both raw cycle incidence and prevalence-weighted harm. **Kill:** one-hop heuristic ties within CI on held-out-year harm-coverage, estimated $\lambda < 0.10$ on both real corpora, or greedy VoI matches on held-out topologies. | **Publishable Paper + Product Moat** |
+| **`W26-04`** | P2 | **Hubness Law for Mixed/Quantized/Truncated Merges & Dynamic CSLS Maintenance Under Churn** *(Merges Fable W26-04 + Astra W26-04)* | `W24-09`, `#48`, `T-M` *(CenteredProcrustes only; no ZeroMu revival)* | Spark 1 & 3 GB10 + Desktop CPU | 2-param per-source affine calibration, QB-Norm / dynamic inverted softmax, DEV_ZScore, RRF, tuned periodic exact CSLS refresh | Test float32, int8, binary, and truncated regimes across $\ge 36$ cells; test time-ordered qrel-independent churn + query drift. **Kill:** affine calibration recovers $\ge 90\%$ of CSLS gain on $\ge 10/12$ domains, LOFO Spearman($k$-skew, gain) $< 0.6$, or tuned periodic refresh matches selective refresh within $2\times$ maintenance traffic. **Advance:** beats QB-Norm (`LCB95 > 0`, $\ge 8/12$ domains) and cuts churn maintenance traffic $\ge 2\times$ at $\text{nDCG@10 LCB} > -0.01$. | **Publishable Paper + Product Moat** |
+
+---
+
+## 4. Wave 27 — End-to-End Benchmarks, Adversarial Suites & Product Moats (Gated on Wave 25–26)
+
+| Wave ID | Prio | Title | Connects To | Compute / Node | Strongest Conventional Baseline | Sharpest Kill / Advance Criterion | Honest Tier |
+|---|---|---|---|---|---|---|---|
+| **`W27-01`** | P2 | **`RetractBench`: Dependency-Routed Neuro-Symbolic Retraction Under 5 Adversarial Leakage Probes** *(Merges Fable W26-03 + Lane A/C)* | `EK5` cascades, `W26-01`, `W25-03` (`QSCCI`), `#51` BEAM 128K, `W24-06` | Sparks 1–2 (models) + Spark 3 (vLLM), `1–2 d` | Volatile-tail prompt layout + automatic prefix caching, appended correction notice, delete-and-rebuild, LEACE erasure | Evaluate 5 probes (direct, paraphrase, multi-hop, hidden-state linear probe, extraction prompt); if `W25-03` survives, run paired `2×2` factorial for `QSCCI × T-Rn` synergy (requiring positive interaction LCB + unrelated-task preservation). **Kill:** volatile-tail matches gold leakage at $\le 2\times$ surgery latency; or LEACE matches probe-AUROC drop within `0.02` at equal collateral KL. **Advance:** within `1 pp` of gold on all 5 probes at $\le 0.5\times$ p95 latency. | **Publishable Paper + Product Moat** |
+| **`W27-02`** | P2 | **Epoch-Consistent Revocation Across the Distributed Serving Stack** *(Astra W26-05)* | `EK5`, `#48`, `#62` (`W25-04`), `PM-6` | 3 Sparks (separate services) + Desktop history checker | Transactional version ledger + retrieval/commit epoch fence + ordinary cache invalidation + cancel/restart | Fund only after `W25-04` (`#62`) establishes a live on-time baseline. Freeze contract for emitted bytes & concurrent requests; test delay/restart/partition schedules. **Kill:** 1 linearizability-violating post-ack emission. **Advance:** 0 violations + $\ge 20\%$ more correct on-time completions than fenced baseline at equal resources. | **Product Moat** *(Strongest product bet)* |
+| **`W27-03`** | P2 | **`PM-6` Adaptive Exfiltration Benchmark vs. Conventional Floor** *(Fable W26-07 + Lane C)* | `W24-10b`, `W25-06`, `W25-03` | Sparks 1–2 GB10 (`N>=2,000` fresh benigns) | Aho–Corasick over NFKC + UTS #39 confusable skeleton + fuzzy n-gram matcher; residual-stream linear probe for semantic arm | Attack with `<5`-token chunking, encodings, translation, and paraphrase; test donor-free white-box `QSCCI` arm only if `W25-03` passes. **Kill:** retire any learned/white-box arm failing to cut adaptive bypass by $\ge 10\text{ pp}$ at FPR $\le 1\%$ over the conventional stack; chunking bypass $>5\%$ reopens gates. | **Product Moat** |
+
+---
+
+## 5. Wave 28 — Human & External Partner Closure (Strictly Last)
+
+| Wave ID | Prio | Title | Owner | Acceptance Criterion |
+|---|---|---|---|---|
+| **`W28-01`** | P3 | **`PM-4b` Independent Human Audit (`W24-15`)** | Independent human grader (~6 hrs) | Complete `pm4_human_audit_100_blind_sheet.csv` without touching sealed key; lifts `PRE-RELEASE` on v6.0/v7.0. |
+| **`W28-02`** | P3 | **Outside Workload-Owner Trial (`W24-16`: `#63` Search or `#64` Records)** | External partner | Partner sets workload, natural prevalence, error prices, and ordinary comparator; advance only if quality/harm **and** full-cost bounds clear frozen margins. |
+
+---
+
+## 6. Permanently Closed / Parked Lanes (Do Not Re-Open Without a New Mechanism)
+
+`T-K` (cross-model KV transfer), `W22-08` / `T-A` (capture-recapture audit residual, K2 confirmed by blind coder `W24-14`), `D4`/`D9` GRPO (replicated null vs SFT), `IQ-01` (beaten by Frobenius norm), `IQ-03`/`IQ-05`/`IQ-06`/`IQ-07` (exact algebraic reductions / invalid battery), `ZeroMu` static/EMA bridge superiority over `CenteredProcrustes` (`W24-09`), PR #361 `#356/#359/#360`, and chelation correctors / H5 / Rung-15 GNN.
+
+---
+
+## 7. Delegate Audit Provenance
+
+- **Claude Fable 5.2 (High):** `thread:delegated-task:command%3Amcp%3Ad5533b7c-6ffd-42fc-9d49-a78f01204ac2%3Adelegate-task%3Awave25-plus-expansion-fable52-high-20261126`
+- **GPT-6.2 Astra (High):** `thread:delegated-task:command%3Amcp%3Ad5533b7c-6ffd-42fc-9d49-a78f01204ac2%3Adelegate-task%3Awave25-plus-expansion-astra62-high-20261126`

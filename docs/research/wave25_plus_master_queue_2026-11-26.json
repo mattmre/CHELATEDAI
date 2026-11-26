@@ -1,0 +1,237 @@
+{
+  "schema_version": "chelated_wave_queue_v2_0",
+  "queue_id": "wave25-plus-master-queue-2026-11-26",
+  "created_date": "2026-11-26",
+  "status": "QUEUED_NOT_EXECUTED",
+  "release_status": "PRE-RELEASE / HUMAN AUDIT & CLEAN-RERUN GATES PENDING",
+  "source_doc": "docs/research/wave25_plus_master_queue_2026-11-26.md",
+  "baseline_heads": {
+    "pv7_spine_wave24_complete": "ecc9f97a",
+    "method_dev": "65c9085c"
+  },
+  "panel_consensus": [
+    "gemini-4-neon (medium)",
+    "claude-fable-5-2 (high)",
+    "gpt-6.2-astra (high)"
+  ],
+  "delegate_receipts": {
+    "claude_fable_5_2_high": "thread:delegated-task:command%3Amcp%3Ad5533b7c-6ffd-42fc-9d49-a78f01204ac2%3Adelegate-task%3Awave25-plus-expansion-fable52-high-20261126",
+    "gpt_6_2_astra_high": "thread:delegated-task:command%3Amcp%3Ad5533b7c-6ffd-42fc-9d49-a78f01204ac2%3Adelegate-task%3Awave25-plus-expansion-astra62-high-20261126"
+  },
+  "policy": {
+    "github_paid_billing": "FORBIDDEN_FOREVER_ZERO_DOLLAR_ONLY",
+    "fleet": [
+      "spark1_gb10_128gb",
+      "spark2_gb10_128gb",
+      "spark3_gb10_128gb",
+      "desktop_rtx3090_24gb",
+      "colab_ultra_3030cu"
+    ],
+    "human_time": "STRICTLY_LAST_WAVE_28",
+    "brutal_honesty_rulebook": "v3.3",
+    "operating_rule": "Execute Wave 25 Gate-0 falsifiers and operational closures first. No 8K-32K T-Rn scale-up, QSCCI x T-Rn stacking, or 3-node distributed revocation opens until its Wave 25 gate clears."
+  },
+  "mandatory_relabelings": {
+    "W24-13b_T_Rn": "exploratory positive, n=8, mechanism unconfirmed (KV-only has lower state L2 0.1149 vs damped 0.1344; scalar decay omits erase projectors; single filler template)",
+    "W24-12_QSCCI": "exploratory, quantization-limited (n=8 REPORT families, 1/64 logit steps, k=1==k=16 anomaly, CAA nuisance-inversion by construction)",
+    "W24-09_Tango_NI": "pooled hit@10 NI over 1,865 queries with qrel-preferential corpus loader; individual passes 7/12 adaptive, 8/12 uniform; adaptive vs uniform null (-0.003 pp)",
+    "W24-08_lambda_star": "0.10 is first passing grid point; primary harm-diff CI [-0.0312, +0.0151], strict_ci_crossover=null"
+  },
+  "items": [
+    {
+      "id": "W25-01",
+      "wave": "Wave 25",
+      "priority": "P0",
+      "title": "Wave 24 Operational PR Closure (W24-04)",
+      "connects_to": ["W24-01", "W24-02", "W24-03", "W24-04", "CD-W22-11-01", "mlr-v1"],
+      "compute_node": ["desktop", "spark2_ci"],
+      "depends_on": [],
+      "status": "QUEUED_READY_FOR_OWNER_PUSH",
+      "strongest_conventional_baseline": "N/A (repository hygiene)",
+      "kill_advance_criterion": "Push and land zero-cost Spark 2 CI (f245d923), canonical EK5 reason fix (5b0b604b), clean mlr-v1 (692b44aa), #368/#369/#376; close #295. Keep merges, human audit, and partner trial distinct.",
+      "honest_tier": "Engineering Hygiene"
+    },
+    {
+      "id": "W25-02",
+      "wave": "Wave 25",
+      "priority": "P0",
+      "title": "T-Rn Gate 0: Noise Floor, State Alignment, Dict Audit & n>=200 Dirty-Cone Falsifier",
+      "connects_to": ["W24-13b", "W22-09"],
+      "compute_node": ["desktop_cpu", "spark2_gb10"],
+      "depends_on": [],
+      "status": "QUEUED",
+      "strongest_conventional_baseline": "KV-excise-only, appended correction notice, order-preserving affine segment tree, vLLM/optimized suffix replay",
+      "kill_advance_criterion": "Measure bf16/fp32 KL noise floor; compute per-layer/head least-squares gamma* and cos(Delta, S_full - S_cf); audit recurrent_states keys; run n>=200 (>=3 templates, natural + dependent dirty-cone suffixes, gamma frozen on SELECT, collateral KL). Kill if hybrid-minus-KV-only KL CI includes 0, <3x noise floor, or correction notice matches.",
+      "honest_tier": "Gate-0 Falsifier"
+    },
+    {
+      "id": "W25-03",
+      "wave": "Wave 25",
+      "priority": "P0",
+      "title": "QSCCI Step 0: Powered fp32 Replication & Cross-Encoding Invariance",
+      "connects_to": ["W24-12", "#52"],
+      "compute_node": ["desktop_rtx3090", "spark1_gb10"],
+      "depends_on": [],
+      "status": "QUEUED",
+      "strongest_conventional_baseline": "Nuisance-balanced CAA, mean answer-gradient steering, supervised low-rank discriminant, DAS, attribution patching, full-site ceiling",
+      "kill_advance_criterion": "Per-pair logit dump (diagnose k=1==k=16); n>=200 family-disjoint pairs in fp32 (3 seeds, rank/layers frozen on SELECT, 2 non-Qwen families); freeze intervention and test reversed labels, randomized in-context answer codes, and free-form entity answers. Kill if balanced-CAA LCB95 <= 0, <50% ceiling, or sign reversal follows original answer token.",
+      "honest_tier": "Gate-0 Falsifier / Publishable Paper"
+    },
+    {
+      "id": "W25-04",
+      "wave": "Wave 25",
+      "priority": "P1",
+      "title": "#62 Pooled Agent Loops Re-Run on W24-06 29 ms vLLM Fast-Path",
+      "connects_to": ["#62", "W24-06", "EK5"],
+      "compute_node": ["spark2_gb10"],
+      "depends_on": [],
+      "status": "QUEUED",
+      "strongest_conventional_baseline": "Full restart/rebuild, conventional versioned ledger + retriever, sham-reopen control",
+      "kill_advance_criterion": "Keep 560 ms arrival-to-completion SLA, queueing, retries, misses, and sham-reopen primary; report end-to-end supersede recall including pre-filter misses. Advance on 8/8 gates PASS with positive on-time JPM LCB95 vs full restart and conventional arms.",
+      "honest_tier": "Product Moat"
+    },
+    {
+      "id": "W25-05",
+      "wave": "Wave 25",
+      "priority": "P1",
+      "title": "#48 HNSW Pushdown on Qrel-Independent Full Real Corpora",
+      "connects_to": ["#48", "D6", "W24-09"],
+      "compute_node": ["spark1_gb10"],
+      "depends_on": [],
+      "status": "QUEUED",
+      "strongest_conventional_baseline": "Filterable HNSW + post-filter oversampling + CenteredProcrustes + uniform backfill",
+      "kill_advance_criterion": "Freeze HNSW params on DEV; build >=1 full corpus independently of REPORT qrels; charge build, backfill, overfetch, CSLS, and exact fallbacks. Advance only on served latency or cost win at matched hit@10 AND graded nDCG@10 (per-domain + pooled).",
+      "honest_tier": "Product Moat"
+    },
+    {
+      "id": "W25-06",
+      "wave": "Wave 25",
+      "priority": "P1",
+      "title": "PM-6 W24-10b G6 Powered Calibration (N>=2,000) & Span-Guard Ablation",
+      "connects_to": ["W24-10b", "#53", "D11"],
+      "compute_node": ["spark1_gb10", "spark2_gb10"],
+      "depends_on": [],
+      "status": "QUEUED",
+      "strongest_conventional_baseline": "Normalized 5-token span guard alone",
+      "kill_advance_criterion": "Freeze threshold on DEV; test on N_eval>=2,000 (target 3,000) fresh source-disjoint sibling benigns (no peeking, source-clustered CIs). Advance only if CP_UB95 <= 2.0% AND combined gateway beats span guard alone on recall at matched FPR.",
+      "honest_tier": "Product Moat"
+    },
+    {
+      "id": "W26-01",
+      "wave": "Wave 26",
+      "priority": "P1",
+      "title": "Retraction Half-Life Law, Operator-Exact Surgery & Minimum Retained-Bits Lower Bound",
+      "connects_to": ["W25-02", "W24-13b", "W22-09", "openai-math-#140"],
+      "compute_node": ["desktop_cpu", "spark2_gb10"],
+      "depends_on": ["W25-02"],
+      "status": "QUEUED_CONDITIONAL",
+      "strongest_conventional_baseline": "Order-preserving affine segment tree, optimized checkpoint/replay frontier, KV-excise-only at matched retained bytes",
+      "kill_advance_criterion": "Prove retained-bits lower bound before fact identity is known + log-factor construction; test true transition operator prod alpha_t(I - beta_t k_t k_t^T) + certified-or-replay router up to 8K-32K tokens. Kill if operator-exact surgery state L2 >= untouched on REPORT or standard checkpoints attain bound everywhere tested. Advance if >=60% certified at KL <= 2x noise floor and router beats lexical heuristic by >=0.05 AUROC.",
+      "honest_tier": "Breakthrough Candidate"
+    },
+    {
+      "id": "W26-02",
+      "wave": "Wave 26",
+      "priority": "P1",
+      "title": "Proof-Carrying EK5 Updates & Verified Sparse Cone Refinement",
+      "connects_to": ["W24-11", "Theorem5_IncrementalWFS_CW1", "EK5_v3", "CITES_AUDIT", "W26-01"],
+      "compute_node": ["desktop_lean4", "spark3_cpu"],
+      "depends_on": [],
+      "status": "QUEUED",
+      "strongest_conventional_baseline": "XSB incremental tabling with stored justifications, DuckDB/Postgres recursive CTEs, DBSP Lean comparison, authenticated graph diffs",
+      "kill_advance_criterion": "Version Spec.lean SHA lock; prove verified cone finder + sparse evaluator refinement (0 sorry, nanoda_bin); emit root-bound update certificates for {T, F, U} + unfounded cycles. One accepted false certificate kills soundness. Advance if p95 verification work <=10% of full rebuild on <=1% localized edits, smaller receipts than baseline justifications, and 10^6 clean checkpoints.",
+      "honest_tier": "Publishable Paper"
+    },
+    {
+      "id": "W26-03",
+      "wave": "Wave 26",
+      "priority": "P2",
+      "title": "Value of the Next Provenance Check & Natural-Prevalence Real-Graph Cascades",
+      "connects_to": ["W24-08", "T-D", "N3", "EK5_v3", "#64"],
+      "compute_node": ["spark3_cpu"],
+      "depends_on": [],
+      "status": "QUEUED",
+      "strongest_conventional_baseline": "Bayes-optimal DP (small), copy-aware Bayesian ledger + greedy VoI (scale), one-hop retracted-ancestor heuristic, XSB tabling, DuckDB CTE",
+      "kill_advance_criterion": "Freeze buy/stop boundary before revealing 2 held-out topologies; run Retraction Watch/Crossref + OpenAlex (acyclic) and Wikipedia/news circular reporting (cyclic), reporting raw cycle incidence and prevalence-weighted harm. Kill if one-hop heuristic ties within CI on held-out-year harm-coverage, estimated lambda < 0.10 on both real corpora, or greedy VoI matches on held-out topologies.",
+      "honest_tier": "Publishable Paper + Product Moat"
+    },
+    {
+      "id": "W26-04",
+      "wave": "Wave 26",
+      "priority": "P2",
+      "title": "Hubness Law for Mixed/Quantized/Truncated Merges & Dynamic CSLS Maintenance Under Churn",
+      "connects_to": ["W24-09", "#48", "T-M"],
+      "compute_node": ["spark1_gb10", "spark3_gb10", "desktop_cpu"],
+      "depends_on": ["W25-05"],
+      "status": "QUEUED",
+      "strongest_conventional_baseline": "2-param per-source affine calibration, QB-Norm / dynamic inverted softmax, DEV_ZScore, RRF, tuned periodic exact CSLS refresh (CenteredProcrustes only; no ZeroMu revival)",
+      "kill_advance_criterion": "Test float32, int8, binary, and truncated regimes across >=36 cells plus time-ordered qrel-independent churn. Kill if affine calibration recovers >=90% of CSLS gain on >=10/12 domains, LOFO Spearman(k-skew, gain) < 0.6, or periodic refresh matches selective refresh within 2x maintenance traffic. Advance if beats QB-Norm (LCB95 > 0, >=8/12 domains) and cuts churn maintenance >=2x at nDCG@10 LCB > -0.01.",
+      "honest_tier": "Publishable Paper + Product Moat"
+    },
+    {
+      "id": "W27-01",
+      "wave": "Wave 27",
+      "priority": "P2",
+      "title": "RetractBench: Dependency-Routed Neuro-Symbolic Retraction Under 5 Adversarial Leakage Probes",
+      "connects_to": ["EK5", "W26-01", "W25-03", "#51", "W24-06"],
+      "compute_node": ["spark1_gb10", "spark2_gb10", "spark3_gb10"],
+      "depends_on": ["W25-02", "W26-01"],
+      "status": "QUEUED_CONDITIONAL",
+      "strongest_conventional_baseline": "Volatile-tail prompt layout + automatic prefix caching, appended correction notice, delete-and-rebuild, LEACE erasure",
+      "kill_advance_criterion": "Score direct, paraphrase, multi-hop, hidden-state linear-probe, and extraction-prompt leakage; run paired 2x2 QSCCI x T-Rn factorial only if W25-03 passes (requiring positive interaction LCB). Kill if volatile-tail matches gold leakage at <=2x surgery latency or LEACE matches probe-AUROC drop within 0.02 at equal collateral KL. Advance if within 1 pp of gold on all 5 probes at <=0.5x p95 latency.",
+      "honest_tier": "Publishable Paper + Product Moat"
+    },
+    {
+      "id": "W27-02",
+      "wave": "Wave 27",
+      "priority": "P2",
+      "title": "Epoch-Consistent Revocation Across the Distributed Serving Stack",
+      "connects_to": ["EK5", "#48", "#62", "PM-6"],
+      "compute_node": ["spark1_gb10", "spark2_gb10", "spark3_gb10", "desktop_checker"],
+      "depends_on": ["W25-04"],
+      "status": "QUEUED_CONDITIONAL",
+      "strongest_conventional_baseline": "Transactional version ledger + retrieval/commit epoch fence + ordinary cache invalidation + cancel/restart",
+      "kill_advance_criterion": "Freeze contract for emitted bytes and concurrent requests; test delay/restart/partition schedules. One linearizability-violating post-ack emission kills consistency. Advance on 0 violations AND >=20% more correct on-time completions than fenced baseline at equal resources.",
+      "honest_tier": "Product Moat"
+    },
+    {
+      "id": "W27-03",
+      "wave": "Wave 27",
+      "priority": "P2",
+      "title": "PM-6 Adaptive Exfiltration Benchmark vs. Conventional Floor",
+      "connects_to": ["W24-10b", "W25-06", "W25-03"],
+      "compute_node": ["spark1_gb10", "spark2_gb10"],
+      "depends_on": ["W25-06"],
+      "status": "QUEUED_CONDITIONAL",
+      "strongest_conventional_baseline": "Aho-Corasick over NFKC + UTS #39 confusable skeleton + fuzzy n-gram matcher; residual-stream linear probe",
+      "kill_advance_criterion": "Test <5-token chunking, encodings, translation, and paraphrase on >=2,000 fresh benigns. Retire any learned/white-box arm failing to cut adaptive bypass by >=10 pp at FPR <=1% over conventional stack; chunking bypass >5% reopens gates.",
+      "honest_tier": "Product Moat"
+    },
+    {
+      "id": "W28-01",
+      "wave": "Wave 28",
+      "priority": "P3_HUMAN_LAST",
+      "title": "PM-4b Independent Human Audit (W24-15)",
+      "connects_to": ["PM-4b", "v6.0", "v7.0"],
+      "compute_node": ["human_assessor"],
+      "depends_on": [],
+      "status": "QUEUED_HUMAN_LAST",
+      "strongest_conventional_baseline": "N/A (human governance gate)",
+      "kill_advance_criterion": "Independent human grader completes pm4_human_audit_100_blind_sheet.csv without touching sealed key; clears sole remaining human gate blocking PRE-RELEASE lift.",
+      "honest_tier": "Release Governance"
+    },
+    {
+      "id": "W28-02",
+      "wave": "Wave 28",
+      "priority": "P3_HUMAN_LAST",
+      "title": "Outside Workload-Owner Trial (W24-16: #63 Search or #64 Records)",
+      "connects_to": ["#63", "#64", "W25-01", "W25-04", "W25-05", "W28-01"],
+      "compute_node": ["external_partner"],
+      "depends_on": ["W25-01", "W28-01"],
+      "status": "QUEUED_HUMAN_LAST",
+      "strongest_conventional_baseline": "Partner-selected incumbent or ordinary versioned ledger / CenteredProcrustes+CSLS comparator",
+      "kill_advance_criterion": "Partner controls data, prevalence, error pricing, and ordinary comparator; advance only if quality/harm AND full-cost bounds clear frozen margins.",
+      "honest_tier": "Commercial Proof"
+    }
+  ]
+}
