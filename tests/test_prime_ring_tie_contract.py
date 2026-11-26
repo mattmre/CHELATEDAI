@@ -1,5 +1,6 @@
 import math
 import unittest
+from unittest import mock
 
 import numpy as np
 
@@ -13,6 +14,7 @@ from prime_ring_tie_contract_audit import (
     _states,
     run_audit,
 )
+import run_prime_ring_waypoint_experiment as waypoint
 from run_prime_ring_waypoint_experiment import (
     FFT_INTEGER_ROUNDING_CEILING,
     CampaignValidationError,
@@ -158,15 +160,41 @@ class TestNumericalTieContract(unittest.TestCase):
         with self.assertRaises(CampaignValidationError):
             _decode_independent_layers(correlations)
 
-    def test_residual_above_bound_fails_closed(self):
+    def test_near_bipolar_reference_fails_closed(self):
+        # Entries 1.2 / 0.8 are within 0.25 of +/-1 and an all-ones query gives
+        # integer counts, so only the exact snapped-spectrum check refuses it.
+        length = 31
+        templates, _masks = _bank(length)
+        references = templates.astype(np.float64).copy()
+        references[0, 0, 0] *= 1.2
+        references[0, 0, 1] *= 0.8
+        reference_ffts = np.fft.rfft(references, axis=2)
+        reference_norms = np.full(references.shape[:2], math.sqrt(length))
+        with self.assertRaisesRegex(CampaignValidationError, "bipolar"):
+            _correlation_bank(np.ones((8, length)), reference_ffts, reference_norms, length)
+
+    def test_reference_shifted_within_entrywise_tolerance_fails_closed(self):
+        # +2.2 on the DC bin moves every reference entry by 0.2: an entrywise
+        # tolerance would admit it, the snapped-spectrum check must not.
         templates, _masks = _bank(11)
         reference_ffts = np.fft.rfft(templates, axis=2).copy()
         reference_norms = np.linalg.norm(templates, axis=2)
-        # +2.2 on the DC bin moves each reference entry by 0.2 (still within the
-        # entrywise +/-1 guard) and each all-ones count by 2.2 (residual 0.2).
         reference_ffts[0, 0, 0] += 2.2
-        with self.assertRaisesRegex(CampaignValidationError, "residual"):
+        with self.assertRaisesRegex(CampaignValidationError, "bipolar"):
             _correlation_bank(np.ones((8, 11)), reference_ffts, reference_norms, 11)
+
+    def test_residual_above_bound_fails_closed(self):
+        # With valid bipolar inputs the residual guard is reachable only when
+        # the FFT error exceeds the declared bound; force that by declaring a
+        # bound of zero (the snapped-spectrum check still passes exactly,
+        # because the cached spectrum is rfft of the bipolar layers).
+        templates, _masks = _bank(31)
+        reference_ffts = np.fft.rfft(templates, axis=2)
+        reference_norms = np.linalg.norm(templates, axis=2)
+        query = np.random.default_rng(3).choice(np.array([-1.0, 1.0]), size=(8, 31))
+        with mock.patch.object(waypoint, "fft_integer_rounding_bound", return_value=0.0):
+            with self.assertRaisesRegex(CampaignValidationError, "residual"):
+                _correlation_bank(query, reference_ffts, reference_norms, 31)
 
     def test_free256_and_independent_paths_rank_exact_integers(self):
         templates, masks = _bank(19)

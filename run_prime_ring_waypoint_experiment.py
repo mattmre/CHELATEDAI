@@ -16,25 +16,33 @@ Numerical-tie contract (``PRW-NUMERICAL-TIE-CONTRACT-001``)
 The dense carrier scorer ranks exact integers, never raw float FFT output.
 
 1. Scope.  Query and reference carriers must be bipolar (every entry +/-1).
-   The query is checked directly; each reference layer is reconstructed from
-   its cached spectrum (inverse rfft) and every entry must be within ``0.25``
-   of ``+/-1``, and its squared norm must be ``L``.  Anything else fails
-   closed with :class:`CampaignValidationError`.
+   The query is checked directly (every entry exactly ``+/-1``).  Each
+   reference layer is reconstructed from its cached spectrum (inverse rfft)
+   and snapped to the sign pattern ``r_snap = sign(r)``; the cached spectrum
+   must then equal ``rfft(r_snap)`` to within the declared bound of item 3, so
+   the layer that is actually scored is the exact bipolar ``r_snap`` (a layer
+   with entries such as ``1.2`` / ``0.8`` differs from its snap by at least
+   ``0.2`` in some spectral coefficient, by Parseval, and is refused).  The
+   separately passed reference norms must also equal ``sqrt(L)``.  Anything
+   else fails closed with :class:`CampaignValidationError`.
    Every campaign query (planted, bit-flipped, non-cyclic, unrelated) and
    every Legendre/Rademacher template is bipolar.
 2. Exact quantity.  For bipolar layers the cyclic correlation count
    ``c = sum_x q[x] r[x - s]`` is an integer with ``|c| <= L`` and
    ``c == L (mod 2)``; Hamming distance is ``(L - c) / 2`` per layer.
 3. Declared float error bound.  With unit roundoff ``u = 2**-53`` and
-   ``t = ceil(log2(2L - 1))`` (the power-of-two Bluestein size NumPy's
-   pocketfft uses for prime ``L``), the computed rfft/irfft correlation obeys
+   ``t = ceil(log2(2L - 1))``, the computed rfft/irfft correlation obeys
    ``|c_hat - c| <= ||c_hat - c||_2 <= K * t * u * sqrt(L) * ||q||_2 *
    ||r||_2 = K * t * u * L**1.5``.  The ``t * u`` per-transform relative
    factor is the standard FFT bound (Higham, *Accuracy and Stability of
    Numerical Algorithms*, 2nd ed., Thm. 24.2); ``K = 64`` is a declared
    conservative constant covering the forward/forward/inverse composition,
    Bluestein's inner transforms, the spectral product, and twiddle error.  It
-   is not a tight theorem about pocketfft.  At the campaign ceiling
+   is not a tight theorem about pocketfft.  ``t`` is a declared upper bound
+   on transform depth, not a description of pocketfft's plan: pocketfft pads
+   a Bluestein convolution to its smallest 2/3/5/7/11-smooth ``good_size``,
+   which is at most ``2**t``, and uses no Bluestein step at all for smooth
+   ``L`` such as ``4096``.  At the campaign ceiling
    ``L = 4691`` the bound is about ``3.2e-8``; residuals observed at
    ``L in {4091, 4096, 4691}`` were below ``1e-12``.
 4. Exact recovery.  The bound must be below ``0.25`` (half of the one-half
@@ -831,9 +839,10 @@ def fft_integer_rounding_bound(length: int) -> float:
 
     See ``PRW_NUMERICAL_TIE_CONTRACT_ID`` in the module docstring.  The bound
     is ``K * t * u * sqrt(L) * ||q||_2 * ||r||_2`` with ``||q||_2 * ||r||_2 =
-    L`` for bipolar layers, ``u = 2**-53``, ``t`` the log2 size of the
-    smallest power of two holding a length-``2L - 1`` Bluestein convolution,
-    and the declared conservative constant ``K = 64``.
+    L`` for bipolar layers, ``u = 2**-53``, ``t = ceil(log2(2L - 1))`` a
+    declared upper bound on transform depth (pocketfft's own plan pads to a
+    smooth ``good_size <= 2**t``, or needs no padding), and the declared
+    conservative constant ``K = 64``.
     """
 
     ring = _plain_int(length, "length", minimum=1)
@@ -879,18 +888,39 @@ def _exact_bipolar_correlation_counts(
         raise CampaignValidationError(
             "numerical-tie contract requires bipolar (+/-1) reference layers"
         )
-    # The norm alone admits non-bipolar integer layers (e.g. [5, 2, 1, 1, 0...]
-    # at L = 31), so check the entries themselves from the cached spectrum.
-    reference_ffts = np.asarray(reference_ffts)
-    reconstructed = np.fft.irfft(reference_ffts, n=length, axis=-1)
-    if not np.all(np.abs(np.abs(reconstructed) - 1.0) <= 0.25):
-        raise CampaignValidationError(
-            "numerical-tie contract requires bipolar (+/-1) reference layers"
-        )
     bound = fft_integer_rounding_bound(length)
     if not bound < FFT_INTEGER_ROUNDING_CEILING:
         raise CampaignValidationError(
             "declared FFT rounding bound is too loose for exact integer recovery"
+        )
+    # The norm alone admits non-bipolar integer layers (e.g. [5, 2, 1, 1, 0...]
+    # at L = 31), and an entrywise tolerance alone admits layers such as
+    # 1.2 / 0.8.  Snap the reconstructed layer to its sign pattern and require
+    # the cached spectrum to BE the spectrum of that exact bipolar layer.
+    reference_ffts = np.asarray(reference_ffts)
+    if (
+        reference_ffts.ndim != 3
+        or reference_ffts.shape[1] != query.shape[0]
+        or reference_ffts.shape[2] != length // 2 + 1
+    ):
+        raise CampaignValidationError("reference spectra violate bank contract")
+    reconstructed = np.fft.irfft(reference_ffts, n=length, axis=-1)
+    if not np.all(np.isfinite(reconstructed)):
+        raise CampaignValidationError("reference spectra contain non-finite values")
+    snapped = np.where(reconstructed >= 0.0, 1.0, -1.0)
+    del reconstructed
+    spectrum_error = (
+        float(np.max(np.abs(np.fft.rfft(snapped, axis=-1) - reference_ffts)))
+        if snapped.size
+        else 0.0
+    )
+    del snapped
+    if not spectrum_error <= bound:
+        raise CampaignValidationError(
+            "numerical-tie contract requires bipolar (+/-1) reference layers "
+            "(cached spectrum differs from its snapped bipolar layer by {})".format(
+                spectrum_error
+            )
         )
     query_fft = np.fft.rfft(query, axis=1)
     products = query_fft[np.newaxis, :, :] * np.conjugate(reference_ffts)
@@ -3419,12 +3449,22 @@ def _resource_accounting(
         if decoder_policy == "free256"
         else type_count * mask_count * length * 8
     )
-    # The numerical-tie contract keeps one int64 count bank beside the float
-    # correlation bank.
+    # The numerical-tie contract keeps, simultaneously live with the raw float
+    # correlation bank: the reconstructed reference bank (and its snapped
+    # copy, which is freed before the next is built, so one bank is counted
+    # plus its rfft spectrum), the rounded float count bank, and the int64
+    # count bank.
     exact_count_bytes = type_count * layers * length * 8
+    reference_check_bytes = (
+        type_count * layers * length * 8
+        + type_count * layers * frequency_bins * 16
+    )
+    rounded_float_count_bytes = type_count * layers * length * 8
     estimated_peak_decoder_bytes = (
         correlation_bytes
         + exact_count_bytes
+        + reference_check_bytes
+        + rounded_float_count_bytes
         + query_fft_bytes
         + products_bytes
         + objective_bytes
