@@ -11,7 +11,26 @@
   - Total runtime 630.8 s (A 115.7 s, B 422.4 s, C 79.4 s, Crouzeix 13.3 s).
   - CPU only: Python 3.11.9, numpy 2.4.5, Windows 11.
 
-## Verdict: KILLED (proposed; Tier B review not yet done)
+## Verdict: KILLED (proposed; Tier B round 1 scored 85, important)
+
+**Corrected framing after Tier B round 1.**
+- **K2 on #60 carries the verdict.** A fresh reviewer re-ran Part A three times. The B-FLAT/treatment latency ratio
+  was 0.59, 0.39 and 0.41 at N = 16, and 0.78, 0.77 and 0.71 at N = 32, so K2 fired every time. Absolute latencies
+  were about 3× lower than in the reported run, which points to a loaded machine during that run. Limit 2's claim
+  that N = 16 "would plausibly flip" was wrong in direction. The result is robust, but close to tautological: replay
+  matches replay, as the preregistration predicted.
+- **The two K1 firings below are a certificate-coverage gap and a semantics note.** Neither is a way for a bundle to
+  serve a wrong answer.
+  - **`P51-DIGEST` cannot produce a wrong answer in #51.** #51 scores its answers from `inc_store`
+    (`chelated_beam_128k_replay.py:891`), not from the resumed store. The replay feeds back the same turn objects
+    (`:872`, `:879`), and an untampered control gives 0/20 differing answers. The checkpoint restore is separately
+    checked by `tra1_state_digest`, whose rows do include `claim_value` (`:721-734`, `:783-786`). What the probe
+    shows is that the `checkpoint_replay_exact` *metric* is weaker evidence than its name suggests. It collides two
+    different input histories through the digest, and it involves no retraction.
+  - **`PEK5-ASOF` fires only under the bitemporal reading.** The preregistration defines deletion as "the state that
+    would exist had item `k` never been in the history", and under that definition H1 = ADMIT is exact. The firing
+    depends on the dated-event reading the probe adopted.
+- **The K1 bullets that follow are the original text.** Read them with the framing above.
 
 - **K1 fires on a path the bundle uses.**
   - #51 certifies checkpoint-replay exactness by canonical-digest equality (`chelated_beam_128k_replay.py:885`).
@@ -253,10 +272,13 @@ The item as titled cannot be run. No compressed neural state from which an item 
 Transient growth:
 
 - **The non-normal transitions show `‖A^n‖` up to 6.1e7 while ρ = 0.9.** The spectral radius gives no usable bound
-  on retraction error amplification; the numerical range does.
+  on retraction error amplification.
+  - The numerical range does not give a usable bound here either. This sentence was corrected after Tier B round 1.
+  - The radius is w(A) ≈ 1.99 to 2.27, so ‖Aⁿ‖ ≤ 2.414·wⁿ grows like 2ⁿ and is vacuous for large n.
 - **Normal matrices sit at a ratio of exactly 1.000, as theory requires.**
-- **This is the quantitative reason INV fails on non-normal regimes.** `Φ(T,k)` is a product of transitions whose
-  W-radius exceeds 1 (w ≈ 1.9 to 2.5) even though ρ < 1.
+- **This is suggestive, not a proof, that INV fails on non-normal regimes.** `Φ(T,k)` is a product of different
+  transitions, each with W-radius above 1. Crouzeix's theorem applies to a single matrix, so it does not carry over to
+  these time-varying products.
 
 ## Limits
 
@@ -264,9 +286,12 @@ Transient growth:
    stand-in; it is not #51, #60 or #62 code.
 2. **#60 latencies are disk-write dominated and noisy.**
    - p90/median is up to 2.7 (B-FLAT, N = 16), with one measurement per deletion as preregistered.
-   - The N = 16 K2 firing (1.067× vs the 1.10 threshold) would plausibly flip on a re-run.
-   - N = 32 (0.93×) is less marginal.
-   - The verdict does not rest on it, because K1 fires independently.
+   - This run's N = 16 K2 firing was 1.067× against the 1.10 threshold. Tier B round 1's three re-runs gave
+     0.39–0.59× at N = 16 and 0.71–0.78× at N = 32, so the firing is robust. The reported run was slow, probably
+     because the machine was loaded.
+   - The verdict rests on this K2 leg. The K1 legs are a coverage gap and a semantics note (see Verdict).
+   - The Part B table is labelled "#51/#62", but `withdraw_attestation_ids` has 0 hits in either bundle. The
+     treatment is the shared store's native API, not the bundles' own path.
 3. **#60 runs a tiny 2-layer, d = 16, float64 numpy model with absolute positions (a floor-tier mechanism, as the
    bundle itself discloses).** The 100% dirty-cone result depends on absolute positions. A RoPE model would also have
    every suffix row dirty through attention in layer ≥ 1, but layer-0 K/V could differ.
@@ -369,8 +394,20 @@ Nothing was deleted.
   - #62's own store configuration was not exercised;
   - the runner's Part A orchestration has no unit test;
   - the Crouzeix LTI matrix is not the Part C draw (D3).
-- `BHS_TIER_B`: not run (pending a fresh adversarial reviewer).
-- `BHS_OFFICIAL`: pending.
+- **`BHS_TIER_B: 85` (important).** The reviewer was fresh agent `a44533c80b1ac471f`. Re-check output is in
+  `C:\Users\mattm\AppData\Local\Temp\claude\439e695c92b40043\c9f4318c-455f-427a-844a-07562a0a3c42\scratchpad\tierb_w22_09\out`.
+  It found:
+  - K1 `P51-DIGEST` was framed as a bundle-path break when it is a metric-coverage gap;
+  - `PEK5-ASOF` contradicts the preregistration's own definition of deletion;
+  - the N = 16 noise hedge pointed the wrong way;
+  - the Crouzeix prose overclaimed;
+  - the Part B "#51/#62" label was misleading.
+
+  All of these are corrected above. It confirmed:
+  - the preregistration came first;
+  - the kill rule was applied as preregistered;
+  - the report numbers match the JSON.
+- `BHS_OFFICIAL: 85`.
 
 ## Reproduce
 
