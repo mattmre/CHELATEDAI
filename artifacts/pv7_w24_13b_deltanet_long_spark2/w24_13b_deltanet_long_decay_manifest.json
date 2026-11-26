@@ -1,0 +1,119 @@
+{
+  "claim_registry_sha256": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "elapsed_seconds": 60.04,
+  "exact_decay_hooks_attached": 18,
+  "experiment_id": "pv7_w24_13b_deltanet_long_decay_spark2",
+  "hardware_cohort": "spark2_gb10:NVIDIA GB10",
+  "model_id": "Qwen/Qwen3.5-2B-Base",
+  "results_by_suffix_length": [
+    {
+      "arms": {
+        "hybrid_deltanet_exact_decay_plus_kv": {
+          "mean_kl_vs_cf": 0.0151,
+          "mean_op_ms": 10.21,
+          "mean_recovery_frac": 1.0699,
+          "mean_state_rel_l2_after": 0.15361,
+          "speedup_vs_replay": 15.07
+        },
+        "hybrid_deltanet_g0.25_plus_kv": {
+          "mean_kl_vs_cf": 0.0162,
+          "mean_op_ms": 10.19,
+          "mean_recovery_frac": 0.9162,
+          "mean_state_rel_l2_after": 0.13917,
+          "speedup_vs_replay": 15.11
+        },
+        "hybrid_deltanet_g0.5_plus_kv": {
+          "mean_kl_vs_cf": 0.0142,
+          "mean_op_ms": 10.05,
+          "mean_recovery_frac": 1.0049,
+          "mean_state_rel_l2_after": 0.18765,
+          "speedup_vs_replay": 15.32
+        },
+        "kv_excise_only": {
+          "mean_kl_vs_cf": 0.0362,
+          "mean_op_ms": 12.89,
+          "mean_recovery_frac": 0.8308,
+          "mean_state_rel_l2_after": 0.13508,
+          "speedup_vs_replay": 11.94
+        }
+      },
+      "mean_exact_decay_factor": 0.3377,
+      "mean_exact_replay_ms": 153.92,
+      "stale_mean_kl_vs_cf": 1.1256,
+      "suffix_tokens": 325
+    },
+    {
+      "arms": {
+        "hybrid_deltanet_exact_decay_plus_kv": {
+          "mean_kl_vs_cf": 0.0218,
+          "mean_op_ms": 10.18,
+          "mean_recovery_frac": 1.0733,
+          "mean_state_rel_l2_after": 0.14422,
+          "speedup_vs_replay": 25.34
+        },
+        "hybrid_deltanet_g0.25_plus_kv": {
+          "mean_kl_vs_cf": 0.0104,
+          "mean_op_ms": 10.09,
+          "mean_recovery_frac": 0.9237,
+          "mean_state_rel_l2_after": 0.13654,
+          "speedup_vs_replay": 25.58
+        },
+        "hybrid_deltanet_g0.5_plus_kv": {
+          "mean_kl_vs_cf": 0.0259,
+          "mean_op_ms": 10.01,
+          "mean_recovery_frac": 1.0323,
+          "mean_state_rel_l2_after": 0.19495,
+          "speedup_vs_replay": 25.76
+        },
+        "kv_excise_only": {
+          "mean_kl_vs_cf": 0.0282,
+          "mean_op_ms": 9.08,
+          "mean_recovery_frac": 0.8188,
+          "mean_state_rel_l2_after": 0.12309,
+          "speedup_vs_replay": 28.4
+        }
+      },
+      "mean_exact_decay_factor": 0.3015,
+      "mean_exact_replay_ms": 257.99,
+      "stale_mean_kl_vs_cf": 1.0831,
+      "suffix_tokens": 1027
+    },
+    {
+      "arms": {
+        "hybrid_deltanet_exact_decay_plus_kv": {
+          "mean_kl_vs_cf": 0.0183,
+          "mean_op_ms": 10.25,
+          "mean_recovery_frac": 1.0652,
+          "mean_state_rel_l2_after": 0.13656,
+          "speedup_vs_replay": 41.02
+        },
+        "hybrid_deltanet_g0.25_plus_kv": {
+          "mean_kl_vs_cf": 0.0084,
+          "mean_op_ms": 9.91,
+          "mean_recovery_frac": 0.9365,
+          "mean_state_rel_l2_after": 0.13437,
+          "speedup_vs_replay": 42.44
+        },
+        "hybrid_deltanet_g0.5_plus_kv": {
+          "mean_kl_vs_cf": 0.026,
+          "mean_op_ms": 10.07,
+          "mean_recovery_frac": 1.0427,
+          "mean_state_rel_l2_after": 0.19853,
+          "speedup_vs_replay": 41.76
+        },
+        "kv_excise_only": {
+          "mean_kl_vs_cf": 0.025,
+          "mean_op_ms": 9.07,
+          "mean_recovery_frac": 0.8406,
+          "mean_state_rel_l2_after": 0.11493,
+          "speedup_vs_replay": 46.34
+        }
+      },
+      "mean_exact_decay_factor": 0.2777,
+      "mean_exact_replay_ms": 420.5,
+      "stale_mean_kl_vs_cf": 1.2183,
+      "suffix_tokens": 2053
+    }
+  ],
+  "timestamp_utc": "2026-11-26T14:34:48.447023+00:00"
+}
