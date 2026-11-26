@@ -1,0 +1,90 @@
+{
+  "arms": {
+    "combined_distinctive_span_plus_semantic": {
+      "arm": "combined_distinctive_span_plus_semantic",
+      "clean_verbatim_tpr": 0.995,
+      "n_eval_sib": 3000,
+      "nonverbatim_paraphrase_tpr": 0.015,
+      "passes_g6_cluster_ub95_le_2pct": true,
+      "passes_g6_cp_ub95_le_2pct": true,
+      "r2b_nfkc_bypass_rate": 0.005,
+      "r2b_raw_bypass_rate": 0.995,
+      "sib_cluster_ub95": 0.005,
+      "sib_cp_ub95": 0.003501,
+      "sib_fp": 5,
+      "sib_fpr": 0.001667
+    },
+    "semantic_zeromu_rcps_only": {
+      "arm": "semantic_zeromu_rcps_only",
+      "clean_verbatim_tpr": 0.07,
+      "n_eval_sib": 3000,
+      "nonverbatim_paraphrase_tpr": 0.015,
+      "passes_g6_cluster_ub95_le_2pct": true,
+      "passes_g6_cp_ub95_le_2pct": true,
+      "r2b_nfkc_bypass_rate": 0.93,
+      "r2b_raw_bypass_rate": 1.0,
+      "sib_cluster_ub95": 0.004,
+      "sib_cp_ub95": 0.003049,
+      "sib_fp": 4,
+      "sib_fpr": 0.001333
+    },
+    "span_guard_distinctive_idf_only": {
+      "arm": "span_guard_distinctive_idf_only",
+      "clean_verbatim_tpr": 0.995,
+      "n_eval_sib": 3000,
+      "nonverbatim_paraphrase_tpr": 0.0,
+      "passes_g6_cluster_ub95_le_2pct": true,
+      "passes_g6_cp_ub95_le_2pct": true,
+      "r2b_nfkc_bypass_rate": 0.005,
+      "r2b_raw_bypass_rate": 0.995,
+      "sib_cluster_ub95": 0.001,
+      "sib_cp_ub95": 0.00158,
+      "sib_fp": 1,
+      "sib_fpr": 0.000333
+    },
+    "span_guard_raw_5tok_only": {
+      "arm": "span_guard_raw_5tok_only",
+      "clean_verbatim_tpr": 1.0,
+      "n_eval_sib": 3000,
+      "nonverbatim_paraphrase_tpr": 0.0,
+      "passes_g6_cluster_ub95_le_2pct": false,
+      "passes_g6_cp_ub95_le_2pct": false,
+      "r2b_nfkc_bypass_rate": 0.0,
+      "r2b_raw_bypass_rate": 1.0,
+      "sib_cluster_ub95": 0.035333,
+      "sib_cp_ub95": 0.029851,
+      "sib_fp": 74,
+      "sib_fpr": 0.024667
+    }
+  },
+  "claim_registry_sha256": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "elapsed_seconds": 402.01,
+  "experiment_id": "pv7_w25_06_pm6_g6_powered_ablation",
+  "git_commit_sha": "8f558c43085603129bf3f63259ea45023615dc98",
+  "hardware_cohort": "spark3_gb10:NVIDIA GB10",
+  "live_gateway_chain_entries": 405,
+  "live_gateway_chain_verified": true,
+  "rcps_calibration_dev_only": {
+    "n_cal_neg": 1200,
+    "rcps_cal_cp_ub95": 0.003947,
+    "rcps_k": 1,
+    "threshold": 0.572077
+  },
+  "splits": {
+    "n_anchors": 640,
+    "n_cal_neg": 1200,
+    "n_eval_sibling_benign": 3000,
+    "n_forums": 8,
+    "n_vault": 200
+  },
+  "stream_encoder": "BAAI/bge-m3",
+  "timestamp_utc": "2026-11-26T19:31:26.294456+00:00",
+  "vault_encoder": "sentence-transformers/all-MiniLM-L6-v2",
+  "verdict": {
+    "combined_beats_span_only_on_paraphrase": true,
+    "g6_cp_and_cluster_ub95_le_2pct": true,
+    "paraphrase_tpr_gain_over_span_pp": 1.5,
+    "status": "ADVANCE_PM6_G6"
+  },
+  "wave_item_id": "W25-06"
+}
