@@ -333,12 +333,22 @@ def _group_texts(group: str, bundles: Sequence[Dict[str, Any]]) -> Tuple[List[st
     return base, base_slices, shift, shift_slices
 
 
+def _qwen_local_path() -> str:
+    """Resolve the pinned Qwen3 revision to its local snapshot dir (offline; no `refs/main` exists).
+
+    The path contains `Qwen3-Embedding`, so the original encoder still selects bf16.
+    """
+    from huggingface_hub import snapshot_download
+
+    return snapshot_download(QWEN_MODEL_ID, revision=QWEN_REVISION, local_files_only=True)
+
+
 def _encode_group(group: str, bundles: List[Dict[str, Any]], scratch: Path) -> Dict[str, Any]:
     from scripts.run_colab_l4_pm6_and_pv7_closure import encode_all_texts_on_gpu
 
     base, base_slices, shift, shift_slices = _group_texts(group, bundles)
     prov: Dict[str, Any] = {}
-    for enc_name, model_id, batch in (("MiniLM-384", MINILM_MODEL_ID, MINILM_BATCH), ("Qwen3-4096", QWEN_MODEL_ID, QWEN_BATCH)):
+    for enc_name, model_id, batch in (("MiniLM-384", MINILM_MODEL_ID, MINILM_BATCH), ("Qwen3-4096", _qwen_local_path(), QWEN_BATCH)):
         texts = base + shift if enc_name == "Qwen3-4096" else base
         digest = _texts_digest(texts)
         cache = scratch / f"emb_{group}_{enc_name}_{digest[:16]}.npy"
