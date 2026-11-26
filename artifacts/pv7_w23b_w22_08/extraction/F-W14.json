@@ -1,0 +1,1544 @@
+{
+ "family": "F-W14",
+ "extractor": "sub-agent (general-purpose), single classifier for all four lists",
+ "lists": [
+  {
+   "list_id": "w14_grok",
+   "source_path": "docs/research/council-logs/wave14-code-xval-grok47-xhigh.md",
+   "declared_scope": [
+    "runner",
+    "caa",
+    "formal",
+    "verifier"
+   ],
+   "scope_quote": "Targets are Neon 4 High (`scripts/run_wave14b_d11_pm6_takedown_carryforward.py`, `chelated_caa_steering_baseline.py`, `tests/test_wave14b_d11_runner.py`) and Sonnet 5.5 High (`formal/Ek5RefCli.lean`, `formal/run_conformance.py`, `scripts/verify_all_offline.py --full-formal`).",
+   "scope_line": 3,
+   "reads_other_lists": false,
+   "independence_quote": "none found",
+   "independence_line": null
+  },
+  {
+   "list_id": "w14_neon",
+   "source_path": "docs/research/council-logs/wave14-code-xval-neon4-high.md",
+   "declared_scope": [
+    "firewall",
+    "runner",
+    "caa",
+    "formal",
+    "verifier"
+   ],
+   "scope_quote": "targets_audited:",
+   "scope_line": 7,
+   "reads_other_lists": false,
+   "independence_quote": "none found",
+   "independence_line": null
+  },
+  {
+   "list_id": "w14_sol",
+   "source_path": "docs/research/council-logs/wave14-code-xval-sol62-high.md",
+   "declared_scope": [
+    "runner",
+    "caa",
+    "firewall",
+    "formal",
+    "verifier"
+   ],
+   "scope_quote": "Audited `feat/v7-formal-pm6` at `f6e8abe92b8ebc98608cd354dc574b19fcefdf86` against `docs/research/council-logs/wave14-r3-final-consensus-master-plan.md:69",
+   "scope_line": 5,
+   "reads_other_lists": false,
+   "independence_quote": "none found",
+   "independence_line": null
+  },
+  {
+   "list_id": "w14_sonnet",
+   "source_path": "docs/research/council-logs/wave14-code-xval-sonnet55-high.md",
+   "declared_scope": [
+    "firewall",
+    "formal",
+    "runner"
+   ],
+   "scope_quote": "Coverage honesty: I fully read `chelated_takedown_firewall.py`, `tests/test_wave14b_takedown_firewall.py`, `Statement.lean`, `Theorem2_*.lean`, and (earlier in this audit) `Spec.lean`, `Theorem1a/1b/4`. I read only ~900 of 2941 runner lines (:1456-1680, :2340-2600).",
+   "scope_line": 18,
+   "reads_other_lists": false,
+   "independence_quote": "none found",
+   "independence_line": null
+  }
+ ],
+ "findings": [
+  {
+   "finding_id": "w14_grok-01",
+   "list_id": "w14_grok",
+   "source_line": 15,
+   "quote": "`build_pm6_canary_catalog` cannot yield `>= 110` verbatim memorizations",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Phase-0 reference r1_ground_truth is a salted synthetic template, not verbatim public-domain text, so live memorization confirmation cannot reach 110 and the split raises; correctness bug (harmonised C16 with Neon B5.1, Sol 6). Folds external-JSONL wrapping and synthetic enterprise works in the denominator."
+  },
+  {
+   "finding_id": "w14_grok-02",
+   "list_id": "w14_grok",
+   "source_line": 32,
+   "quote": "requires `len(r1_ground_truth.split()) >= 80`, which locks the long template",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C12",
+   "alignment_note": "Runner tests lock in the template reference, self-compare in the memorization test and never assert the external-JSONL text survives; test gap."
+  },
+  {
+   "finding_id": "w14_grok-03",
+   "list_id": "w14_grok",
+   "source_line": 38,
+   "quote": "`run-live` unions them (line 1869) and passes that union into `assign_entity_disjoint_split`",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "Live Phase-0 unions per-generator confirmation sets, contradicting spec 4.2 (confirm separately) and the drycheck intersection; suppresses reduced-yield fallback. Spec/code drift (harmonised C10)."
+  },
+  {
+   "finding_id": "w14_grok-04",
+   "list_id": "w14_grok",
+   "source_line": 44,
+   "quote": "posts only `model`, `messages`, `max_tokens`, and `temperature`",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Nemotron chat client omits enable_thinking=False then strips reasoning, so answers can come back empty and score as unconfirmed; correctness bug."
+  },
+  {
+   "finding_id": "w14_grok-05",
+   "list_id": "w14_grok",
+   "source_line": 50,
+   "quote": "calls the tokenizer with `padding=True` and never sets `pad_token` when it is `None`",
+   "ordinals": [
+    "46/caa"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "CAA baseline crashes on Qwen2.5-7B batching because pad_token is None; correctness bug."
+  },
+  {
+   "finding_id": "w14_grok-06",
+   "list_id": "w14_grok",
+   "source_line": 52,
+   "quote": "The CAA unit test uses a fake tokenizer with `pad_token_id = 0`",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C12",
+   "alignment_note": "CAA test (in runner test file) uses a fake tokenizer and cannot catch the pad-token crash; test gap, component = cited test file."
+  },
+  {
+   "finding_id": "w14_grok-07",
+   "list_id": "w14_grok",
+   "source_line": 54,
+   "quote": "which is correct for right padding and wrong for left padding",
+   "ordinals": [
+    "46/caa"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "_pool_last_valid_token assumes right padding and the pad side is not pinned; latent correctness bug (aligned with Neon MINOR-7 CAA part and Sol CAA padding minor)."
+  },
+  {
+   "finding_id": "w14_grok-08",
+   "list_id": "w14_grok",
+   "source_line": 61,
+   "quote": "Serves with `ThreadingHTTPServer` (line 1537) and calls `model(**enc)` (line 1488) with no lock.",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Embed server: no lock on shared CUDA model, no request cap, OOM as 400, client has no retry/split; correctness bug (harmonised with Neon B7, Sonnet M11)."
+  },
+  {
+   "finding_id": "w14_grok-09",
+   "list_id": "w14_grok",
+   "source_line": 73,
+   "quote": "It never groups by `author_or_entity` or series.",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C15",
+   "alignment_note": "Split hashes work ids only; same author/organization lands in DEV and TEST, tripwire is author-blind; independence/leakage violation (harmonised with Sol 7)."
+  },
+  {
+   "finding_id": "w14_grok-10",
+   "list_id": "w14_grok",
+   "source_line": 93,
+   "quote": "A run that never flagged a window still records a pass.",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C02",
+   "alignment_note": "500 ms injected-delay safety test sleeps only at offset 0, scores a prechosen vector, and passes with zero flags (also with --skip-real-sleep); vacuous gate."
+  },
+  {
+   "finding_id": "w14_grok-11",
+   "list_id": "w14_grok",
+   "source_line": 95,
+   "quote": "`_t2b_for_work` ignores its window argument and always scores `q_r3_4096`",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C01",
+   "alignment_note": "Profile A/B TEST loop scores a constant per-work vector and pushes template bytes, not window embeddings of live generations; gate does not check the evidence it is credited with (harmonised C01 with Sonnet B2, Sol 12)."
+  },
+  {
+   "finding_id": "w14_grok-12",
+   "list_id": "w14_grok",
+   "source_line": 95,
+   "quote": "Profile B does not compute the specified unarmed exposure bound",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C11",
+   "alignment_note": "Required Profile B exposure bound max(0, W+s_2B-2+L_2B-H_0) is never computed; missing required measurement (harmonised with Sol 12 exposure-bound clause). M8 restates."
+  },
+  {
+   "finding_id": "w14_grok-13",
+   "list_id": "w14_grok",
+   "source_line": 101,
+   "quote": "the TEST loop (runner lines 2395-2517) never calls `query_openai_chat` or `q_mod.generate`",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C01",
+   "alignment_note": "Nine-arm TEST evaluation scores catalog strings/prompts instead of held-out model generations; C01 (harmonised with Neon B5.3, Sol 9)."
+  },
+  {
+   "finding_id": "w14_grok-14",
+   "list_id": "w14_grok",
+   "source_line": 106,
+   "quote": "`idx % 3`, `% 5`, `% 6` (lines 2444-2453). FPR is 1.0 only for `idx == 0`",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C13",
+   "alignment_note": "Arm 2 (and Arm 1 hardcoded 0.0, Arm 7 hash of DEV rate at line 111) are synthesized numbers presented as arm results; C13 (harmonised with Neon B5.2, Sol 9, Sonnet B1)."
+  },
+  {
+   "finding_id": "w14_grok-15",
+   "list_id": "w14_grok",
+   "source_line": 109,
+   "quote": "Single-factor isolation is false",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C09",
+   "alignment_note": "Arm 5 (Gate-2 only) ORs Tier-2A into its score; ablation arm miswired."
+  },
+  {
+   "finding_id": "w14_grok-16",
+   "list_id": "w14_grok",
+   "source_line": 110,
+   "quote": "ORs Tier-2A, not `g1[\"hard_blocked\"]` (line 2483)",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C09",
+   "alignment_note": "Arm 6 (Gate-1 plus raw cosine) omits Gate 1 and ORs Tier-2A; arm miswired (aligned with Sol 9 Arm 6 clause)."
+  },
+  {
+   "finding_id": "w14_grok-17",
+   "list_id": "w14_grok",
+   "source_line": 113,
+   "quote": "R5 FPR omits Gate-1 (line 2515) while R1-R3 include it",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C08",
+   "alignment_note": "Arm 9 counts Gate-1 for positives but not for benign FPR; metric asymmetry (harmonised with Sol 10)."
+  },
+  {
+   "finding_id": "w14_grok-18",
+   "list_id": "w14_grok",
+   "source_line": 115,
+   "quote": "A cluster bootstrap of that vector has no between-family variance.",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C14",
+   "alignment_note": "One global R4 rate copied onto all 60 clusters makes the family-cluster bootstrap degenerate; statistical procedure error (harmonised with Sol 9/10)."
+  },
+  {
+   "finding_id": "w14_grok-19",
+   "list_id": "w14_grok",
+   "source_line": 117,
+   "quote": "The FPR proxy is word count `< 6` or the substring `\"cannot\"`",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C08",
+   "alignment_note": "DEV CAA calibration defines suppression as not matching the template and benign FPR by a word-count/'cannot' heuristic; metric depends on an arbitrary implementation choice (harmonised with Sol 10 heuristic refusal clause)."
+  },
+  {
+   "finding_id": "w14_grok-20",
+   "list_id": "w14_grok",
+   "source_line": 121,
+   "quote": "No test in `tests/test_wave14b_d11_runner.py` calls `--mode run-live` or `--mode start-spark3-embed-server`.",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C12",
+   "alignment_note": "Unit tests certify only the dry path; split test asserts id-disjointness only; tripwire test uses synthetic ids (lines 78, 123 folded). Test gap."
+  },
+  {
+   "finding_id": "w14_grok-21",
+   "list_id": "w14_grok",
+   "source_line": 133,
+   "quote": "puts `reason` and `pos_cyc` in `NODE_FIELDS` and leaves them out of `SEMANTIC_FIELDS`",
+   "ordinals": [
+    "46/formal"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "153 incremental-vs-fresh pos_cyc/reason differences are excluded from the hard gate while report ok:true; failed check not gated, must be disclosed (harmonised C05 with Neon MINOR-F3, Sol 1)."
+  },
+  {
+   "finding_id": "w14_grok-22",
+   "list_id": "w14_grok",
+   "source_line": 139,
+   "quote": "There is no lemma that the phantom self-loop is equivalent to the prose forced-F predicate",
+   "ordinals": [
+    "46/formal"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Kernel equality is proved for the phantom-self-loop graph only; describing it as a proof of the prose forced-F predicate would overstate; C03 (harmonised with other formal scope-overclaim findings)."
+  },
+  {
+   "finding_id": "w14_grok-23",
+   "list_id": "w14_grok",
+   "source_line": 147,
+   "quote": "a otherwise-clean run returns `FORMAL_TIER_PASS_PARTIAL` (line 1104) with exit code 0",
+   "ordinals": [
+    "46/verifier"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "--full-formal with empty nanoda_bin skips the external kernel and still exits 0 as PASS_PARTIAL; missed gate reported as pass (harmonised with Sol 3)."
+  },
+  {
+   "finding_id": "w14_grok-24",
+   "list_id": "w14_grok",
+   "source_line": 147,
+   "quote": "Host-absolute `nanoda_bin` and `lean4export_bin` (manifest lines 4 and 8) are not portable.",
+   "ordinals": [
+    "46/formal"
+   ],
+   "defect_class": "C07",
+   "alignment_note": "nanoda manifest carries host-absolute tool paths; provenance/portability gap (harmonised with Neon B8, Sol 3, Sonnet M6)."
+  },
+  {
+   "finding_id": "w14_grok-25",
+   "list_id": "w14_grok",
+   "source_line": 151,
+   "quote": "sets `\"ref_pool_4096_sha256\": sha256_arrays(ref_pool_384)`",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C07",
+   "alignment_note": "Freeze manifest hash named for the 4096-d pool hashes a different array; native pool not hash-locked; wrong digest (harmonised with Neon MINOR-7, Sol 8)."
+  },
+  {
+   "finding_id": "w14_grok-26",
+   "list_id": "w14_grok",
+   "source_line": 155,
+   "quote": "falls through to the lowest-FPR grid point and sets `met_target_fpr=False` instead of refusing",
+   "ordinals": [
+    "46/caa"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "CAA calibration returns an alpha after failing the FPR target and the freeze does not require met_target_fpr; failed gate ignored (B8 line 117 restates; harmonised with Sol 9 clause)."
+  },
+  {
+   "finding_id": "w14_grok-27",
+   "list_id": "w14_grok",
+   "source_line": 159,
+   "quote": "No Qwen3-Embedding instruction prefix is applied in `_encode_texts`",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Embed path quality/client defects: no instruction prefix, no width check, no retry, Qwen Phase-0 drops metric values, device_map sharding issue; correctness bugs short of B5."
+  },
+  {
+   "finding_id": "w14_grok-28",
+   "list_id": "w14_grok",
+   "source_line": 165,
+   "quote": "`scan_text_for_ip_leaks` is not run on that manifest.",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C11",
+   "alignment_note": "Research manifest carrying model/method names is not Non-NDA scanned; scan coverage incomplete (harmonised with Sol 15 Non-NDA coverage clause)."
+  },
+  {
+   "finding_id": "w14_neon-01",
+   "list_id": "w14_neon",
+   "source_line": 56,
+   "quote": "`Tier2ACanonicalScanner` Uses `ngram_n=10` as a 10-Character Substring Index",
+   "ordinals": [
+    "46/firewall"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Tier-2A indexes 10-character substrings, flagging 60/60 benign R5 and unrelated English; correctness bug in firewall."
+  },
+  {
+   "finding_id": "w14_neon-02",
+   "list_id": "w14_neon",
+   "source_line": 68,
+   "quote": "`test_wave14b_d11_runner.py` never checked `r5_benign_fpr[\"rate\"]`, so CI missed it",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C12",
+   "alignment_note": "Split from BLOCKER-1: runner test suite lacks any R5 benign FPR assertion; test gap."
+  },
+  {
+   "finding_id": "w14_neon-03",
+   "list_id": "w14_neon",
+   "source_line": 77,
+   "quote": "centering the frozen reference pool around **`self.doc_mean` (the mean of the held-out TEST restricted vault)**",
+   "ordinals": [
+    "46/firewall"
+   ],
+   "defect_class": "C15",
+   "alignment_note": "r_q centers the reference pool on the TEST vault mean, leaking TEST statistics into the frozen reference and breaking r_q/r_d symmetry; leakage (harmonised with Sol 8)."
+  },
+  {
+   "finding_id": "w14_neon-04",
+   "list_id": "w14_neon",
+   "source_line": 78,
+   "quote": "line `563` immediately crashes with `ValueError: operands could not be broadcast together`",
+   "ordinals": [
+    "46/firewall"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Split from BLOCKER-2: (n,d) doc_mean shape crashes _reference_rq; correctness bug."
+  },
+  {
+   "finding_id": "w14_neon-05",
+   "list_id": "w14_neon",
+   "source_line": 90,
+   "quote": "scanning `prompt_text` for the **dictionary value**",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Runner passes {alias: work_id} to screen_prompt which expects {work_id: text}; Gate 1 misses 41/60 and returns aliases as ids. Interface bug; assigned to runner as the caller (same as Sol 9)."
+  },
+  {
+   "finding_id": "w14_neon-06",
+   "list_id": "w14_neon",
+   "source_line": 102,
+   "quote": "`unarmed_exposed_tokens` is structurally capped at `W = 64`",
+   "ordinals": [
+    "46/firewall"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Profile B exposure accounting in the gate undercounts tokens emitted beyond the window; correctness bug in firewall."
+  },
+  {
+   "finding_id": "w14_neon-07",
+   "list_id": "w14_neon",
+   "source_line": 104,
+   "quote": "Default `h0_holdback_tokens=12` is strictly smaller than `Tier2ACanonicalScanner.lcs_min_tokens=14`",
+   "ordinals": [
+    "46/firewall"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Profile B holdback shorter than LCS minimum lets restricted bytes leak before Tier-2A fires; correctness bug."
+  },
+  {
+   "finding_id": "w14_neon-08",
+   "list_id": "w14_neon",
+   "source_line": 114,
+   "quote": "containing a SHA-256 hex digest that neither `Nemotron-30B` nor `Qwen2.5-7B-Instruct` has ever seen",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Phase-0 template reference guarantees 0 confirmed works and a crash; correctness bug (harmonised with Grok B1, Sol 6)."
+  },
+  {
+   "finding_id": "w14_neon-09",
+   "list_id": "w14_neon",
+   "source_line": 114,
+   "quote": "computes `shared_confirmed = confirmed_nem | confirmed_qwen` (union!) instead of confirming separately per generator",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "Union instead of per-generator confirmation; spec drift (harmonised with Grok B2, Sol 6)."
+  },
+  {
+   "finding_id": "w14_neon-10",
+   "list_id": "w14_neon",
+   "source_line": 115,
+   "quote": "it fabricates `TEST` outcomes from `DEV`'s `caa_p` via `((idx * 17) % 100) < round(caa_p * 100)`",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C13",
+   "alignment_note": "Arm 2 modulo patterns and Arm 7 hash-of-DEV-rate are synthesized TEST numbers; C13."
+  },
+  {
+   "finding_id": "w14_neon-11",
+   "list_id": "w14_neon",
+   "source_line": 116,
+   "quote": "never queries `Nemotron-30B` or `Qwen2.5-7B` for `R1`, `R2`, `R3`, `R5`, `R2b`, or streaming `Profile A`/`B`",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C01",
+   "alignment_note": "TEST arms and Profile A/B are fed static prompts/r1_ground_truth instead of live generations; C01."
+  },
+  {
+   "finding_id": "w14_neon-12",
+   "list_id": "w14_neon",
+   "source_line": 116,
+   "quote": "produces a single generator-agnostic `nine_arm_matrix` instead of per-generator evaluation tables",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "Arm matrix pools generators contrary to spec 4.4 per-generator evaluation; spec drift (harmonised with Sol 10 pooling clause)."
+  },
+  {
+   "finding_id": "w14_neon-13",
+   "list_id": "w14_neon",
+   "source_line": 123,
+   "quote": "`mu_vecs_4096[lang] @ w_stiefel` is **not** the centroid of `MiniLM-384` embeddings",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C09",
+   "alignment_note": "Monolingual MiniLM baseline centred with projected Qwen means; baseline arm handicapped (harmonised with Sol 11)."
+  },
+  {
+   "finding_id": "w14_neon-14",
+   "list_id": "w14_neon",
+   "source_line": 129,
+   "quote": "on a single shared CUDA model with zero synchronization",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Embed server has no lock across ThreadingHTTPServer threads and no pad_token guard; correctness bug (harmonised with Grok B5, Sonnet M11)."
+  },
+  {
+   "finding_id": "w14_neon-15",
+   "list_id": "w14_neon",
+   "source_line": 177,
+   "quote": "neither `verify_all_offline.py:1076-1079` nor `run_conformance.py:771-774` checks `os.environ.get(\"NANODA_BIN\")`",
+   "ordinals": [
+    "46/formal"
+   ],
+   "defect_class": "C07",
+   "alignment_note": "nanoda manifest commits personal/scratch paths with no env fallback and no pinned commit SHAs; provenance gap (lines 175-179)."
+  },
+  {
+   "finding_id": "w14_neon-16",
+   "list_id": "w14_neon",
+   "source_line": 179,
+   "quote": "does not check whether `.lake/nanoda/chelated_formal_all.export` is stale relative to `.lean` files",
+   "ordinals": [
+    "46/verifier"
+   ],
+   "defect_class": "C01",
+   "alignment_note": "Split from BLOCKER-8: offline verifier does not check that the export it kernel-checks is current; verifier does not bind evidence (harmonised with Sol 3)."
+  },
+  {
+   "finding_id": "w14_neon-17",
+   "list_id": "w14_neon",
+   "source_line": 137,
+   "quote": "so it computes `(query @ W) - mu_q` instead of `(query - mu_q) @ W`",
+   "ordinals": [
+    "46/firewall"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Equal-dim bridge centering order bug; correctness."
+  },
+  {
+   "finding_id": "w14_neon-18",
+   "list_id": "w14_neon",
+   "source_line": 139,
+   "quote": "permanently stuck at index `0` of `_utf8_tail`, blocking all subsequent valid UTF-8 chunks",
+   "ordinals": [
+    "46/firewall"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Invalid byte wedges decoder tail and silently drops later output; correctness."
+  },
+  {
+   "finding_id": "w14_neon-19",
+   "list_id": "w14_neon",
+   "source_line": 141,
+   "quote": "returns `True` without any window ever covering token `10`",
+   "ordinals": [
+    "46/firewall"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "No validation s_2b<=w_2b leaves tokens uncovered by any Tier-2B window; correctness."
+  },
+  {
+   "finding_id": "w14_neon-20",
+   "list_id": "w14_neon",
+   "source_line": 143,
+   "quote": "`canonicalize_for_tier2a` only collapses isolated single-letter runs",
+   "ordinals": [
+    "46/firewall"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Canonicalizer turns mid-word separators into spaces so R2b attack-1 evades word n-grams; correctness."
+  },
+  {
+   "finding_id": "w14_neon-21",
+   "list_id": "w14_neon",
+   "source_line": 145,
+   "quote": "`RestrictedVaultIndex` does not L2-normalize `node_vecs` internally",
+   "ordinals": [
+    "46/firewall"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Unnormalized node vectors (inconsistent with sidecar builder); correctness. Per-call allocation part folded."
+  },
+  {
+   "finding_id": "w14_neon-22",
+   "list_id": "w14_neon",
+   "source_line": 147,
+   "quote": "calls `len(text[:match.start()].encode(\"utf-8\"))` per token on every `push_chunk`",
+   "ordinals": [
+    "46/firewall"
+   ],
+   "defect_class": "C17",
+   "alignment_note": "O(T^2) _sync_tokens; C17 reason: performance defect, not correctness (harmonised with Sonnet M7)."
+  },
+  {
+   "finding_id": "w14_neon-23",
+   "list_id": "w14_neon",
+   "source_line": 147,
+   "quote": "excluding intervening whitespace bytes from `flagged_window_bytes_leaked`",
+   "ordinals": [
+    "46/firewall"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Split from MINOR-6: leaked-byte accounting omits whitespace bytes; correctness (aligned with Sol EOS-details minor)."
+  },
+  {
+   "finding_id": "w14_neon-24",
+   "list_id": "w14_neon",
+   "source_line": 149,
+   "quote": "`freeze_payload[\"ref_pool_4096_sha256\"]` hashes `ref_pool_384` (384-d) and omits a hash for the native 4096-d oracle `ref_pool_4096`",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C07",
+   "alignment_note": "Freeze manifest digest wrong / native pool unhashed; provenance (harmonised with Grok M4, Sol 8)."
+  },
+  {
+   "finding_id": "w14_neon-25",
+   "list_id": "w14_neon",
+   "source_line": 149,
+   "quote": "`_pool_last_valid_token` assumes right-padding",
+   "ordinals": [
+    "46/caa"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Split from MINOR-7: CAA pooling wrong under left padding; correctness."
+  },
+  {
+   "finding_id": "w14_neon-26",
+   "list_id": "w14_neon",
+   "source_line": 151,
+   "quote": "whereas `formal/ChelatedFormal/Spec.lean:125-128` proves the perturbation bound for `cos - (r_q + r_d) / 2`",
+   "ordinals": [
+    "46/formal"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "Runtime CSLS is 2x the Theorem 2 quantity; units drift between code and theorem (MINOR-F1 scaling restates; harmonised with Sol 4)."
+  },
+  {
+   "finding_id": "w14_neon-27",
+   "list_id": "w14_neon",
+   "source_line": 203,
+   "quote": "which is unused in the proof",
+   "ordinals": [
+    "46/formal"
+   ],
+   "defect_class": "C17",
+   "alignment_note": "Theorem 2 spec has an unused hypothesis and an over-strict 0<delta_gamma premise; C17 reason: hypothesis-tightness/proof hygiene, no wrong claim."
+  },
+  {
+   "finding_id": "w14_neon-28",
+   "list_id": "w14_neon",
+   "source_line": 206,
+   "quote": "`export_declarations` lists `22` of the `68` public theorems",
+   "ordinals": [
+    "46/formal"
+   ],
+   "defect_class": "C11",
+   "alignment_note": "nanoda export list omits headline lemmas; external kernel coverage incomplete (harmonised with Sol formal-scope export clause)."
+  },
+  {
+   "finding_id": "w14_neon-29",
+   "list_id": "w14_neon",
+   "source_line": 208,
+   "quote": "`Statement.lean:24` should explicitly include the Round-3 consensus wording",
+   "ordinals": [
+    "46/formal"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Statement.lean does not label incremental-with-deletions as unproven; label overstates (harmonised with Sol 1 label clause, Sonnet M2)."
+  },
+  {
+   "finding_id": "w14_neon-30",
+   "list_id": "w14_neon",
+   "source_line": 209,
+   "quote": "cleanly records `153` non-semantic diffs",
+   "ordinals": [
+    "46/formal"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "153 pos_cyc/reason inc-vs-fresh diffs undocumented beside ok:true; must be disclosed (harmonised C05 with Grok M1, Sol 1)."
+  },
+  {
+   "finding_id": "w14_neon-31",
+   "list_id": "w14_neon",
+   "source_line": 211,
+   "quote": "`oracle_vals` passes `store.refs` (already authority-filtered by Stratum 1 of `StratifiedEvidenceStore`)",
+   "ordinals": [
+    "46/formal"
+   ],
+   "defect_class": "C15",
+   "alignment_note": "Python WFS oracle consumes the SUT's filtered refs; oracle/SUT shared state (harmonised with Sol 2)."
+  },
+  {
+   "finding_id": "w14_neon-32",
+   "list_id": "w14_neon",
+   "source_line": 213,
+   "quote": "Neither is wired yet inside `/formal`",
+   "ordinals": [
+    "46/formal"
+   ],
+   "defect_class": "C11",
+   "alignment_note": "Procrustes residual / BEIR Delta_cert telemetry required by plan 3.2 not wired; missing diagnostics (harmonised with Sol 4 diagnostics clause)."
+  },
+  {
+   "finding_id": "w14_neon-33",
+   "list_id": "w14_neon",
+   "source_line": 215,
+   "quote": "Still worth documenting and asserting `0` typechecker errors explicitly in `verify_all_offline.py` alongside `rc == 0`",
+   "ordinals": [
+    "46/verifier"
+   ],
+   "defect_class": "C01",
+   "alignment_note": "Verifier relies on nanoda exit code rather than checking typechecker-error count; verifier does not check the evidence (harmonised with Sol 3)."
+  },
+  {
+   "finding_id": "w14_sol-01",
+   "list_id": "w14_sol",
+   "source_line": 9,
+   "quote": "The checked-in evidence reports 153 differences in each incremental comparison, 104 `pos_cyc` and 49 `reason`, with `ok: true`.",
+   "ordinals": [
+    "46/formal"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "Incremental leg differences ignored by the gate; C05 (harmonised with Grok M1, Neon MINOR-F3)."
+  },
+  {
+   "finding_id": "w14_sol-02",
+   "list_id": "w14_sol",
+   "source_line": 9,
+   "quote": "label incremental maintenance with deletions as conformance-tested and unproven",
+   "ordinals": [
+    "46/formal"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Split from Sol 1: labeling of incremental-with-deletions as unproven required; C03 (harmonised with Neon MINOR-F3, Sonnet M2)."
+  },
+  {
+   "finding_id": "w14_sol-03",
+   "list_id": "w14_sol",
+   "source_line": 11,
+   "quote": "The harness shares Stratum 0 state with the system under test.",
+   "ordinals": [
+    "46/formal"
+   ],
+   "defect_class": "C15",
+   "alignment_note": "Conformance harness reconstructs Lean/fresh/oracle inputs from the incremental engine state; oracle/SUT shared state (harmonised with Neon MINOR-F4)."
+  },
+  {
+   "finding_id": "w14_sol-04",
+   "list_id": "w14_sol",
+   "source_line": 13,
+   "quote": "The manifest references machine-specific executable paths, including an agent scratch build, without source revisions or binary digests.",
+   "ordinals": [
+    "46/formal"
+   ],
+   "defect_class": "C07",
+   "alignment_note": "nanoda/lean4export provenance missing; host paths (harmonised with Grok M3, Neon B8, Sonnet M6)."
+  },
+  {
+   "finding_id": "w14_sol-05",
+   "list_id": "w14_sol",
+   "source_line": 13,
+   "quote": "The offline verifier invokes the cached nanoda config and trusts process exit status without creating a current export",
+   "ordinals": [
+    "46/verifier"
+   ],
+   "defect_class": "C01",
+   "alignment_note": "Verifier does not bind the export bytes or declaration list it credits; wrapper accepts zero declaration count; C01 (harmonised with Neon B8 staleness, MINOR-F6)."
+  },
+  {
+   "finding_id": "w14_sol-06",
+   "list_id": "w14_sol",
+   "source_line": 13,
+   "quote": "Missing nanoda configuration can produce a partial formal result with overall exit zero.",
+   "ordinals": [
+    "46/verifier"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "Partial formal result exits 0 (harmonised with Grok M3)."
+  },
+  {
+   "finding_id": "w14_sol-07",
+   "list_id": "w14_sol",
+   "source_line": 13,
+   "quote": "D11 can enter Phase 0 without consuming any formal receipt.",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "Runner does not enforce the formal prerequisite gate; missed gate ignored."
+  },
+  {
+   "finding_id": "w14_sol-08",
+   "list_id": "w14_sol",
+   "source_line": 13,
+   "quote": "the lock and proofs enter this Git history together and the checker trusts a boolean for pre-proof timing",
+   "ordinals": [
+    "46/formal"
+   ],
+   "defect_class": "C07",
+   "alignment_note": "Spec-lock pre-proof timing has no independent dated evidence; provenance gap."
+  },
+  {
+   "finding_id": "w14_sol-09",
+   "list_id": "w14_sol",
+   "source_line": 15,
+   "quote": "It neither identifies `γ_d` with the centered document norm nor states unit query or cosine geometry.",
+   "ordinals": [
+    "46/formal"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Theorem 2 exact-centered-cosine clause is a generic numerator identity, not bound to runtime quantities; theorem content overstated relative to runtime claim (aligned with Sonnet M3)."
+  },
+  {
+   "finding_id": "w14_sol-10",
+   "list_id": "w14_sol",
+   "source_line": 15,
+   "quote": "The runtime-scale bound doubles.",
+   "ordinals": [
+    "46/formal"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "Theorem 2 bound is for half the runtime CSLS score; units drift (harmonised with Neon MINOR-8/F1)."
+  },
+  {
+   "finding_id": "w14_sol-11",
+   "list_id": "w14_sol",
+   "source_line": 15,
+   "quote": "The PM-6 bridge path also drops Procrustes residual and captured-energy diagnostics after fitting.",
+   "ordinals": [
+    "46/formal"
+   ],
+   "defect_class": "C11",
+   "alignment_note": "Required Procrustes/BEIR diagnostics missing; assigned formal for alignment with Neon MINOR-F5 (memo cites runner + spherical_migration_bridge)."
+  },
+  {
+   "finding_id": "w14_sol-12",
+   "list_id": "w14_sol",
+   "source_line": 17,
+   "quote": "D11 sends the Hugging Face repo ID and omits the thinking option.",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Nemotron client: wrong served model name, no thinking-off, ignores finish_reason, no auth; correctness bug (harmonised with Grok B3)."
+  },
+  {
+   "finding_id": "w14_sol-13",
+   "list_id": "w14_sol",
+   "source_line": 19,
+   "quote": "The catalog fabricates the reference using archival boilerplate, then asks for the actual opening passage.",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Phase-0 template reference (also external records and synthetic enterprise dossiers); C16 (harmonised with Grok B1, Neon B5.1)."
+  },
+  {
+   "finding_id": "w14_sol-14",
+   "list_id": "w14_sol",
+   "source_line": 19,
+   "quote": "The split uses the union of the two confirmation sets.",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "Union vs per-generator confirmation; C10 (harmonised with Grok B2, Neon B5.1)."
+  },
+  {
+   "finding_id": "w14_sol-15",
+   "list_id": "w14_sol",
+   "source_line": 19,
+   "quote": "Qwen receives bare text without its Instruct chat template.",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Qwen Phase-0 prompt lacks chat template, incomparable decoding; correctness bug."
+  },
+  {
+   "finding_id": "w14_sol-16",
+   "list_id": "w14_sol",
+   "source_line": 21,
+   "quote": "Alternate editions, translations, derivatives, and works with the same author or series can cross the boundary.",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C15",
+   "alignment_note": "Split/tripwire know only work IDs; same-author/series and derivatives cross DEV/TEST; leakage (harmonised with Grok B6). Shape/nonfinite skip clause folded."
+  },
+  {
+   "finding_id": "w14_sol-17",
+   "list_id": "w14_sol",
+   "source_line": 21,
+   "quote": "The “entity disjoint” test asserts only ID disjointness.",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C12",
+   "alignment_note": "Split from Sol 7: test asserts ID disjointness only; test gap."
+  },
+  {
+   "finding_id": "w14_sol-18",
+   "list_id": "w14_sol",
+   "source_line": 23,
+   "quote": "At scoring time `r_q` centers references on `doc_mean`, fit from the restricted nodes for the TEST vault and oracle.",
+   "ordinals": [
+    "46/firewall"
+   ],
+   "defect_class": "C15",
+   "alignment_note": "r_q centering on TEST vault mean; leakage, firewall _reference_rq (harmonised with Neon B2)."
+  },
+  {
+   "finding_id": "w14_sol-19",
+   "list_id": "w14_sol",
+   "source_line": 23,
+   "quote": "Its `ref_pool_4096_sha256` hashes the legacy array with 4,096 rows while the independent native 4096-dimensional array has no freeze digest.",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C07",
+   "alignment_note": "Freeze digest covers the wrong pool; freeze written after calibration folded; provenance (harmonised with Grok M4, Neon MINOR-7)."
+  },
+  {
+   "finding_id": "w14_sol-20",
+   "list_id": "w14_sol",
+   "source_line": 23,
+   "quote": "the DEV threshold transfers from a max over 400 nodes to one over 480 at full yield, changing false-positive opportunity",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C08",
+   "alignment_note": "Threshold transfer across different match opportunity; comparator asymmetry."
+  },
+  {
+   "finding_id": "w14_sol-21",
+   "list_id": "w14_sol",
+   "source_line": 25,
+   "quote": "Held-out generation never runs for either model.",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C01",
+   "alignment_note": "Arms 3-6, 8, 9 score reference/prompt text instead of emitted answers; C01 (harmonised with Grok B8, Neon B5.3)."
+  },
+  {
+   "finding_id": "w14_sol-22",
+   "list_id": "w14_sol",
+   "source_line": 25,
+   "quote": "Arm 2 synthesizes results from row indices and never sends the frozen system prompt.",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C13",
+   "alignment_note": "Arm 2 and Arm 7 TEST numbers synthesized; C13."
+  },
+  {
+   "finding_id": "w14_sol-23",
+   "list_id": "w14_sol",
+   "source_line": 25,
+   "quote": "Gate 1 passes alias-to-ID mappings into a method expecting ID-to-text pairs, so it scans the opaque IDs.",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Gate 1 contract inversion; C16, runner (harmonised with Neon B3)."
+  },
+  {
+   "finding_id": "w14_sol-24",
+   "list_id": "w14_sol",
+   "source_line": 25,
+   "quote": "Arm 6 also omits Gate 1 from the R1/R2/R3/R5 decisions.",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C09",
+   "alignment_note": "Arm 6 miswired (harmonised with Grok B8 table)."
+  },
+  {
+   "finding_id": "w14_sol-25",
+   "list_id": "w14_sol",
+   "source_line": 25,
+   "quote": "its aggregate is copied to each work and the mask never governs real generator context",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C14",
+   "alignment_note": "Global R4 copied to each work; no per-work bootstrap (Sol 10 'R4 has no per-work bootstrap' restates); C14 (harmonised with Grok B8 line 115)."
+  },
+  {
+   "finding_id": "w14_sol-26",
+   "list_id": "w14_sol",
+   "source_line": 25,
+   "quote": "can report success after the calibration helper found no feasible multiplier",
+   "ordinals": [
+    "46/caa"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "CAA calibration returns alpha after missing the FPR target; failed gate ignored (harmonised with Grok M5)."
+  },
+  {
+   "finding_id": "w14_sol-27",
+   "list_id": "w14_sol",
+   "source_line": 27,
+   "quote": "Calibration covers isolated semantic scores and soft arming, leaving out the Tier 2A OR, Gate 1 lexical refusals, and full per-arm refusal decisions.",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C14",
+   "alignment_note": "Matched-FPR calibration not on full decision functions; 2% unattainable with 10 CAA DEV cases (folded); statistical procedure error."
+  },
+  {
+   "finding_id": "w14_sol-28",
+   "list_id": "w14_sol",
+   "source_line": 27,
+   "quote": "Arm 9 counts Gate 1 for positives and omits it for benign cases.",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C08",
+   "alignment_note": "Arm 9 metric asymmetry (harmonised with Grok B8 line 113)."
+  },
+  {
+   "finding_id": "w14_sol-29",
+   "list_id": "w14_sol",
+   "source_line": 27,
+   "quote": "uses a heuristic benign refusal test",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C08",
+   "alignment_note": "CAA DEV objective uses a heuristic refusal test as benign FPR; implementation-dependent metric (harmonised with Grok line 117)."
+  },
+  {
+   "finding_id": "w14_sol-30",
+   "list_id": "w14_sol",
+   "source_line": 27,
+   "quote": "would retain at the same FPR",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Threshold helper midpoint/fixed-epsilon tie policy skips a retainable positive; correctness bug."
+  },
+  {
+   "finding_id": "w14_sol-31",
+   "list_id": "w14_sol",
+   "source_line": 27,
+   "quote": "The AUC helper silently intersects incomplete family maps",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C11",
+   "alignment_note": "Paired AUC silently drops families missing from either map; incomplete sample."
+  },
+  {
+   "finding_id": "w14_sol-32",
+   "list_id": "w14_sol",
+   "source_line": 27,
+   "quote": "reduced-yield runs can complete with a weaker leak bound",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "Reduced-yield weaker bound not surfaced; undisclosed weaker gate."
+  },
+  {
+   "finding_id": "w14_sol-33",
+   "list_id": "w14_sol",
+   "source_line": 27,
+   "quote": "arm reports pool generators and phases",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "Generator pooling contrary to per-generator spec (harmonised with Neon B5.3 matrix clause)."
+  },
+  {
+   "finding_id": "w14_sol-34",
+   "list_id": "w14_sol",
+   "source_line": 29,
+   "quote": "The “monolingual MiniLM” condition subtracts projected Qwen centers.",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C09",
+   "alignment_note": "MiniLM baseline miswired (harmonised with Neon B6)."
+  },
+  {
+   "finding_id": "w14_sol-35",
+   "list_id": "w14_sol",
+   "source_line": 29,
+   "quote": "Spanish and German positives interpolate the English core proposition into different-language prompts, while every negative is in English.",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C08",
+   "alignment_note": "Language confound between positives and negatives; comparator asymmetry."
+  },
+  {
+   "finding_id": "w14_sol-36",
+   "list_id": "w14_sol",
+   "source_line": 29,
+   "quote": "centering also caps paired-anchor rank at 319 for 384 columns, and the plain SVD fills directions the data cannot identify",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Rank-deficient bridge fit; math/correctness issue."
+  },
+  {
+   "finding_id": "w14_sol-37",
+   "list_id": "w14_sol",
+   "source_line": 31,
+   "quote": "The held-out profiles feed reference words, drop returned bytes, and score the same previously embedded prompt regardless of the window content.",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C01",
+   "alignment_note": "Profile A/B scorer ignores window content and streams reference text; C01 (harmonised with Grok B7 line 95, Sonnet B2)."
+  },
+  {
+   "finding_id": "w14_sol-38",
+   "list_id": "w14_sol",
+   "source_line": 31,
+   "quote": "The delay fixture sleeps only at offset 0, uses a precomputed vector, and passes even if no offset has a positive verdict.",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C02",
+   "alignment_note": "Injected-delay test vacuous (harmonised with Grok B7)."
+  },
+  {
+   "finding_id": "w14_sol-39",
+   "list_id": "w14_sol",
+   "source_line": 31,
+   "quote": "No asynchronous encoder result or actual exposure bound is measured.",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C11",
+   "alignment_note": "Profile B exposure bound not measured (harmonised with Grok line 95)."
+  },
+  {
+   "finding_id": "w14_sol-40",
+   "list_id": "w14_sol",
+   "source_line": 31,
+   "quote": "blocked streams contribute zero to the median",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C08",
+   "alignment_note": "TTFT metric starts inside local gate and blocked streams count as zero; metric construction biased."
+  },
+  {
+   "finding_id": "w14_sol-41",
+   "list_id": "w14_sol",
+   "source_line": 31,
+   "quote": "the SSE check is a static dict",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C01",
+   "alignment_note": "SSE side-channel audit runs on a static dict, not the live stream; verifier does not load the evidence."
+  },
+  {
+   "finding_id": "w14_sol-42",
+   "list_id": "w14_sol",
+   "source_line": 33,
+   "quote": "Tier 2A can flag raw bytes already emitted by either profile.",
+   "ordinals": [
+    "46/firewall"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Gate releases bytes later flagged by Tier 2A (65/233 bytes in probes); strict rejection leaves gate open; correctness bug."
+  },
+  {
+   "finding_id": "w14_sol-43",
+   "list_id": "w14_sol",
+   "source_line": 35,
+   "quote": "R2b records static detection outcomes as adaptive client breaches.",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Static detector outcomes labelled as adaptive breach results; label overstates evidence."
+  },
+  {
+   "finding_id": "w14_sol-44",
+   "list_id": "w14_sol",
+   "source_line": 37,
+   "quote": "The assembler trusts serialized validity flags",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C01",
+   "alignment_note": "Assembly re-reads stored validity booleans rather than re-verifying signatures/digests; C01."
+  },
+  {
+   "finding_id": "w14_sol-45",
+   "list_id": "w14_sol",
+   "source_line": 37,
+   "quote": "The distinct internal manifest contains raw lineage/work IDs, Phase-0 identifiers, and named private methods.",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C11",
+   "alignment_note": "Non-NDA coverage does not include the manifest; scan coverage incomplete (harmonised with Grok M7)."
+  },
+  {
+   "finding_id": "w14_sol-46",
+   "list_id": "w14_sol",
+   "source_line": 39,
+   "quote": "Spark #3 silently falls back to CPU, logs “Ready” before binding, and reports config metadata without a GPU forward probe.",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C07",
+   "alignment_note": "Encoder identity/device/width unverified; provenance gap."
+  },
+  {
+   "finding_id": "w14_sol-47",
+   "list_id": "w14_sol",
+   "source_line": 39,
+   "quote": "The default all-interface plaintext server also receives restricted raw texts",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C17",
+   "alignment_note": "Embed server exposed on all interfaces in plaintext; C17 reason: security/data-handling exposure (harmonised with Sonnet M11 bind clause)."
+  },
+  {
+   "finding_id": "w14_sol-48",
+   "list_id": "w14_sol",
+   "source_line": 41,
+   "quote": "`all_gates_pass` does not require actual model coverage, matched FPR, 60 families",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "Completion gate omits binding live endpoints; missed gates ignored."
+  },
+  {
+   "finding_id": "w14_sol-49",
+   "list_id": "w14_sol",
+   "source_line": 41,
+   "quote": "Both modes share the default output directory and bundle ID, and assembly promotes either to `COMPLETED`.",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Drycheck evidence can be promoted to COMPLETED; synthetic presented as live."
+  },
+  {
+   "finding_id": "w14_sol-50",
+   "list_id": "w14_sol",
+   "source_line": 41,
+   "quote": "The integration test expects `COMPLETED` from drycheck and the runner test for live mode checks option parsing only.",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C12",
+   "alignment_note": "Tests certify drycheck and not live mode (harmonised with Grok B9)."
+  },
+  {
+   "finding_id": "w14_sol-51",
+   "list_id": "w14_sol",
+   "source_line": 45,
+   "quote": "does not show that the independent CLI transitive-closure authority calculation equals `effAuthD`",
+   "ordinals": [
+    "46/formal"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Formal scope claims exceed proven boundaries (also chain/angular outside lock); C03 (harmonised with Sonnet M1, Grok M2)."
+  },
+  {
+   "finding_id": "w14_sol-52",
+   "list_id": "w14_sol",
+   "source_line": 45,
+   "quote": "include all binding declarations in the statement lock and export",
+   "ordinals": [
+    "46/formal"
+   ],
+   "defect_class": "C11",
+   "alignment_note": "Statement lock / nanoda export omit binding declarations; coverage (harmonised with Neon MINOR-F2)."
+  },
+  {
+   "finding_id": "w14_sol-53",
+   "list_id": "w14_sol",
+   "source_line": 46,
+   "quote": "Pooling by `attention_mask.sum() - 1` works for right padding and selects the wrong positions in mixed-length left-padded batches.",
+   "ordinals": [
+    "46/caa"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "CAA left-padding pooling bug (harmonised with Grok B4 line 54, Neon MINOR-7)."
+  },
+  {
+   "finding_id": "w14_sol-54",
+   "list_id": "w14_sol",
+   "source_line": 46,
+   "quote": "Deadline checks occur between whole alpha evaluations, so a single candidate can substantially exceed the timebox.",
+   "ordinals": [
+    "46/caa"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "CAA timebox not enforced inside a candidate; correctness."
+  },
+  {
+   "finding_id": "w14_sol-55",
+   "list_id": "w14_sol",
+   "source_line": 47,
+   "quote": "A clean whitespace-only stream returned zero bytes in the isolated probe.",
+   "ordinals": [
+    "46/firewall"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "EOS handling drops whitespace bytes, leaves gate reusable; correctness."
+  },
+  {
+   "finding_id": "w14_sol-56",
+   "list_id": "w14_sol",
+   "source_line": 48,
+   "quote": "lists docket IDs without primary docket evidence",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C07",
+   "alignment_note": "Legal citations lack primary provenance; C07."
+  },
+  {
+   "finding_id": "w14_sol-57",
+   "list_id": "w14_sol",
+   "source_line": 48,
+   "quote": "The runner integration test can substitute a local firewall if the production import is absent.",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C12",
+   "alignment_note": "Test may not exercise the production firewall; test gap."
+  },
+  {
+   "finding_id": "w14_sonnet-01",
+   "list_id": "w14_sonnet",
+   "source_line": 24,
+   "quote": "### B1. Arms 1, 2, 7 of the 9-arm comparison are fabricated, not measured",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C13",
+   "alignment_note": "Arms 1, 2, 7 hardcoded/modulo/hash numbers presented as arm results; C13 (harmonised with Grok B8, Neon B5.2, Sol 9)."
+  },
+  {
+   "finding_id": "w14_sonnet-02",
+   "list_id": "w14_sonnet",
+   "source_line": 35,
+   "quote": "The Tier-2B scorer `_t2b_for_work(_win_txt, _qvec=q_r3_4096)` (:2512-2516) **ignores `_win_txt`**",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C01",
+   "alignment_note": "Profile A/B acceptance streams ground truth and scores a constant vector, not window embeddings of generations; C01 (harmonised with Grok line 95, Sol 12). Section 4 line 81 restates as 'leakage'; recorded once."
+  },
+  {
+   "finding_id": "w14_sonnet-03",
+   "list_id": "w14_sonnet",
+   "source_line": 39,
+   "quote": "### B3. Tier-2A LCS throughput makes `s_2A=1` strict profile impractical (measured)",
+   "ordinals": [
+    "46/firewall"
+   ],
+   "defect_class": "C17",
+   "alignment_note": "Pure-Python LCS on every token ~0.5 s/token at 60 works; C17 reason: performance defect (harmonised with Neon MINOR-6 perf)."
+  },
+  {
+   "finding_id": "w14_sonnet-04",
+   "list_id": "w14_sonnet",
+   "source_line": 43,
+   "quote": "checks release-latency *logic*, not wall-clock of the scanner on a real vault",
+   "ordinals": [
+    "46/firewall"
+   ],
+   "defect_class": "C12",
+   "alignment_note": "Split from B3: firewall test does not exercise 60-work LCS wall clock; test gap."
+  },
+  {
+   "finding_id": "w14_sonnet-05",
+   "list_id": "w14_sonnet",
+   "source_line": 51,
+   "quote": "lives **outside the SHA-locked Spec**, so it is not covered by the spec lock",
+   "ordinals": [
+    "46/formal"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Statement.lean docstring advertises chordal/cosine drift and chain results not in the locked Spec; overclaim (harmonised with Sol formal-scope minor)."
+  },
+  {
+   "finding_id": "w14_sonnet-06",
+   "list_id": "w14_sonnet",
+   "source_line": 52,
+   "quote": "That is a claim about a test run, not a kernel-checked fact, sitting inside a \"kernel-checked bundle\" docstring.",
+   "ordinals": [
+    "46/formal"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Conformance-tested claim inside kernel-checked docstring; label overstates (harmonised with Neon MINOR-F3, Sol 1 label)."
+  },
+  {
+   "finding_id": "w14_sonnet-07",
+   "list_id": "w14_sonnet",
+   "source_line": 53,
+   "quote": "near-tautological (centered dot = dot difference)",
+   "ordinals": [
+    "46/formal"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Theorem 2 first conjunct carries little content; judged a content-overstatement aligned with Sol 4 clause (judgement call)."
+  },
+  {
+   "finding_id": "w14_sonnet-08",
+   "list_id": "w14_sonnet",
+   "source_line": 55,
+   "quote": "Plan §3 should say \"upward lifting: optimal; downward: isotropic only / counterexample otherwise\"",
+   "ordinals": [
+    "46/other"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Master-plan summary overstates Theorem 1b downward optimality; file cited is the plan doc, so component 'other' (outside shared scope)."
+  },
+  {
+   "finding_id": "w14_sonnet-09",
+   "list_id": "w14_sonnet",
+   "source_line": 56,
+   "quote": "re-check scripts use absolute paths",
+   "ordinals": [
+    "46/formal"
+   ],
+   "defect_class": "C07",
+   "alignment_note": "lean4export/nanoda absolute paths; provenance/portability (harmonised with Grok M3, Neon B8, Sol 3)."
+  },
+  {
+   "finding_id": "w14_sonnet-10",
+   "list_id": "w14_sonnet",
+   "source_line": 59,
+   "quote": "re-decodes the whole stream and re-encodes prefixes",
+   "ordinals": [
+    "46/firewall"
+   ],
+   "defect_class": "C17",
+   "alignment_note": "O(n^2) _sync_tokens; C17 performance (harmonised with Neon MINOR-6)."
+  },
+  {
+   "finding_id": "w14_sonnet-11",
+   "list_id": "w14_sonnet",
+   "source_line": 60,
+   "quote": "text of a restricted work beyond its first 512 canonical tokens is covered only by the exact 10-gram indices",
+   "ordinals": [
+    "46/firewall"
+   ],
+   "defect_class": "C11",
+   "alignment_note": "LCS tier covers only first 512 tokens of each work; incomplete coverage."
+  },
+  {
+   "finding_id": "w14_sonnet-12",
+   "list_id": "w14_sonnet",
+   "source_line": 61,
+   "quote": "`tier2b_scorer=None` fails open",
+   "ordinals": [
+    "46/firewall"
+   ],
+   "defect_class": "C02",
+   "alignment_note": "Gate runs with no Tier-2B check and still counts windows as checked; vacuous gate."
+  },
+  {
+   "finding_id": "w14_sonnet-13",
+   "list_id": "w14_sonnet",
+   "source_line": 62,
+   "quote": "is expressed in *gate tokens* (whitespace-delimited); the plan states it in LLM tokens",
+   "ordinals": [
+    "46/firewall"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "Exposure bound unit drift between code and plan."
+  },
+  {
+   "finding_id": "w14_sonnet-14",
+   "list_id": "w14_sonnet",
+   "source_line": 63,
+   "quote": "no request lock around the shared model",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Embed server no lock / no typed failure path; C16 (harmonised with Grok B5, Neon B7)."
+  },
+  {
+   "finding_id": "w14_sonnet-15",
+   "list_id": "w14_sonnet",
+   "source_line": 63,
+   "quote": "binds `0.0.0.0` (LAN-reachable embed endpoint over restricted text)",
+   "ordinals": [
+    "46/runner"
+   ],
+   "defect_class": "C17",
+   "alignment_note": "Split from M11: network exposure of restricted text; C17 security (harmonised with Sol 16)."
+  }
+ ],
+ "splits_and_judgement_calls": [
+  "Scope: declared components per list from the quoted line. Grok line 3 names runner, CAA, runner test, Ek5RefCli, run_conformance and verify_all_offline --full-formal (it did not audit the firewall it authored; its V4/M8 firewall remarks are integration-call-site reads, recorded as no firewall defects). Neon scope is the targets_audited block, lines 7-23 (one-line quote is the block header). Sol line 5 audits the whole branch at f6e8abe9 against plan 69-114, so all five components. Sonnet line 18 covers firewall + its test, Statement/Theorem2/Spec/Theorem1a/1b/4 and ~900 of 2941 runner lines; no CAA and no verify_all_offline.",
+  "Shared scope (intersection) = {runner, formal}. Caveat: Sonnet's runner coverage is partial (lines 1456-1680, 2340-2600 only) and its formal coverage excludes Theorem3/Ek5RefCli/run_conformance, while Grok's formal coverage centres on Ek5RefCli/run_conformance; formal overlap between Grok and Sonnet is thin. Treat the intersection as nominal, not equal-depth.",
+  "Independence: no list cites, reconciles or was briefed with another wave14-code-xval memo. All four cite the same reference spec (wave14-r3-final-consensus-master-plan.md); Neon's 'Neon Δ1/Δ2/Δ6' are round-3 plan deltas, and Grok line 3 / Sonnet lines 12-13 name other models only as code authors.",
+  "Component choice: Gate-1 alias/work_id inversion (Neon B3, Sol 9) spans firewall:770 and runner:2365; assigned to runner for both lists (runner is the caller passing the wrong shape). r_q doc_mean centering (Neon B2, Sol 8) assigned to firewall for both. Procrustes/BEIR diagnostics (Neon MINOR-F5, Sol 4) assigned to formal for both although Sol cites runner/spherical_migration_bridge. CAA test with fake tokenizer (Grok line 52) assigned to runner because the test lives in the runner test file.",
+  "Class harmonisation: Phase-0 template reference = C16 (Grok, Neon, Sol); union-not-per-generator and per-generator pooling = C10; synthesized arm numbers = C13; TEST loop / Profile A/B scoring catalog text or a constant vector instead of live window embeddings = C01 (Grok, Neon, Sol, Sonnet; Sonnet's section-4 'leakage' restatement not recorded as C15); vacuous injected-delay test = C02; missing Profile B exposure bound = C11; R4 global rate in cluster bootstrap = C14; Arm 9 Gate-1 asymmetry and heuristic CAA FPR proxy = C08; Arm 5/6 and MiniLM baseline = C09; freeze hash wrong pool = C07; embed-server lock/OOM = C16, its 0.0.0.0/plaintext exposure = C17, encoder identity unchecked = C07; CAA returns alpha without meeting FPR = caa:C05; 153 inc-vs-fresh diffs = formal:C05; incremental/kernel labeling and scope overclaims = formal:C03; oracle sharing SUT state = formal:C15; host paths/unpinned tools = formal:C07; PASS_PARTIAL exit 0 = verifier:C05; verifier trusting rc/stale export = verifier:C01; Theorem 2 2x scale = formal:C10; performance defects (O(n^2) _sync_tokens, LCS throughput) = C17 (reason: performance, not correctness).",
+  "Splits logged: Grok B4 -> caa pad_token crash (C16) + caa left-padding pooling (C16) + runner CAA test gap (C12); Grok B7 -> delay test C02 + TEST-loop constant scorer C01 + Profile B bound C11; Grok M3 -> verifier C05 + formal C07; Neon B1 -> firewall C16 + runner test C12; Neon B2 -> firewall C15 + firewall C16 crash; Neon B4 -> two firewall C16 (undercount, h0<lcs leak); Neon B5 -> C16 template + C10 union + C13 arms + C01 no live generation + C10 generator pooling; Neon B8 -> formal C07 + verifier C01 staleness; Neon MINOR-6 -> C17 perf + C16 byte accounting; Neon MINOR-7 -> runner C07 + caa C16; Sol 1 -> C05 + C03; Sol 3 -> formal C07 (paths) + verifier C01 + verifier C05 + runner C05 (no formal receipt) + formal C07 (spec-lock timing); Sol 4 -> C03 + C10 + C11; Sol 6 -> C16 template + C10 union + C16 Qwen chat template; Sol 7 -> C15 + C12; Sol 8 -> firewall C15 + runner C07 + runner C08; Sol 9 -> C01 + C13 + C16 + C09 + C14 + caa C05; Sol 10 -> C14 + C08 + C08 + C16 + C11 + C05 + C10; Sol 11 -> C09 + C08 + C16; Sol 12 -> C01 + C02 + C11 + C08 + C01 (SSE); Sol 15 -> C01 + C11; Sol 16 -> C07 + C17; Sol 17 -> C05 + C03 + C12; Sol formal-scope minor -> C03 + C11; Sol CAA minor -> padding C16 + timebox C16; Sol legal minor -> C07 + C12; Sonnet B3 -> C17 + firewall test C12; Sonnet M11 -> C16 + C17.",
+  "Collapsed restatements (recorded once): Grok M8 restates B7 Profile B bound; Grok B8 line 117 CAA met_target_fpr restated by M5 (recorded at M5); Grok B6 test sentence and B9 line 123 folded into B9 C12 record; Neon MINOR-F1 scale restates MINOR-8 (recorded at MINOR-8; F1 hypothesis tightness recorded separately as C17); Sol 10 'R4 has no per-work bootstrap' folded into Sol 9 R4 record; Sonnet section 4 line 81 restates B2.",
+  "Excluded as non-defects: all VERIFIED_PASS items; Grok M7's statement that non_nda_leak_hits:0 is not a bypass; Grok V4/M8 firewall tokenization remarks ('not, by itself, an off-by-one'); Sonnet M4 (labelled PASS; 1-D witness note); Sonnet section 4 line 82 and section 5 unverified-coverage list (not defects); Neon's VERIFIED_PASS on entity-disjoint split (contradicts Grok/Sol but is a confirmation, not a defect).",
+  "Hard calls: Sonnet M3 (Theorem 2 first conjunct near-tautological) included as formal:C03 to align with Sol 4's 'numerator identity' clause, although Sonnet calls it true and correctly typed; Neon MINOR-F1 hypothesis tightness included as C17; Neon MINOR-F5 (telemetry hooks, 'acceptable for Wave-14A') included as formal:C11 rather than dropped as roadmap; Sonnet M5 (plan summary overclaim) put in component 'other' and therefore outside the shared scope.",
+  "Coarseness warning: canonical ID 46/<component>:<class> collapses many distinct defects (e.g. every runner correctness bug is 46/runner:C16, every firewall bug 46/firewall:C16), which inflates apparent overlap between lists. Per-record alignment notes allow a finer re-alignment if needed."
+ ]
+}

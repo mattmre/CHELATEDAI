@@ -1,0 +1,1130 @@
+{
+ "family": "F-R5",
+ "extractor": "sub-agent (general-purpose), single classifier for all four lists",
+ "brief_path": null,
+ "brief_preseeds_defects": false,
+ "brief_preseed_quote": null,
+ "brief_preseed_line": null,
+ "lists": [
+  {
+   "list_id": "r5_astra",
+   "source_path": "docs/research/council-logs/panel-r5-astra-ultra.md",
+   "declared_scope": [
+    "Draft v3 whole",
+    "27 bundles (27/27 manifest hashes independently matched)"
+   ],
+   "scope_quote": "**Hold Draft v3 for correction. Keep `PRE-RELEASE / HUMAN AUDIT PENDING`.** The 27 bundles verify.",
+   "scope_line": 9,
+   "reads_other_lists": false,
+   "independence_quote": "none found",
+   "independence_line": null
+  },
+  {
+   "list_id": "r5_opus",
+   "source_path": "docs/research/council-logs/panel-r5-claude-opus-ultrathink.md",
+   "declared_scope": [
+    "Draft v3 whole",
+    "27 bundles"
+   ],
+   "scope_quote": "# Panel audit: Post-R5b Draft v3 (27/27 bundles)",
+   "scope_line": 9,
+   "reads_other_lists": false,
+   "independence_quote": "none found",
+   "independence_line": null
+  },
+  {
+   "list_id": "r5_grok",
+   "source_path": "docs/research/council-logs/panel-r5-grok-xhigh.md",
+   "declared_scope": [
+    "Draft v3 whole (claim-to-receipt review of 'the draft')",
+    "hash re-verification limited to 7 Part IV manifests; other 20 bundles and side artifacts not re-hashed"
+   ],
+   "scope_quote": "I re-hashed seven Part IV manifests against `verified_registry.json`. All seven match. I did not re-run `scripts/build_whitepaper_assets.py --check`, and I did not re-hash the other 20 bundles or the side-artifact files.",
+   "scope_line": 9,
+   "reads_other_lists": false,
+   "independence_quote": "none found",
+   "independence_line": null
+  },
+  {
+   "list_id": "r5_neon",
+   "source_path": "docs/research/council-logs/panel-r5-neon-xhigh.md",
+   "declared_scope": [
+    "Draft v3 whole",
+    "HTML v3",
+    "27 bundles"
+   ],
+   "scope_quote": "# Read-Only Final Panel of Experts Audit (Post-R5b Draft v3 — 27/27 Verified Bundles)",
+   "scope_line": 9,
+   "reads_other_lists": false,
+   "independence_quote": "none found",
+   "independence_line": null
+  }
+ ],
+ "findings": [
+  {
+   "finding_id": "r5_astra-01",
+   "list_id": "r5_astra",
+   "source_line": 9,
+   "quote": "times a different workload from QA",
+   "ordinals": [
+    "B24"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "0.718 ms PM-2 latency headline times a different (pre-embedded, cached) workload than the QA path; headline overstates service latency"
+  },
+  {
+   "finding_id": "r5_astra-02",
+   "list_id": "r5_astra",
+   "source_line": 13,
+   "quote": "Paper line 358 should attribute the 25 side hashes across Parts I–IV",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "Ledger prose attributes 25 side hashes to Parts II-IV; artifact shows Parts I-IV (2+6+4+13): prose/artifact drift"
+  },
+  {
+   "finding_id": "r5_astra-03",
+   "list_id": "r5_astra",
+   "source_line": 17,
+   "quote": "Replace “lexical Jaccard collapses on paraphrased echoes” with those denominators",
+   "ordinals": [
+    "B20"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "PM-1a paraphrase-advantage claim uses wrong denominator (Jaccard 29/30 on paraphrase family; 0.3375 is the all-8-family average)"
+  },
+  {
+   "finding_id": "r5_astra-04",
+   "list_id": "r5_astra",
+   "source_line": 18,
+   "quote": "Replace “100% clean Recall@5” with",
+   "ordinals": [
+    "B21"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "LoCoMo clean '100% Recall@5' overstates; actual is matched M1's 0.630 hit rate on 200 answerable questions"
+  },
+  {
+   "finding_id": "r5_astra-05",
+   "list_id": "r5_astra",
+   "source_line": 18,
+   "quote": "missed all three stress requirements",
+   "ordinals": [
+    "B22"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "PM-1b KU-78 stress sub-gate failed all three bars yet labelled as pass; must relabel 'stress gate unmet'"
+  },
+  {
+   "finding_id": "r5_astra-06",
+   "list_id": "r5_astra",
+   "source_line": 19,
+   "quote": "QA harness empties context conditional on `case[\"family\"]` for EK5 arms -> reopen integrated service claim for label-free rerun",
+   "ordinals": [
+    "B24"
+   ],
+   "defect_class": "C15",
+   "alignment_note": "PM-2 QA harness consults benchmark family label (label consultation) for EK5 arms"
+  },
+  {
+   "finding_id": "r5_astra-07",
+   "list_id": "r5_astra",
+   "source_line": 20,
+   "quote": "Qualify `2,987.95 ms` text-to-memory add vs `0.480 ms` structured-graph routing",
+   "ordinals": [
+    "B26"
+   ],
+   "defect_class": "C08",
+   "alignment_note": "PM-3 speed comparison is structured-graph lookup vs raw-text LLM add: unmatched comparator"
+  },
+  {
+   "finding_id": "r5_astra-08",
+   "list_id": "r5_astra",
+   "source_line": 21,
+   "quote": "Harden `score_pm4_human_audit.py` to require 100 unique expected IDs and handle undefined κ",
+   "ordinals": [
+    "B27"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "PM-4 human-audit scorer lacks ID-uniqueness check and undefined-kappa handling: code correctness bug"
+  },
+  {
+   "finding_id": "r5_astra-09",
+   "list_id": "r5_astra",
+   "source_line": 22,
+   "quote": "Replace `\"381,497 independent oracle checks\"` with **`353,105`**",
+   "ordinals": [
+    "B17"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Oracle-check total inflated by 28,561 cached non-nullity pair checks counted as independent"
+  },
+  {
+   "finding_id": "r5_astra-10",
+   "list_id": "r5_astra",
+   "source_line": 22,
+   "quote": "Replace `\"zero spurious scans\"` with **`zero recorded dense fallbacks`**",
+   "ordinals": [
+    "B17"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "'zero spurious scans' overstates what was measured (only recorded dense fallbacks)"
+  },
+  {
+   "finding_id": "r5_astra-11",
+   "list_id": "r5_astra",
+   "source_line": 22,
+   "quote": "disclose per-mutation `dict(self.eligibility)` copy",
+   "ordinals": [
+    "B17"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Per-mutation full eligibility dict copy drives the 1M latency floor; implementation inefficiency requiring disclosure"
+  },
+  {
+   "finding_id": "r5_astra-12",
+   "list_id": "r5_astra",
+   "source_line": 22,
+   "quote": "harness-local 100k read index",
+   "ordinals": [
+    "B17"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "100k service query latency times a harness-local read index, not the full resolve path; latency claim overstated"
+  },
+  {
+   "finding_id": "r5_astra-13",
+   "list_id": "r5_astra",
+   "source_line": 25,
+   "quote": "conversational heuristic routing (`ek5_store=None`)",
+   "ordinals": [
+    "B21",
+    "B22"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "Conversational EM-4 arms run with ek5_store=None, contrary to prose implying EK5-backed routing"
+  },
+  {
+   "finding_id": "r5_astra-14",
+   "list_id": "r5_astra",
+   "source_line": 25,
+   "quote": "R4 LoCoMo error inspection",
+   "ordinals": [
+    "B21"
+   ],
+   "defect_class": "C06",
+   "alignment_note": "EM-4 thresholds tuned by inspecting R4 LoCoMo errors and re-scored on the same LoCoMo-300: undisclosed in-sample tuning"
+  },
+  {
+   "finding_id": "r5_astra-15",
+   "list_id": "r5_astra",
+   "source_line": 25,
+   "quote": "synthetic 6-prefix match",
+   "ordinals": [
+    "B22"
+   ],
+   "defect_class": "C06",
+   "alignment_note": "Recap regex hardcodes the 6 synthetic LME echo prefixes: benchmark-specific overfitting"
+  },
+  {
+   "finding_id": "r5_astra-16",
+   "list_id": "r5_astra",
+   "source_line": 25,
+   "quote": "6-prefix match, unstripped `M1c`",
+   "ordinals": [
+    "B22"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "M1c described as header-stripped in prose but code leaves it unstripped"
+  },
+  {
+   "finding_id": "r5_astra-17",
+   "list_id": "r5_astra",
+   "source_line": 25,
+   "quote": "finite conflict rules",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C17",
+   "alignment_note": "Other (reason: a generalization limitation, not a bug or metric issue): EM-4 relies on a finite hand-written conflict-rule set needing disclosure; names no bundle"
+  },
+  {
+   "finding_id": "r5_astra-18",
+   "list_id": "r5_astra",
+   "source_line": 25,
+   "quote": "transitive Union-Find risk",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Single-linkage union-find echo clustering can chain unrelated turns (shared EM-4 module)"
+  },
+  {
+   "finding_id": "r5_astra-19",
+   "list_id": "r5_astra",
+   "source_line": 25,
+   "quote": "`DualAdap` evaluation-batch query centering",
+   "ordinals": [
+    "B24"
+   ],
+   "defect_class": "C15",
+   "alignment_note": "PM-2 DualAdap centers queries using the evaluation batch mean (transductive test-batch statistics)"
+  },
+  {
+   "finding_id": "r5_astra-20",
+   "list_id": "r5_astra",
+   "source_line": 25,
+   "quote": "qrel-selected `COPY_OF` echoes in dense PM-2",
+   "ordinals": [
+    "B23"
+   ],
+   "defect_class": "C15",
+   "alignment_note": "Dense PM-2 echoes were selected using qrels (label consultation in fixture construction)"
+  },
+  {
+   "finding_id": "r5_opus-01",
+   "list_id": "r5_opus",
+   "source_line": 20,
+   "quote": "Needs range disclosure `0.95–1.00` across N=80 reruns",
+   "ordinals": [
+    "B20",
+    "B25",
+    "B26",
+    "B27"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "C4_v4 = 1.000 presented as stable; other draws scored 0.95/0.975; headline omits range"
+  },
+  {
+   "finding_id": "r5_opus-02",
+   "list_id": "r5_opus",
+   "source_line": 22,
+   "quote": "Stress sub-gate missed all 3 numeric bars -> label stress sub-gate FAILED / NOT MET",
+   "ordinals": [
+    "B22"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "PM-1b stress sub-gate failed yet presented as passed"
+  },
+  {
+   "finding_id": "r5_opus-03",
+   "list_id": "r5_opus",
+   "source_line": 23,
+   "quote": "Include CI or soften \"#1\"",
+   "ordinals": [
+    "B21"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "M4e '#1' on blind echoes overstated; LCB95 vs M1c is -1.33 pp"
+  },
+  {
+   "finding_id": "r5_opus-04",
+   "list_id": "r5_opus",
+   "source_line": 24,
+   "quote": "Lead with -2.0 pp vs native (LCB -4.5 pp), specify resident-cached (vs 36.55 ms uncached), note author-designed probes",
+   "ordinals": [
+    "B24"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "PM-2 headline should lead with loss vs native, cached-only latency, and author-designed TRA-1 probes: caveats omitted"
+  },
+  {
+   "finding_id": "r5_opus-05",
+   "list_id": "r5_opus",
+   "source_line": 25,
+   "quote": "Suite B LCB95 = -3.33 pp at N=30 (not significant)",
+   "ordinals": [
+    "B26"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "PM-3 Suite B N=30 advantage is not significant; claim lacks this caveat"
+  },
+  {
+   "finding_id": "r5_opus-06",
+   "list_id": "r5_opus",
+   "source_line": 25,
+   "quote": "qualify 6,225x as structured-edge lookup vs ingest LLM extraction",
+   "ordinals": [
+    "B26"
+   ],
+   "defect_class": "C08",
+   "alignment_note": "6,225x speedup compares structured-edge lookup to LLM ingest: unmatched comparator"
+  },
+  {
+   "finding_id": "r5_opus-07",
+   "list_id": "r5_opus",
+   "source_line": 26,
+   "quote": "Foreground real-conv κ = 0.7414 (87% raw agreement)",
+   "ordinals": [
+    "B27"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "PM-4 combined kappa 0.957 headline hides the much lower real-conversation kappa 0.7414"
+  },
+  {
+   "finding_id": "r5_opus-08",
+   "list_id": "r5_opus",
+   "source_line": 30,
+   "quote": "Must state explicitly that `1.000` proves exact resolution *given structured provenance edges*",
+   "ordinals": [
+    "B20"
+   ],
+   "defect_class": "C08",
+   "alignment_note": "ZS v3 fixture supplies structured edges to C4_v4 while text-only baselines see only text: asymmetric comparison"
+  },
+  {
+   "finding_id": "r5_opus-09",
+   "list_id": "r5_opus",
+   "source_line": 31,
+   "quote": "`C4_v4` was added after `r5_s1` (`C4_v3 = 0.875`) and evaluated on the same deterministic 240 cases (`seed=42`). Disclose explicitly.",
+   "ordinals": [
+    "B20"
+   ],
+   "defect_class": "C06",
+   "alignment_note": "C4_v4 developed post hoc after r5_s1 and evaluated on the same 240 cases: undisclosed in-sample adaptation"
+  },
+  {
+   "finding_id": "r5_opus-10",
+   "list_id": "r5_opus",
+   "source_line": 32,
+   "quote": "Substring value match (`gold in pred and no stale in pred`)",
+   "ordinals": [
+    "B20"
+   ],
+   "defect_class": "C08",
+   "alignment_note": "Lenient substring scoring rule undisclosed; metric depends on an implementation choice"
+  },
+  {
+   "finding_id": "r5_opus-11",
+   "list_id": "r5_opus",
+   "source_line": 33,
+   "quote": "thresholds were tuned against R4 LoCoMo error cases",
+   "ordinals": [
+    "B21"
+   ],
+   "defect_class": "C06",
+   "alignment_note": "EM-4 thresholds tuned on R4 LoCoMo error cases: undisclosed tuning"
+  },
+  {
+   "finding_id": "r5_opus-12",
+   "list_id": "r5_opus",
+   "source_line": 34,
+   "quote": "Remove dead loop (`:296-298`)",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C17",
+   "alignment_note": "Other (reason: dead code with no output effect, not a correctness bug): dead no-op loop in shared em4 module"
+  },
+  {
+   "finding_id": "r5_opus-13",
+   "list_id": "r5_opus",
+   "source_line": 34,
+   "quote": "validate missing `ts`",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "em4 module does not validate missing timestamps: correctness bug"
+  },
+  {
+   "finding_id": "r5_opus-14",
+   "list_id": "r5_opus",
+   "source_line": 34,
+   "quote": "prevent `\"Update: ...\"` false-positive recap match",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Recap regex false-positive on 'Update:' prefix: correctness bug in shared em4 module"
+  },
+  {
+   "finding_id": "r5_opus-15",
+   "list_id": "r5_opus",
+   "source_line": 34,
+   "quote": "guard transitive union-find diameter",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Transitive union-find chaining unguarded in shared em4 module"
+  },
+  {
+   "finding_id": "r5_opus-16",
+   "list_id": "r5_opus",
+   "source_line": 37,
+   "quote": "Disclose `git_sha: 18973789...` in Part IV manifests as the remote Spark base commit prior to `scp` overlay of R5/R5b scripts",
+   "ordinals": [
+    "B19",
+    "B20",
+    "B21",
+    "B22",
+    "B23",
+    "B24",
+    "B25",
+    "B26",
+    "B27"
+   ],
+   "defect_class": "C07",
+   "alignment_note": "Part IV manifests record a base commit that does not contain the executed scp-overlaid scripts; code provenance gap"
+  },
+  {
+   "finding_id": "r5_opus-17",
+   "list_id": "r5_opus",
+   "source_line": 38,
+   "quote": "Replace \"cryptographic evidence bundles\" over-framing",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Whitepaper-wide 'cryptographic evidence bundles' label overstates hash-checked receipts"
+  },
+  {
+   "finding_id": "r5_opus-18",
+   "list_id": "r5_opus",
+   "source_line": 38,
+   "quote": "remove premature completion wording on the 4-model panel until all 4 logs land",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Whitepaper claims panel completion before all panel logs exist: status overstated"
+  },
+  {
+   "finding_id": "r5_grok-01",
+   "list_id": "r5_grok",
+   "source_line": 11,
+   "quote": "That is the pre-image hash inside the JSON, not the SHA-256 of the file bytes",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C07",
+   "alignment_note": "Registry digest in draft is presented as a file SHA-256 but is the content pre-image hash: digest provenance error"
+  },
+  {
+   "finding_id": "r5_grok-02",
+   "list_id": "r5_grok",
+   "source_line": 28,
+   "quote": "Do not extrapolate `0.718 ms` to `10^8–10^10` chunks",
+   "ordinals": [
+    "B24"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "0.718 ms is a numpy microbenchmark excluding encoder/BM25/EK5/QA; headline overstates service latency"
+  },
+  {
+   "finding_id": "r5_grok-03",
+   "list_id": "r5_grok",
+   "source_line": 29,
+   "quote": "clean “gains” have negative lower bounds",
+   "ordinals": [
+    "B21",
+    "B22"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "M4g clean 'gains' on LoCoMo and LME-500 presented as positive but CIs span zero"
+  },
+  {
+   "finding_id": "r5_grok-04",
+   "list_id": "r5_grok",
+   "source_line": 30,
+   "quote": "The pre-registered PM-1b stress bar failed on all three clauses.",
+   "ordinals": [
+    "B22"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "PM-1b stress gate failed but draft over-reads it"
+  },
+  {
+   "finding_id": "r5_grok-05",
+   "list_id": "r5_grok",
+   "source_line": 31,
+   "quote": "is one draw, not invariant across draws",
+   "ordinals": [
+    "B20",
+    "B25",
+    "B26",
+    "B27"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "C4_v4 = 100% is one draw; other N=80 draws scored 0.950/0.975"
+  },
+  {
+   "finding_id": "r5_grok-06",
+   "list_id": "r5_grok",
+   "source_line": 32,
+   "quote": "compares a CPU graph walk (`retrieve_c4_v4_blocked_telemetry` on pre-structured edges) to an LLM write",
+   "ordinals": [
+    "B26"
+   ],
+   "defect_class": "C08",
+   "alignment_note": "6,225x speed comparison of structured graph walk vs LLM Memory.add: unmatched comparator"
+  },
+  {
+   "finding_id": "r5_grok-07",
+   "list_id": "r5_grok",
+   "source_line": 32,
+   "quote": "Suite B is `ku_items[:30]`, mem0 sees top-20 hybrid slice, LCB `-3.33 pp`",
+   "ordinals": [
+    "B26"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Suite B N=30 result non-significant and subset-based; overread in draft"
+  },
+  {
+   "finding_id": "r5_grok-08",
+   "list_id": "r5_grok",
+   "source_line": 33,
+   "quote": "is an in-process ABI unit check",
+   "ordinals": [
+    "B24"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "12/12 TRA-1 blocked presented as service evidence but is an in-process unit check"
+  },
+  {
+   "finding_id": "r5_grok-09",
+   "list_id": "r5_grok",
+   "source_line": 33,
+   "quote": "dense `12/12` CAR cells are inherited from `r5_s1`",
+   "ordinals": [
+    "B24",
+    "B23"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "PM-2 closure presents CAR 12/12 cells that come from the earlier r5_s1 dense probe"
+  },
+  {
+   "finding_id": "r5_grok-10",
+   "list_id": "r5_grok",
+   "source_line": 33,
+   "quote": "coupled QA abstain keys off `c[\"family\"] == \"mutual_refutation_contested_abstain\"`",
+   "ordinals": [
+    "B24"
+   ],
+   "defect_class": "C15",
+   "alignment_note": "PM-2 QA abstention consults the benchmark family label"
+  },
+  {
+   "finding_id": "r5_grok-11",
+   "list_id": "r5_grok",
+   "source_line": 37,
+   "quote": "thresholds were tuned on the three named R4 LoCoMo misses and re-scored on that same 300",
+   "ordinals": [
+    "B21"
+   ],
+   "defect_class": "C06",
+   "alignment_note": "EM-4 thresholds tuned on R4 LoCoMo misses and re-scored on same 300: in-sample tuning undisclosed"
+  },
+  {
+   "finding_id": "r5_grok-12",
+   "list_id": "r5_grok",
+   "source_line": 37,
+   "quote": "`_EXTENDED_RECAP_RE` matches the six harness prefixes",
+   "ordinals": [
+    "B22"
+   ],
+   "defect_class": "C06",
+   "alignment_note": "Recap regex matches the 6 synthetic harness echo prefixes: benchmark-specific overfitting"
+  },
+  {
+   "finding_id": "r5_grok-13",
+   "list_id": "r5_grok",
+   "source_line": 37,
+   "quote": "same-session pairs are skipped (`sess_ids[a] == sess_ids[b]`); missing `session_id` defaults to row index",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Undisclosed em4 module behaviours (same-session skip, session_id fallback to row index)"
+  },
+  {
+   "finding_id": "r5_grok-14",
+   "list_id": "r5_grok",
+   "source_line": 37,
+   "quote": "lines 296–298 are a dead loop",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C17",
+   "alignment_note": "Other (reason: dead code with no output effect): dead loop in shared em4 module"
+  },
+  {
+   "finding_id": "r5_grok-15",
+   "list_id": "r5_grok",
+   "source_line": 37,
+   "quote": "`C4_v4` (structured attestations) is distinct from conversational `M4f`/`M4g` (text-only)",
+   "ordinals": [
+    "B20"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "Draft conflates C4_v4 with the EM-4 conversational module; prose disagrees with code"
+  },
+  {
+   "finding_id": "r5_neon-01",
+   "list_id": "r5_neon",
+   "source_line": 27,
+   "quote": "explicitly branches on **`and c[\"family\"] == \"mutual_refutation_contested_abstain\"`**",
+   "ordinals": [
+    "B24"
+   ],
+   "defect_class": "C15",
+   "alignment_note": "PM-2 QA harness consults benchmark family label and ground-truth entity/slot for EK5 arms"
+  },
+  {
+   "finding_id": "r5_neon-02",
+   "list_id": "r5_neon",
+   "source_line": 27,
+   "quote": "This guard was needed because `resolve_slot()` does not filter `blocked_authority_edges`",
+   "ordinals": [
+    "B24"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "resolve_slot ignores blocked_authority_edges, so authority_laundering resolves as CONTESTED: correctness bug"
+  },
+  {
+   "finding_id": "r5_neon-03",
+   "list_id": "r5_neon",
+   "source_line": 27,
+   "quote": "and is completely omitted from WP v3 & HTML v3",
+   "ordinals": [
+    "B24"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Zero-write Query0W arm (0.695) omitted; only transductive DualAdap reached 0.965: caveat that shrinks the claim omitted"
+  },
+  {
+   "finding_id": "r5_neon-04",
+   "list_id": "r5_neon",
+   "source_line": 27,
+   "quote": "timed **`n_queries=86`** (not 200)",
+   "ordinals": [
+    "B24"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "0.7181 ms p95 covers 86 SciFact queries over precomputed mask only; latency claim overstated"
+  },
+  {
+   "finding_id": "r5_neon-05",
+   "list_id": "r5_neon",
+   "source_line": 27,
+   "quote": "not `0.50/0.50` as documented on lines 6 & 103",
+   "ordinals": [
+    "B24"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "Hybrid fusion uses 0.35/0.65 in code vs 0.50/0.50 in docs"
+  },
+  {
+   "finding_id": "r5_neon-06",
+   "list_id": "r5_neon",
+   "source_line": 28,
+   "quote": "True independent oracle checks = **`353,105`**",
+   "ordinals": [
+    "B17"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "381,497 oracle count inflated by 28,561 cached pair checks"
+  },
+  {
+   "finding_id": "r5_neon-07",
+   "list_id": "r5_neon",
+   "source_line": 28,
+   "quote": "full oracle check `sn.val != orc` was skipped at line 253 whenever `_missing_dep_nodes` was non-empty",
+   "ordinals": [
+    "B17"
+   ],
+   "defect_class": "C01",
+   "alignment_note": "Oracle comparison skipped for snapshots with missing dependency nodes: verifier does not check what it is credited with"
+  },
+  {
+   "finding_id": "r5_neon-08",
+   "list_id": "r5_neon",
+   "source_line": 29,
+   "quote": "Its `0.3375` average came from `0.0000` on the **5 structured graph/authority/temporal-edge families**, NOT from failing on paraphrased echo floods.",
+   "ordinals": [
+    "B20"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Jaccard 'collapse on paraphrase' framing uses the wrong denominator"
+  },
+  {
+   "finding_id": "r5_neon-09",
+   "list_id": "r5_neon",
+   "source_line": 29,
+   "quote": "is **NOT header-stripped**",
+   "ordinals": [
+    "B22"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "M1c called header-stripped in prose; code is unstripped"
+  },
+  {
+   "finding_id": "r5_neon-10",
+   "list_id": "r5_neon",
+   "source_line": 30,
+   "quote": "**1) Apples-to-oranges timing:**",
+   "ordinals": [
+    "B26"
+   ],
+   "defect_class": "C08",
+   "alignment_note": "6,225x compares pre-parsed structured graph lookup vs raw-text LLM extraction"
+  },
+  {
+   "finding_id": "r5_neon-11",
+   "list_id": "r5_neon",
+   "source_line": 30,
+   "quote": "**2) Unexplained `C4_v4` drop:**",
+   "ordinals": [
+    "B25",
+    "B26"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "C4_v4 0.95/0.975 vs 1.000 unexplained; 1.000 headline not stable across draws"
+  },
+  {
+   "finding_id": "r5_neon-12",
+   "list_id": "r5_neon",
+   "source_line": 30,
+   "quote": "pre-filtered using the test question's hybrid score",
+   "ordinals": [
+    "B26"
+   ],
+   "defect_class": "C08",
+   "alignment_note": "mem0 fed question-prefiltered top20 turns in Suite B: comparator asymmetry"
+  },
+  {
+   "finding_id": "r5_neon-13",
+   "list_id": "r5_neon",
+   "source_line": 30,
+   "quote": "`M1c` was omitted; neither `M4g`",
+   "ordinals": [
+    "B26"
+   ],
+   "defect_class": "C11",
+   "alignment_note": "Suite B omits the M1c baseline arm"
+  },
+  {
+   "finding_id": "r5_neon-14",
+   "list_id": "r5_neon",
+   "source_line": 30,
+   "quote": "neither `M4g` (`LCB95=-0.0333`) nor `M4f` (`LCB95=-0.1000`) is statistically significant at 95% CI",
+   "ordinals": [
+    "B26"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Suite B advantage non-significant; claim lacks caveat"
+  },
+  {
+   "finding_id": "r5_neon-15",
+   "list_id": "r5_neon",
+   "source_line": 30,
+   "quote": "`\"pm3_cleared\": True` is hardcoded at line 329",
+   "ordinals": [
+    "B26"
+   ],
+   "defect_class": "C02",
+   "alignment_note": "PM-3 gate flag hardcoded True: vacuous gate"
+  },
+  {
+   "finding_id": "r5_neon-16",
+   "list_id": "r5_neon",
+   "source_line": 31,
+   "quote": "executes `old_elig = dict(self.eligibility)` on **every `apply_mutation`**",
+   "ordinals": [
+    "B17"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Per-mutation full eligibility dict copy produces ~7.8 ms floor: implementation inefficiency"
+  },
+  {
+   "finding_id": "r5_neon-17",
+   "list_id": "r5_neon",
+   "source_line": 31,
+   "quote": "the spike is Stratum 1 `_recompute_authority_cone`",
+   "ordinals": [
+    "B17"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "WP attributes 1M p99 tail to 'giant positive-SCC'; artifact shows Stratum 1 dual-Tarjan cone recompute"
+  },
+  {
+   "finding_id": "r5_neon-18",
+   "list_id": "r5_neon",
+   "source_line": 31,
+   "quote": "`remove_edges` linearly scans all `585,008` `self.attestations`",
+   "ordinals": [
+    "B17"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "remove_edges linear scan inflates hub latencies despite |D|=0"
+  },
+  {
+   "finding_id": "r5_neon-19",
+   "list_id": "r5_neon",
+   "source_line": 31,
+   "quote": "times a 5-item Python dict lookup (`slot_index[key]`), NOT BM25 or `resolve_slot()`",
+   "ordinals": [
+    "B17"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "100k query latency times dict lookup, not the resolve path; overstated"
+  },
+  {
+   "finding_id": "r5_neon-20",
+   "list_id": "r5_neon",
+   "source_line": 32,
+   "quote": "is **NOT** in [em4_soft_telemetry_routing.py]",
+   "ordinals": [
+    "B20"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "WP/HTML list C4_v4 inside the em4 module; it lives in the R5b runner"
+  },
+  {
+   "finding_id": "r5_neon-21",
+   "list_id": "r5_neon",
+   "source_line": 32,
+   "quote": "Of `25` side hashes, `2` are in **Part I (`s1`)**",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "WP attributes 25 side hashes to Parts II-IV; actually Parts I-IV"
+  },
+  {
+   "finding_id": "r5_neon-22",
+   "list_id": "r5_neon",
+   "source_line": 33,
+   "quote": "is 89% dominated by exact-token `ZS v3`",
+   "ordinals": [
+    "B27"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Combined_900 kappa dominated by easy ZS rows; overstates judge agreement"
+  },
+  {
+   "finding_id": "r5_neon-23",
+   "list_id": "r5_neon",
+   "source_line": 33,
+   "quote": "exceeding `M4g`'s entire `+1.00–1.33 pp` clean gain!",
+   "ordinals": [
+    "B18",
+    "B21",
+    "B22"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "R4->R5 identical-prompt NVFP4 variance (2.33 pp) exceeds M4g's clean gains; gains overstated"
+  },
+  {
+   "finding_id": "r5_neon-24",
+   "list_id": "r5_neon",
+   "source_line": 34,
+   "quote": "HTML Fig 7 mixes `N=240` (`C4_v4=1.000`) & `N=80` (`Mem0=0.475`) without split label",
+   "ordinals": [
+    "B20",
+    "B26"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Figure mixes denominators from different runs without labels"
+  },
+  {
+   "finding_id": "r5_neon-25",
+   "list_id": "r5_neon",
+   "source_line": 34,
+   "quote": "WP line 128 omits `A3-EffRank` `-0.0057`/`-0.0092` dips",
+   "ordinals": [
+    "B16"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "A3-EffRank losing cells undisclosed"
+  },
+  {
+   "finding_id": "r5_neon-26",
+   "list_id": "r5_neon",
+   "source_line": 34,
+   "quote": "`build_whitepaper_assets.py:1,8` still says `v2`",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C04",
+   "alignment_note": "Stale v2 docstring in asset builder"
+  },
+  {
+   "finding_id": "r5_neon-27",
+   "list_id": "r5_neon",
+   "source_line": 45,
+   "quote": "does **not** generalize to arbitrary unseen natural-language recap phrasing",
+   "ordinals": [
+    "B22"
+   ],
+   "defect_class": "C06",
+   "alignment_note": "LME-78 echo collapse depends on hardcoded synthetic prefixes: benchmark-specific overfitting"
+  },
+  {
+   "finding_id": "r5_neon-28",
+   "list_id": "r5_neon",
+   "source_line": 45,
+   "quote": "`_EXTENDED_RECAP_RE` stops at `:`, leaking `\"user mentioned — \"` into the stripped body",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Recap regex stops at colon and leaks wrapper text: correctness bug in shared em4 module"
+  },
+  {
+   "finding_id": "r5_neon-29",
+   "list_id": "r5_neon",
+   "source_line": 47,
+   "quote": "is **inverted** relative to its comment",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Inverted representative-selection sort key in em4 module"
+  },
+  {
+   "finding_id": "r5_neon-30",
+   "list_id": "r5_neon",
+   "source_line": 49,
+   "quote": "`M4f` achieved `0.00 pp` regression by rarely modifying clean rankings",
+   "ordinals": [
+    "B21",
+    "B22"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Clean zero-regression claim mostly reflects non-activation (identical prompts 297/300, 487/500); caveat omitted"
+  },
+  {
+   "finding_id": "r5_neon-31",
+   "list_id": "r5_neon",
+   "source_line": 49,
+   "quote": "were tuned post-R4 without a disjoint dev/test threshold split",
+   "ordinals": [
+    "B21"
+   ],
+   "defect_class": "C06",
+   "alignment_note": "8 EM-4 thresholds tuned post-R4 without a dev/test split"
+  },
+  {
+   "finding_id": "r5_neon-32",
+   "list_id": "r5_neon",
+   "source_line": 49,
+   "quote": "Also dead no-op loop at",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C17",
+   "alignment_note": "Other (reason: dead code with no output effect): dead no-op loop in em4 module"
+  },
+  {
+   "finding_id": "r5_neon-33",
+   "list_id": "r5_neon",
+   "source_line": 51,
+   "quote": "Clustering echoes by single-linkage Union-Find allows chaining",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Single-linkage chaining back-dates origin_ts: correctness bug in em4 module"
+  },
+  {
+   "finding_id": "r5_neon-34",
+   "list_id": "r5_neon",
+   "source_line": 53,
+   "quote": "a 2-hop laundered rumor (`exec → mid_digest → rumor`) leaves `rumor` undemoted",
+   "ordinals": [
+    "B20"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "C4_v4 walks only 1 hop backward: laundering blind spot"
+  },
+  {
+   "finding_id": "r5_neon-35",
+   "list_id": "r5_neon",
+   "source_line": 54,
+   "quote": "relies on exact canonical `claim_value` strings",
+   "ordinals": [
+    "B20"
+   ],
+   "defect_class": "C08",
+   "alignment_note": "C4_v4 depends on a pre-canonicalised structured schema unavailable to raw-text baselines"
+  },
+  {
+   "finding_id": "r5_neon-36",
+   "list_id": "r5_neon",
+   "source_line": 55,
+   "quote": "can suppress legitimate lower-tier field observations",
+   "ordinals": [
+    "B20"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "C4_v4 global suppression causes false demotions: correctness bug"
+  },
+  {
+   "finding_id": "r5_neon-37",
+   "list_id": "r5_neon",
+   "source_line": 64,
+   "quote": "Change `\"Final 4-Model Frontier Panel Pass\"`",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Whitepaper claims a panel pass before findings are archived: status overstated"
+  },
+  {
+   "finding_id": "r5_neon-38",
+   "list_id": "r5_neon",
+   "source_line": 76,
+   "quote": "Add one sentence explaining `C4_v4`'s `0.9500` (`r5b_s2`) / `0.9750` (`r5b_s2b`) vs `1.0000` (`r5b_s1`/`r5b_s4`)",
+   "ordinals": [
+    "B20",
+    "B25",
+    "B26",
+    "B27"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "C4_v4 1.000 vs 0.95/0.975 across draws needs disclosure"
+  },
+  {
+   "finding_id": "r5_neon-39",
+   "list_id": "r5_neon",
+   "source_line": 85,
+   "quote": "change `PM-2` badge from unqualified `CLEARED (PASS)` to `CLEAN-RERUN NEEDED (HARNESS GUARD)`",
+   "ordinals": [
+    "B24"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "PM-2 CLEARED badge overstates given the harness label guard"
+  },
+  {
+   "finding_id": "r5_neon-40",
+   "list_id": "r5_neon",
+   "source_line": 87,
+   "quote": "Clarify `0.7812 (Reg B)` is combined `78 KU + 50 clean` overall accuracy in `f2_longmemeval_v2`",
+   "ordinals": [
+    "B12"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "HTML 0.7812 figure is denominator-ambiguous vs KU-only 0.7436"
+  }
+ ],
+ "splits_and_judgement_calls": [
+  "BRIEF: no R5 panel brief/prompt exists on disk. Searched council-logs/ (only the 4 memos + synthesis), git grep for panel-r5/4-model panel/Final 4-Model across the worktree (hits only in whitepaper, HTML, ledger, roadmap, em4 module, tests, vault-staging script; none is a prompt). brief_path=null; brief_preseeds_defects=false means 'no evidence of pre-seeding', not 'verified absent'. The synthesis gives only roster/thread IDs, no prompt text.",
+  "SCOPE: astra, opus, neon declare Draft v3 / 27 bundles. Grok never says '27 bundles'; it audits 'the draft' claims (PM-1a..PM-5, Parts III-IV numbers) and explicitly limits hash re-verification to 7 Part IV manifests (line 9). Its claim-review scope is the same draft, but its verification scope is narrower; whether that fails the 'declared scope equals shared scope' rule is left to the runner. Neon also reviews HTML v3 and build_whitepaper_assets.py (same deliverable set as the draft; astra/opus/grok also cite HTML/figure items indirectly). All 4 findings fall within ordinals 1-27 or XC; no out-of-scope drops.",
+  "INDEPENDENCE: no list quotes, cites, or reconciles another panel memo. Opus line 38 ('remove premature completion wording on the 4-model panel until all 4 logs land') and Neon line 64 (panel tense 'until thread links are archived') show awareness the panel exists and that other logs had not landed - evidence of non-reading, not dependence. Each list states its own re-hash/verification work.",
+  "ORDINAL r5_s1 -> B23 (r5_s1_pm2_dense_oov_probe), not B19 (r5_s1_zs_v3_pre_c4v4), in grok line 33: the context is 'dense 12/12 CAR cells', and the B23 scorecard summary says 'beats Composed CAR in 12/12 cells'. Opus line 31 'added after r5_s1 (C4_v3 = 0.875)' refers to B19 but the defect is post-hoc C4_v4 on B20's cases, so it is coded B20 only.",
+  "ORDINAL PM-5 / 381,497 oracle count / 1M power-law / 100k service -> B17 (f2_ek5_v3_1m_powerlaw), whose scorecard summary carries the 353,105 + 28,561 oracle breakdown, 1M power-law and 100k service.",
+  "ORDINAL PM-1a (ZS v3 closure, C2b 0.3375, C4_v4 240/240, structured edges, post-hoc C4_v4) -> B20 (r5b_s1_zs_v3_pm1a_closure). B19 carries C2b=0.3417 (different run); grok line 19 notes both runs appear in the whitepaper but frames it neutrally ('Matches'), so excluded.",
+  "ORDINAL PM-1b clean LoCoMo-300 (M4e/M4f/M4g, Recall@5, R4-tuned thresholds) -> B21; PM-1b LME-500 clean and KU-78 stress (stress gate, M1c, 6 LME echo prefixes) -> B22 (r5_s3_longmemeval_n500, which holds the 78-item KU stress). PM-2 hybrid (0.718 ms, family-label guard, Query0W, DualAdap, TRA-1 12/12, weights) -> B24; dense PM-2 / 36.55 ms uncached -> B23. PM-3 default mem0 (0.95, r5b_s2) -> B25; steelmanned 6,225x / Suite B (r5b_s2b) -> B26. PM-4 kappa / human-audit scorer -> B27. A3-EffRank (WP line 128) -> B16 (f1_r4_comprehensive, A3-2x2). HTML '0.7812 (Reg B)' f2_longmemeval_v2 -> B12. R4 M4e run (neon line 33 'between R4 and R5') -> B18 (f2_r4_..._locomo, EM-1 M4e).",
+  "ORDINAL C4_v4 1.000-instability defect harmonised to B20,B25,B26,B27 in opus (line 20 names r5b_s2/s2b/s4 and the PM-1a 1.000 claim), grok (line 31: PM-4 cells + PM-1a 100% + two other N=80 draws) and neon line 76 (names r5b_s1/s2/s2b/s4). Neon line 30 names only r5b_s2/r5b_s2b -> B25,B26. Class C03 for all (headline omits range that shrinks claim), not C05, since the lower scores are reported, only unexplained/undisclosed as a range.",
+  "ORDINAL Part IV provenance (opus line 37 'Part IV manifests') expanded to all nine Part IV ordinals B19-B27 (scorecard part=PART_IV_R5_GATE_CLOSURE). This is the largest single expansion (9 IDs from one statement).",
+  "XC: shared em4_soft_telemetry_routing.py code bugs (dead loop, ts validation, 'Update:' false positive, union-find chaining, inverted sort key, colon leak, same-session skip) name a module used by B21/B22/B26, no single bundle -> XC. Dead loop coded C17 (no output effect); behavioural bugs C16. Registry digest mislabel (grok line 11), side-hash Part attribution (astra 13, neon 32), 'cryptographic evidence bundles' framing and panel-completion wording (opus 38, neon 64), stale v2 docstring (neon 34) -> XC. Side-hash attribution coded XC not B1 even though neon names s1 as holding 2 of the hashes: the misstatement is about the ledger's Part grouping, not s1's evidence.",
+  "CLASS calls: family-label guard and DualAdap transductive centering and qrel-selected COPY_OF echoes -> C15 (label/test-set consultation). 6-prefix regex overfitting and R4-tuned thresholds -> C06. 6,225x and structured-edge asymmetry and question-prefiltered mem0 slice and substring scoring -> C08. Stress gate failed -> C05 (tie-break rule 5 first line). M1c 'header-stripped', hybrid weights 0.35/0.65 vs 0.50/0.50, C4_v4 module attribution, ek5_store=None, Stratum-1 tail misattribution -> C10. pm3_cleared hardcoded True -> C02 (vacuous gate). Neon oracle check skipped on missing deps -> C01. Neon A3-EffRank omitted dips -> C05 (undisclosed loss). Grok line 37 'C4_v4 ... distinct from conversational M4f/M4g' coded B20:C10 (conflation in prose, same as neon module attribution) rather than C08; borderline.",
+  "SPLITS: neon line 27 split into 5 (family label C15, resolve_slot bug C16, Query0W omission C03, n=86 latency C03, fusion weights C10); neon line 28 into 2 (count C03, skipped oracle check C01); neon line 30 into 6; neon line 31 into 4; neon 33/34 into 2/3; astra line 22 into 4 (two C03 statements collapse to B17:C03); astra line 25 into 8; opus line 34 into 4; opus line 38 into 2; grok line 33 into 3 and line 37 into 5.",
+  "EXCLUSIONS (rule 1/2 neutral or confirmation): astra line 13 registry digest sentence ('`b57b05660edf…` is the canonical **content** digest') - informative, no edit demand (grok's 'not the SHA-256' is counted); astra line 20 Suite B 'has LCB -3.33 pp (query-selected top-20 user turns)' - neutral restatement, unlike opus/grok/neon which use 'not significant'/overclaim framing; astra line 18 M4f Tango -5.20 pp SSU-70 and 297/300 identical prompts - neutral; astra line 21 '80 cases reused' - neutral; grok line 19 C2b two-runs note ('Matches'); grok line 36 'No gold-id leak' (confirmation); opus line 26 and line 38 'keep sealed key out of public git commit' - rule 2 'keep' wording; opus line 27 PM-5 'PASS'; neon line 33 Qwen self-grading bias - observation that the other judge caught; all 'Next demonstrations'/strategy sections (astra 26, opus 40-45, grok 39-44, neon 94-128) excluded as strategy/new experiments.",
+  "SUMMARY-LINE DEDUP: verdict paragraphs (astra 9, opus 11, grok 9, neon 12) restate detailed findings; only astra line 9 'times a different workload from QA' is recorded (no detail line for the timing defect in astra). Neon section-3 edit lines (65-90) restating section-1 findings are not re-recorded except lines 64, 76, 85, 87 which add new content or ordinals.",
+  "HARMONISATION: B24:C03 latency/caveats appears in all 4 lists; B22:C05 stress gate in astra/opus/grok (neon raises M1c C10 instead, not the gate failure); B21:C06 tuning in all 4; B22:C06 regex in astra/grok/neon; B17:C03 oracle count in astra/neon only (grok line 24 accepts 381,497 as 'fair'); B26:C08 6,225x in all 4; B24:C15 family label in astra/grok/neon; XC:C17 dead loop in opus/grok/neon; XC:C16 em4 bugs in all 4."
+ ]
+}
