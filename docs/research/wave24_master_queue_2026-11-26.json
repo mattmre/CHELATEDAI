@@ -1,7 +1,7 @@
 {
   "schema_version": "wave24.master_queue.v1",
   "created_at_utc": "2026-11-26T12:15:00Z",
-  "updated_at_utc": "2026-11-26T14:25:00Z",
+  "updated_at_utc": "2026-11-26T17:35:00Z",
   "spine_branch": "pv7/w16-core",
   "policy": {
     "github_paid_billing": "FORBIDDEN_FOREVER_ZERO_DOLLAR_ONLY",
@@ -18,6 +18,13 @@
       "pm4_human_audit_100_blind_sheet.csv"
     ]
   },
+  "summary": {
+    "automated_compute_and_formal_lanes_completed": "13/13",
+    "bonus_followups_completed": ["W24-10b", "W24-13b"],
+    "verify_all_offline_full_formal": "PASS (formal_tier=PASS, 18/18 verifiers, 82 Lean 4 theorems, 25540 nanoda_bin declarations, 0 sorry/native_decide)",
+    "pending_owner_approval_outward_actions": "W24-04 (push 3 P0 branches + PR #368/#369/#295/#376 hygiene)",
+    "pending_human_time_strictly_last": ["W24-15 (PM-4b human grading, ~6h)", "W24-16 (external partner trial)"]
+  },
   "items": [
     {
       "id": "W24-01",
@@ -26,7 +33,7 @@
       "compute_target": "gx10-6724 (linux-arm64 self-hosted runner)",
       "status": "COMPLETED",
       "cost_usd": 0,
-      "evidence": "Runner id=21 (spark2-gx10-6724, v2.338.2, labels self-hosted,Linux,ARM64,spark2) ONLINE via systemd user service; branch ci/w24-zero-billing-self-hosted-spark-runner (f245d923, off origin/main) switches all 5 workflows off ubuntu-latest."
+      "evidence": "Runner id=21 (spark2-gx10-6724, v2.338.2, labels self-hosted,Linux,ARM64,spark2) ONLINE via systemd user service; branch ci/w24-zero-billing-self-hosted-spark-runner (f245d923, off origin/main) switches all 5 workflows off ubuntu-latest. Confirmed Ruleset 13081256 has 0 required_status_checks."
     },
     {
       "id": "W24-02",
@@ -47,10 +54,10 @@
     {
       "id": "W24-04",
       "tier": "P0",
-      "title": "PR Hygiene: Land #369 (Opt-In D-06), Finish #368 (3 Float Tie Sites), Close #295, Clear #376 to BHS 100",
+      "title": "PR Hygiene: Push P0 Branches + Land #369 (Opt-In D-06), Finish #368 (3 Float Tie Sites), Close #295, Clear #376 to BHS 100",
       "compute_target": "local / Spark 2 self-hosted CI",
       "status": "QUEUED_READY_FOR_OWNER_PUSH",
-      "evidence": "Awaiting owner sign-off to push P0 branches and close #295 / land #368, #369, #376."
+      "evidence": "All 3 P0 branches are clean, tested, and ready locally; awaiting owner approval for outward git push / PR mutations."
     },
     {
       "id": "W24-05",
@@ -60,7 +67,7 @@
       "compute_target": "colab:NVIDIA L4 (0.37 CU, session closed cleanly)",
       "status": "COMPLETED",
       "artifact": "artifacts/pv7_w24_05_b49_sdk_7b_coders/w24_05_b49_sdk_7b_coders_manifest.json",
-      "evidence": "28/36 strict pass (qwen2.5-coder-7b: 8/12, phi-4-mini: 10/12, deepseek-coder-6.7b: 10/12 — all 3 families >=8/12); 34/36 (94.4%) functional_ok (Qwen 12/12, Phi 12/12, DeepSeek 10/12); 0 leaks, 0 private imports; 6 misses were omitting canary_blocked on unmodified README."
+      "evidence": "28/36 strict pass (qwen2.5-coder-7b: 8/12, phi-4-mini: 10/12, deepseek-coder-6.7b: 10/12 — all 3 families >=8/12); 34/36 (94.4%) functional_ok (Qwen 12/12, Phi 12/12, DeepSeek 10/12); 0 leaks, 0 private imports; all 6 misses on Qwen/Phi were omitting canary_blocked on unmodified README (which lacks a negotiate_capability code snippet)."
     },
     {
       "id": "W24-06",
@@ -97,29 +104,32 @@
       "tier": "P1",
       "lane": "Lane 4 (W22-04 Drift + Adaptive Backfill + W22-06b)",
       "title": "12-Domain Online Prompt/Query Drift (ZeroMu EMA vs Frozen CenteredProcrustes), CSLS + Unlabeled Adaptive Backfill, and W22-06(b) 3 Extra Encoders",
-      "compute_target": "gx10-37c3 (NVIDIA GB10 — RUNNING LIVE on 32.7k docs across all 12 unburned MTEB domains)",
-      "status": "IN_PROGRESS",
-      "evidence": "Running live on Spark 1 GB10 (96% GPU util); encoding all 12 unburned domains including 17.5k trec-covid + 8.2k dbpedia docs."
+      "compute_target": "gx10-6724 (NVIDIA GB10, 1127s)",
+      "status": "COMPLETED",
+      "artifact": "artifacts/pv7_w24_09_drift_spark2/w24_09_manifest.json",
+      "evidence": "Part C (W22-06b 3 new encoders): massive CSLS merge replication (+35.42pp bge-base-768, +31.10pp bge-large-1024, +38.80pp e5-large-1024), while CenteredProcrustes+CSLS beats ZeroMu+CSLS by +1.49..+2.33pp. Part B (12 domains, N=1865 pooled queries): BOTH 20% backfill+CSLS arms decisively clear Tango NI vs -0.0500 native oracle (adaptive LCB95=-0.0120 z=7.76 p=4.2e-15, uniform LCB95=-0.0150 z=7.33 p=1.2e-13; adaptive wins 8/12 domains incl. +3.08pp on climate-fever, mean nDCG delta -0.003pp CI [-0.66,+0.77]pp). Part A (Honest Null): ZeroMu causal EMA did NOT beat frozen CenteredProcrustes under uniform prompt-wrapper shift (-0.61pp, 6/12, CI [-1.57,+0.20]pp)."
     },
     {
       "id": "W24-10",
       "tier": "P1",
       "lane": "Lane 6 (W22-18 / #53 PM-6 Firewall)",
-      "title": "Public-Corpus Real Sibling Benigns (N=250) + Unicode NFKC/Confusable Defense + Live #53 Streaming Gateway",
-      "compute_target": "gx10-37c3 (NVIDIA GB10, 311s)",
+      "title": "Public-Corpus Real Sibling Benigns (N=250) + Unicode NFKC/Confusable Defense + Live #53 Streaming Gateway (+ W24-10b N_cal=750)",
+      "compute_target": "gx10-37c3 (311s) + gx10-6724 (W24-10b N_cal=750)",
       "status": "COMPLETED",
       "artifact": "artifacts/pv7_w24_10_pm6_spark1/w24_10_pm6_gateway_manifest.json",
-      "evidence": "N=250 real same-forum sibling benigns from 5 unburned public corpora; 125/125 (100%) clean TPR; R2b homoglyph bypass crushed 93.60% -> 0.00%; live_pm6_gateway_executed=True (259-entry verified audit chain); honest sibling FPR 6/250 = 2.40% (CP_UB95=4.68% at N_cal=350 — recommend scaling N_cal>=700 to tighten below 2.0%)."
+      "followup_artifact": "artifacts/pv7_w24_10b_pm6_ncal750_spark2/w24_10b_pm6_ncal750_manifest.json",
+      "evidence": "W24-10 (N_cal=350): 100% clean TPR, R2b bypass 93.6%->0.00%, live gateway chain=259, sibling FPR 6/250=2.40%. W24-10b (N_cal=750, target_0.005): sibling FPR drops to 3/250=1.20% (clears <=2.0% G5, CP_UB95=3.07%), 100% clean TPR, R2b bypass 98.4%->0.00%. Honest ablation: ZeroMu semantic layer alone had 0/250 FPR (CP_UB95=1.19%) with 2.4% TPR (17.6% at target_0.02); NFKC-normalized wrap_stream 5-token span guard drove both 100% recall and all 3/250 sibling FPs."
     },
     {
       "id": "W24-11",
       "tier": "P2",
-      "lane": "Lane 5 (W22-11 Large-Graph + Lean 4 T-Rs)",
-      "title": "Large-Graph (50-1,000 Node) Incremental WFS Deletion Stress + Lean 4 T-Rs Formalization",
-      "compute_target": "gx10-6724 CPU (0.77s for stress; Lean 4 next)",
-      "status": "STRESS_COMPLETED_LEAN_QUEUED",
+      "lane": "Lane 5 (W22-11 Large-Graph + Lean 4 T-Rs / CW-1)",
+      "title": "Large-Graph (50-1,000 Node) Incremental WFS Deletion Stress + Lean 4 CW-1 Formalization & nanoda_bin Verification",
+      "compute_target": "gx10-6724 CPU (0.77s stress) + Local Lean 4 v4.36.0-rc1 & nanoda_bin",
+      "status": "COMPLETED",
       "artifact": "artifacts/pv7_w24_11_spark2/w24_11_results.json",
-      "evidence": "166,700 large-graph node checkpoints (N=50..1,000, 580 cyclic/deletion batches): 0 semantic mismatches, 0 canonical mismatches, 0 fresh-rebuild mismatches, 0.14 ms mean incremental apply_mutation at N=1,000. Lean 4 CW-1 mechanization queued next."
+      "formal_module": "formal/ChelatedFormal/Theorem5_IncrementalWFS_CW1.lean",
+      "evidence": "Stress: 166,700 node checkpoints (N=50..1,000, 580 cyclic/deletion batches), 0 mismatches, 0.14 ms mean incremental apply_mutation at N=1,000. Formal: Theorem5_IncrementalWFS_CW1.lean proves wfs_frame_isolation, incrementalWfsSplice_sound (CW-1 under arbitrary deletions/mutations in affected cone A), unfounded_pos_cycle_false, delete_refute_gamma_mono, delete_dep_posClosure_mono, and non-vacuity witness with 0 sorry / 0 native_decide; verify_all_offline.py --full-formal PASS (82 theorems, 25,540 nanoda_bin declarations, Spec.lean SHA-256 lock intact)."
     },
     {
       "id": "W24-12",
@@ -135,11 +145,12 @@
       "id": "W24-13",
       "tier": "P2",
       "lane": "Lane 7b (W22-09 True Recurrent/SSM State)",
-      "title": "Exploratory T-Rn Test on Genuine Frozen Gated-DeltaNet Recurrent States (Qwen/Qwen3.5-2B-Base)",
-      "compute_target": "gx10-6724 (NVIDIA GB10, 55.2s)",
+      "title": "Exploratory T-Rn Test on Genuine Frozen Gated-DeltaNet Recurrent States (Qwen/Qwen3.5-2B-Base, 28 -> 2,053 Suffix Tokens)",
+      "compute_target": "gx10-6724 (NVIDIA GB10, 55.2s + 60.0s W24-13b)",
       "status": "COMPLETED",
       "artifact": "artifacts/pv7_w24_13_deltanet_spark2/w24_13_deltanet_retraction_manifest.json",
-      "evidence": "Major breakthrough on 18 real Gated-DeltaNet (1,16,128,128) + 6 full-attn layers: stale KL=0.917-1.126; KV-excise-only reaches 78.8-83.1% recovery (KL 0.036-0.058), proving ~17-21% persists inside DeltaNet states; hybrid damped DeltaNet subtraction (gamma=0.5) + zero-replay KV excision reaches 97.2% / 98.3% / 100.5% recovery with KL=0.013-0.017 (3x lower KL than KV-only, 65-80x lower than stale) in O(1) 11.4 ms (9.1x-13.3x faster than suffix replay)."
+      "followup_artifact": "artifacts/pv7_w24_13b_deltanet_long_spark2/w24_13b_deltanet_long_decay_manifest.json",
+      "evidence": "Breakthrough on 18 real Gated-DeltaNet (1,16,128,128) + 6 full-attn layers: W24-13 (28..325 tok) hit 97.2%..100.5% recovery, KL=0.013..0.017, 9.1x..13.3x speedup. W24-13b (325 -> 1,027 -> 2,053 tok) attached exact decay hooks to all 18 linear_attn layers (mean cumulative decay 0.338->0.302->0.278): at 2,053 tokens, hybrid_deltanet_g0.25_plus_kv hits KL=0.0084 (145x below stale 1.2183, 3.0x below KV-excise-only 0.0250), 93.7% recovery, in constant O(1) 9.91 ms (42.4x faster than exact replay 420.5 ms); exact_decay_plus_kv hits 106.5% recovery, KL=0.0183, 41.0x speedup."
     },
     {
       "id": "W24-14",

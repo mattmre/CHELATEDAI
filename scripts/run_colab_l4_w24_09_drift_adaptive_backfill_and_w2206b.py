@@ -196,21 +196,28 @@ def load_mteb_domain(spec: Mapping[str, Any]) -> Dict[str, Any]:
 
     needed_docs = set()
     for q in eval_qids + dev_qids:
-        needed_docs.update(qrels_all[q].keys())
+        # Cap judged positives per query to top-8 by relevance score so mega-qrel domains
+        # (trec-covid, dbpedia) remain bounded while every eval/dev query keeps full top-8 ground truth.
+        top_rel = sorted(qrels_all[q].items(), key=lambda kv: (-int(kv[1]), kv[0]))[:8]
+        for did, _sc in top_rel:
+            needed_docs.add(did)
 
+    max_docs_hard = max(int(spec["max_docs"]), 1000)
     doc_ids: List[str] = []
     doc_texts: List[str] = []
     seen = set()
-    # First add all relevant docs, then pad up to max_docs
+    # First add capped relevant docs (respecting max_docs_hard), then pad up to spec["max_docs"]
     corpus_rows = list(corpus_ds)
     for r in corpus_rows:
+        if len(doc_ids) >= max_docs_hard:
+            break
         did = canonicalize_id(r["_id"])
         if did in needed_docs and did not in seen:
             txt = (str(r.get("title", "")).strip() + " " + str(r.get("text", "")).strip()).strip()
             if txt:
                 seen.add(did)
                 doc_ids.append(did)
-                doc_texts.append(txt[:1600])
+                doc_texts.append(txt[:768])
     for r in corpus_rows:
         if len(doc_ids) >= int(spec["max_docs"]):
             break
@@ -220,7 +227,7 @@ def load_mteb_domain(spec: Mapping[str, Any]) -> Dict[str, Any]:
             if txt:
                 seen.add(did)
                 doc_ids.append(did)
-                doc_texts.append(txt[:1600])
+                doc_texts.append(txt[:768])
 
     # Keep only queries that have >=1 relevant doc in doc_ids
     doc_set = set(doc_ids)
@@ -292,6 +299,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ap.add_argument("--output-dir", type=Path, default=Path("/content/out/pv7_w24_09_drift_adaptive_w2206b"))
     ap.add_argument("--git-commit-sha", type=str, default=os.environ.get("CHELATED_GIT_SHA", "unknown"))
     ap.add_argument("--source-archive-sha256", type=str, default=os.environ.get("CHELATED_SRC_TAR_SHA256", "unknown"))
+    ap.add_argument("--hardware-prefix", type=str, default="spark2_gb10")
     args = ap.parse_args(argv)
 
     if args.self_test:
@@ -304,7 +312,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     t0 = time.perf_counter()
     gpu_name = torch.cuda.get_device_name(0)
-    hardware_cohort = f"colab:{gpu_name}"
+    hardware_cohort = f"{args.hardware_prefix}:{gpu_name}"
     print(f"[w24-09] hardware_cohort={hardware_cohort} torch={torch.__version__}", flush=True)
 
     # 1. Load all 12 unburned domains
@@ -327,6 +335,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         out: Dict[str, Dict[str, np.ndarray]] = {}
         for dom in domains:
             did = dom["domain_id"]
+            td0 = time.perf_counter()
             d_emb = mdl.encode(dom["doc_texts"], batch_size=batch_size, normalize_embeddings=True, show_progress_bar=False, convert_to_numpy=True)
             dq_emb = mdl.encode(dom["dev_q_texts"], batch_size=batch_size, normalize_embeddings=True, show_progress_bar=False, convert_to_numpy=True)
             eq_emb = mdl.encode(dom["eval_q_texts"], batch_size=batch_size, normalize_embeddings=True, show_progress_bar=False, convert_to_numpy=True)
@@ -340,6 +349,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 sq_emb = mdl.encode(sh_texts, batch_size=batch_size, normalize_embeddings=True, show_progress_bar=False, convert_to_numpy=True)
                 entry["eval_q_shifted"] = np.asarray(sq_emb, dtype=np.float64)
             out[did] = entry
+            print(f"[w24-09] encoded {did:24s} ({len(dom['doc_texts'])} docs) with {model_id.split('/')[-1]} in {time.perf_counter()-td0:.1f}s", flush=True)
         del mdl
         gc.collect()
         torch.cuda.empty_cache()
