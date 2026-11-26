@@ -144,6 +144,17 @@ The frozen invariant, as preregistered:
 own `store.reason`/`store.pos_cyc` canonical; those still differ, as shown above. Any audit trail or
 byte-level diff must read the C1 export, not the store fields.
 
+**A pre-existing defect that users can see (found by Tier B round 1, confirmed by the orchestrator).**
+- `demo_workbench/compliance_copilot_engine.py:785, 929, 1086` show raw `store.reason` to the user through
+  `REASON_LABEL` (line 94), on stores that were mutated incrementally.
+- At `ek5_v3_stratified.py:857-863`, a `val=F` node whose `pos_cyc` flag is stale falls through to `"REFUTED"`.
+- So in exactly the class of 1,315,370 `reason` diffs characterized here, the user would see "retracted by a
+  higher-authority notice" where the canonical answer is "circular support only". That is a wrong explanation shown
+  to the user, not a telemetry difference.
+- This run did not check whether the demo's own scenarios reach that state.
+- It is recorded as Carried Debt `CD-W22-11-01`. Fix it either by reading the C1 export in the demo or by repairing
+  mechanisms (a) and (b).
+
 **How strong the canonical result is.** It is weaker than the raw count suggests:
 - C1 reads only `val` plus the store's edge tables. Both are already required to be equal by the semantic
   and Stratum-0 gates. So C1(inc) == C1(fresh) is **close to implied by construction**.
@@ -168,6 +179,19 @@ The queue item's precondition for funding Lean was 10^6 clean checkpoints plus a
 precondition is **met by the numbers** (1,266,000 mutation checkpoints, semantic 0, CW-1 frozen). Lean was
 **not attempted**, as instructed. The funding decision belongs to the operator after a Tier B review.
 
+**What the 10^6 is made of (added after Tier B round 1):**
+- 738,000 of the 1,266,000 mutation checkpoints (58%) come from A0, A1 and T1. Those tiers use the unchanged baseline
+  generator at 11 nodes or fewer, the same regime as Wave-14A.
+- Only **528,000** checkpoints (T2–T5) are on graphs larger than 11 nodes.
+- A0 uses the same seeds, generator and RNG draws as A1. Its 6,000 checkpoints are A1's first 6 steps run again, so
+  they double-count.
+- The preregistration froze this tier mix, so none of this is post-hoc. But the large-graph share of "10^6" is about
+  0.53M, and the operator should weigh that before funding Lean.
+
+**Departure from the queue item, not from the preregistration.** The queue item says "any witness mismatch blocks
+canonicality". The preregistration narrowed "witness" to the C1 export. Read literally, the engine's own raw witness
+fails the queue item's rule (3,077,470 diffs).
+
 ## Limits (what this does NOT show)
 
 1. **Same-engine differential.** "fresh" is the same `StratifiedEvidenceStore` code run from scratch. The
@@ -178,6 +202,14 @@ precondition is **met by the numbers** (1,266,000 mutation checkpoints, semantic
 
    `eff_auth` is therefore checked inc-vs-fresh only, which is the same code. The independent
    `run_conformance.snapshot_eff_auth` exists, but I did not wire it into the semantic class. That is a gap.
+
+   Tier B round 1 narrowed the gap at sample scale. On its re-run (all of A0/A1, plus 200/60/25/6/2 sequences of
+   T1–T5), `snapshot_eff_auth` matched inc `eff_auth` at all 308,418 node-checkpoints. It also confirmed that the
+   cycle diffs run one way only: against snapshot SCC membership there were 0 false-positive `pos_cyc` and 7,251
+   false-negative.
+
+   The "textbook" WFS oracle (`compute_alternating_wfs_oracle`) reads only the raw snapshot, but it is defined in
+   `ek5_v3_stratified.py`, the module under test.
 2. **No Lean CLI comparison.** `ek5_ref_cli` was not built or run, so the Wave-14A `lean_vs_inc` /
    `lean_vs_fresh` arms are not extended to the larger graphs.
 3. **Engine configuration.** Only the default configuration was exercised: `exact_min_rank=False` (FIFO
@@ -196,6 +228,12 @@ precondition is **met by the numbers** (1,266,000 mutation checkpoints, semantic
    proof. Its "not re-solved this batch" bucket does not separately confirm *which* shield pruned each node.
 7. **Not adversarial.** The run is randomized with fixed seeds. There is no search for graphs that maximise
    divergence, so 0 semantic mismatches is evidence at this coverage, not a proof.
+8. **Liveness covers only part of the comparators.** Fault injection (`w22_11_wfs_deletion_stress.py:533-539`) tests
+   the inc-vs-fresh semantic comparison and the C1 comparison. The oracle, Stratum-0, canonicalizer cross-check and
+   snapshot-SCC comparisons get no injected faults.
+9. **The CW-1 sha256 was never computed.** Equality is inferred from field-by-field diffs. That is equivalent,
+   because `to_dict` contains only those fields (`ek5_reason_canonicalizer.py:209-216`), but the frozen definition
+   itself was not run as code.
 
 ## Departures from the preregistration
 
@@ -227,11 +265,24 @@ precondition is **met by the numbers** (1,266,000 mutation checkpoints, semantic
   preregistration was committed. Nothing was tuned from it.
 
 **SMOKE tier:** ceiling for this item. The real engine ran end-to-end on generated fixtures at the target
-scale. Tier B has not been run.
+scale.
 
-**BHS_SELF_DRAFT: 92.** This is not 100 because of three gaps:
-- independent `eff_auth` is not checked (limit 1), and the non-default engine paths are untested (limit 3);
-- canonical equality is partly by construction;
-- there is no fresh adversarial Tier B review yet.
+**BHS_SELF_DRAFT: 92.** This is not 100 because of these gaps:
+- independent `eff_auth` is not checked at full scale (limit 1), and the non-default engine paths are untested
+  (limit 3);
+- canonical equality is partly by construction.
 
-Per the rulebook, this does not ship at under 100. A Tier B reviewer should attack limits 1 and 3 first.
+**BHS_TIER_B: 88 (important).** The reviewer was fresh agent `a1e3f78bde69f9370`; its re-run is in the worktree at
+`artifacts/pv7_w23c_w22_11/scratch/tierb/tierb_rerun.json`. It could not disprove the verdict:
+- the preregistration and verdict mapping came first;
+- the anchors reproduced exactly;
+- semantic and canonical diffs were 0.
+
+It found two important disclosure gaps, both now added:
+- the user-visible demo `reason` defect, recorded as `CD-W22-11-01`;
+- that the large-graph portion of the 10^6 is about 0.53M.
+
+It also found cosmetic issues: the departure from the queue item, oracle locality, partial liveness, and the CW-1
+sha256 not being run.
+
+**BHS_OFFICIAL: 88.** Per the rulebook, this does not merge below 100.
