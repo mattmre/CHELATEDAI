@@ -11,7 +11,7 @@ Commits on `pv7/w23b-w22-15-selective-extractor`:
 
 Checks: ruff is clean and the 14 unit tests pass.
 
-## Verdict: KILL
+## Verdict: KILL under the D2 serving stack (bf16 HF `transformers`, greedy, one batched generate per case). The queue's vLLM/FP8 batched-serving premise is untested.
 
 The preregistered rule returns KILL if any measured gate fails. G1 failed on measured numbers, so the result is KILL regardless of G3. The verdict is computed by `decide()` from `w22_15_results.json`.
 
@@ -26,7 +26,7 @@ The preregistered rule returns KILL if any measured gate fails. G1 failed on mea
 - **Comparators:**
   - It misses the 500 ms stretch target.
   - It is slower than the recorded Bare 70B k5 figure of 3257.82 ms.
-  - It is 28% faster than FULL (4995.807 ms).
+  - It ran 28% faster than FULL (4995.807 ms) in this run. **Tier B found the gap comes from block order, not from routing.** See the Tier B section.
 - **Components:**
 
   | Component | ms |
@@ -37,7 +37,10 @@ The preregistered rule returns KILL if any measured gate fails. G1 failed on mea
   | route | 0.126 |
   | reader | 0.007 |
 
-- **Why G1 failed:** SELECTIVE indexes 72% fewer documents (288 against 1020), but extraction is only 27% faster. With HF bf16 generation on the RTX 3090, extraction time is dominated by per-step overhead, so removing documents barely shortens it.
+- **Why G1 failed:** SELECTIVE indexes 72% fewer documents (288 against 1020). Extraction time is dominated by per-step decode overhead, which removing documents barely touches.
+  - Tier B's fit for SELECTIVE extraction is 3174 ms plus 62 ms per extracted doc.
+  - Tier B re-measured with the two arms alternating case by case. Routing gave **no measurable extraction saving**: SELECTIVE 3490 ms, FULL 3441 ms.
+  - The host was also slow (Tier B finding 2), so the miss looks larger than it is. Tier B estimates SELECTIVE at about 1.9–2.0 s at D9-A's recorded speed, which still fails.
 
 ### G2 correctness
 - **Stale leaks:** SELECTIVE 2, FULL 3.
@@ -77,6 +80,43 @@ The preregistered rule returns KILL if any measured gate fails. G1 failed on mea
 - **D12 (not preregistered):** live62 was stopped before it finished, so G3 is unmeasured.
 - **Contamination:** disclosed in prereg §6. The implementer had seen the Suite A text before writing the router.
 
+## Tier B round 1 (fresh adversarial sub-agent a31e384fae8b7c25a; findings folded in by the orchestrator)
+
+**What Tier B reproduced**
+- All G1 and G2 numbers, from the 60 per-case rows. The components sum to the stored e2e in every case.
+- All other stage numbers, and the recorded comparators.
+- The preregistration has not been edited since `582ff59d`. KILL-first was already in `decide()` at `f2afa488`.
+- 14 tests pass and ruff is clean.
+
+**GPU re-measure.** About 3 minutes on an idle 3090, covering 15 cases. SELECTIVE extraction took 3490 ms, against 3560 ms originally for the same cases, so G1 reproduces.
+
+**Important findings (folded into this report)**
+
+1. **The "27% / 28% faster than FULL" claim comes from block order.**
+   - FULL ran as a block before SELECTIVE, and extraction time drifted within each block. FULL rose from 4383 to 5077 ms; SELECTIVE fell from 3826 to 3120 ms.
+   - Within SELECTIVE, each extracted doc cost only 62 ms.
+   - The same 17 docs took 3856 ms in SELECTIVE and 6250 ms in FULL.
+   - With the arms interleaved there is no saving. **Routing gave no measurable extraction saving on this setup.**
+2. **This run was about 2.25× slower than D9-A on the same code and corpus.**
+   - FULL took 4730 ms per 17-doc case; D9-A recorded 2104 ms. On DEV the gap is only 13%.
+   - The GPU guard does not record CPU load. During review the host CPU was at 76%, with FastCopy and other heavy jobs running.
+   - So the margin of the G1 miss is inflated. Tier B estimates about 1.9–2.0 s at D9-A's speed, which still fails.
+   - A clean, unloaded host coming close to 1500 ms cannot be ruled out.
+3. **The KILL was stated without scope.**
+   - The queue premise is vLLM/FP8 batched serving, which D2 replaced. The per-step overhead behind G1 belongs to D2.
+   - The verdict now reads "KILL under the D2 serving stack", and D2 is added to DEFERRED_SCOPE.
+4. **A preregistration claim is false (L13-style).** PREREGISTRATION.md:40/124 says the cue stems are "taken from the stance definitions in EXTRACTION_SYSTEM_PROMPT_V2".
+   - That is false for 9 of the 21 stems: revise, denial, denied, counter filing, retract, rescind, withdraw, amend and correction.
+   - "denial" is the most-fired cue on Suite A (75 triggers), and "withdraw" fired 15 times.
+   - These stems were chosen with Suite A in view, so G2's pass at exactly the 57/60 floor is optimistically biased.
+   - The preregistration is not edited after the fact; this disclosure replaces that.
+
+**Nits (folded in)**
+
+5. `w22_15_results.json` records `git_sha` `f2afa488`. But the Suite A stage needed the runner fixes that were then uncommitted and were committed later in `c5d4e3c9`. The code at `f2afa488` could not have produced this evidence offline.
+6. Prereg §5 lists the KILL and INCONCLUSIVE clauses without an order. "KILL when any measured gate fails" is one reading. It is a reasonable one, coded before any results, but it is still an interpretation.
+7. The live62 server's batch p50 was 2713 ms, far above the 560 ms SLA. G3 would probably have timed out, as the earlier 0/1680 run did. "Unmeasured" should not be read as a likely pass.
+
 ## Brutal Honesty
 - **L1:** none in the router or runner.
 - **L2:** `decide()` returns KILL when any measured gate fails, even if another gate is unmeasured. This is the preregistered rule.
@@ -90,18 +130,23 @@ The preregistered rule returns KILL if any measured gate fails. G1 failed on mea
   - `scripts/verifiers.d/62_verifier.py` only checks the committed W20 bundle. It does not check this slice's outputs.
 - **L11:** the existing W22-B server code catches broadly when torch.compile falls back to eager. The fallback is logged, not silent.
 - **Contamination:** the router's trigger stems were written after seeing the Suite A text. G2 is therefore biased upward, which only strengthens the KILL.
-- **L13:** none known. The verdict is computed mechanically.
+- **L13:** the preregistration says the cue stems come from the extractor prompt. That is false for 9 of the 21 stems (Tier B finding 4). The verdict itself is computed mechanically.
+- **L4 (Tier B findings 1–3):** the original report claimed a routing compute saving that disappears when the arms are interleaved. It also stated the KILL without its scope. Both are corrected above.
 
 BHS_SELF_DRAFT: 90
 BHS_SELF_DRAFT_AGENT: claude-opus-5-5 (W22-15 implementer sub-agent)
-BHS_TIER_B: pending
-BHS_OFFICIAL: pending; at most 90, so this cannot merge
+BHS_TIER_B: 85
+BHS_TIER_B_AGENT: fresh general-purpose sub-agent a31e384fae8b7c25a
+BHS_TIER_B_SEVERITY: important
+BHS_OFFICIAL: 85 = min(90, 85). This does not merge.
 CARRY_FORWARD: finish G3 or formally drop it. The verdict does not depend on it.
 DEFERRED_SCOPE:
 - D10-B and D7 were not re-executed. The comparators are the recorded 26,596.47 ms and 10,373.31 ms.
 - The G3 live sham-controlled #62 replay is incomplete.
+- The queue's vLLM/FP8 batched-serving premise is untested. D2 replaced it, and that departure decides G1.
+- G1 has not been re-measured on a clean, unloaded host with CPU load recorded.
 
-LOOP_ITERATIONS: 1
+LOOP_ITERATIONS: 2
 OPERATOR_OVERRIDE: none
 
 ## Scratch receipt (removable, gitignored)
