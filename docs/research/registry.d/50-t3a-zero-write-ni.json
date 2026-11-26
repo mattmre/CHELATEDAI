@@ -30,12 +30,13 @@
       "run-live-gpu"
     ]
   },
-  "evidence_tier": "local-drycheck-pass",
+  "evidence_tier": "verified-mixed",
   "evidence_disclosure": {
-    "scope": "Local drycheck of the loft / zero-write non-interference probe; burn-ledger admission is the non-confirmatory local_drycheck_smoke path.",
-    "synthetic": "Synthetic fixtures only.",
-    "tuning": "Thresholds preregistered in the fragment; no wild-corpus validation.",
+    "scope": "Local drycheck passes offline. Wave 22 live Colab L4 real-neural-encoder (MiniLM-384/bge-m3-1024/Qwen3-Embedding-8B 4096-d) evaluation across 12 unburned MTEB/BEIR domains (artifacts/pv7_colab_l4_closure_20261125/colab_l4_closure_manifest.json [04e7543bdbbc] + artifacts/pv7_w22a_b54_12dom_complete/w22a_b54_12dom_manifest.json [a12d2457a0bd], hardware_cohort=colab:NVIDIA L4) yields an honest domain-heterogeneity boundary.",
+    "live_tango_ni_outcomes": "Initial 7-domain technical/biomed QA cohort (N=1,249 real paired queries): 20%-backfill 4096->384 vs legacy 384-d PASSED -5.0% exact Tango NI (91.99% vs 93.35%, delta=-1.36 pp, LCB95=-2.99%, p=1.80e-5), while 0%-write missed (LCB95=-5.71%). Pooled across all 12 heterogeneous domains (N=2,549, adding dbpedia, climate-fever, cqadupstack-{english,gis,tex}): 20%-backfill 4096->384 MISSED -5.0% NI (85.80% vs 91.41%, delta=-5.61 pp, LCB95=-6.98%, p=0.815), and 0%-write missed (LCB95=-9.60%).",
+    "hardware_cohort": "colab:NVIDIA L4 (NOT local DGX Spark GB10 evidence).",
+    "tuning": "Preregistered -0.0500 NI margin was never loosened; zero-write linear bridging cannot claim universal -5% non-inferiority across hard fact-verification/entity corpora.",
     "sla": "No latency or SLA claim.",
-    "burn_clean_scope": "local_drycheck_smoke_partial_inventory (confirmatory_eligible=false)."
+    "burn_clean_scope": "All 12 MTEB/BEIR domains verified against BURNED_CORPORA; local drycheck smoke remains non-confirmatory."
   }
 }

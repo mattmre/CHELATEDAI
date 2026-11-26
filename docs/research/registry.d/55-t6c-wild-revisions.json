@@ -13,11 +13,12 @@
   "superiority_is_wild_evidence": false,
   "llm_write_tokens": 0,
   "authored_prompts": 0,
-  "evidence_tier": "local-drycheck-pass",
+  "evidence_tier": "verified-mixed",
   "evidence_disclosure": {
-    "scope": "Schema/local drycheck of the wild-revisions cohort rule.",
-    "synthetic": "synthetic_labeled_wild: the fixture is labelled wild but is synthetic; superiority_is_wild_evidence is false.",
-    "tuning": "Cohort rule and retirement trigger are preregistered; not validated on real revisions.",
+    "scope": "Wave 22E CPU-only real frozen public wild-stream evaluation (artifacts/pv7_w22e_b55_wild_live/w22e_b55_wild_receipt.json, report_sha256=34018b13f70e, snapshot_sha256=e1b415706139) cleared the wild gate (status=EVALUATED, wild_gate_met=true, 240 real public families = 60/stratum from OSV PyPI/all.zip [4d89e2e7ad8a], Red Hat CSAF v2 VEX [166fae4a829e], SEC EDGAR 8-K Item 4.02, and SEC EDGAR 10-K/A routine amendments).",
+    "retirement_trigger_fired": "PRE-REGISTERED RETIREMENT TRIGGER FIRED (retire_ek5_proprietary_superiority=true, superiority_is_wild_evidence=false): EK5_v3 tied SQLiteChallengerLedger (closure_table) at 43.75% vs 43.75% (240/240 family-cluster ties, mcnemar_p=1.0, sql_over_ek5_cost=0.015x).",
+    "root_cause_finding": "Real wild syndicated mirror/wire prefixes shifted sentence-initial acronyms ('OSV', 'SEC') past token index 0 in ek5_v3_stratified.classify_high_similarity_pair, falsely firing CONFLICT_PROPER_ENTITY and dropping echo-collapse recall from 100% (synthetic schema drycheck) to 0.99% (3/303). On equal_authority_vex_ghsa (60 real Red Hat CSAF VEX conflicts), both EK5_v3 and SQLite hit 100.0% vs 50.0% recency, and tenant-aware filtering had 0 cross-tenant leaks vs 61 for unsigned_correlation_filter.",
+    "projection_disclosure": "Source advisory/VEX/SEC IDs, timestamps, accessions, and prose are 100% real frozen public records; cross-mirror digest wrapping and cross-tenant control pairs are deterministic timeline projections applied to those real records.",
     "sla": "No latency or SLA claim."
   }
 }

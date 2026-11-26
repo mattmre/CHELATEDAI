@@ -37,12 +37,12 @@
       "run_live_gpu": "Accepts Qwen2.5-1.5B or Qwen3.5-2B-Base and refuses to load weights while CUDA is isolated."
     }
   },
-  "evidence_tier": "local-drycheck-pass",
+  "evidence_tier": "verified-mixed",
   "evidence_disclosure": {
-    "scope": "Local drycheck of the QSCCI singleton probe.",
-    "synthetic": "Synthetic fixtures only.",
-    "tuning": "Preregistered constants; no wild-corpus validation.",
-    "sla": "No latency or SLA claim.",
-    "burn_clean_scope": "local_drycheck_smoke_partial_inventory (confirmatory_eligible=false)."
+    "scope": "Local CPU drycheck passes offline. Wave 22C live Colab L4 real-weights GPU evaluation (artifacts/pv7_w22c_b52_qscci_live/w22c_b52_qscci_live_manifest.json, sha256=c6f85f2d0d0f, hardware_cohort=colab:NVIDIA L4) executed on BOTH preregistered backbones: Qwen/Qwen2.5-1.5B (TRA-1=89bf4cc7439a) and Qwen/Qwen3.5-2B-Base (TRA-1=52c7d9179b42) at layers[11].mlp.down_proj with real .safetensors SHA-256 digests and disjoint non-blind control/dev/select/report splits.",
+    "live_gpu_outcomes": "Positive control PASSED on both (cos=1.00); GPU-trained Top-K SAE converged (R2=0.980/0.989); abs_cos(QSCCI,CAA)=0.018/0.002 (<0.95). Matched-norm REPORT causal steering PASSED on both: QSCCI (+0.8828 / +1.1309 delta logit margin, 95% CIs [+0.8125,+0.9571] / [+1.0859,+1.1758]) and single-coordinate neuron #479/#487 (+0.1074 / +0.1094) beat GPU Top-K SAE (-0.0117 / +0.0273), CAA (-0.0195 / +0.0078), and sham (+0.0117 / +0.0371); collateral KL=0.0606/0.0069 nats (87.5%/81.25% top-1 agreement).",
+    "restoration_limitation": "Two-pass 1-D causal activation-patching restoration on real 28-layer Qwen backbones is near zero (-1.51% / +1.60% vs sham -0.75% / -0.53%): Layer-11 MLP QSCCI is a potent additive steering write-site, NOT a sufficient 1-D bottleneck to restore full multi-layer factual truth.",
+    "hardware_cohort": "colab:NVIDIA L4 (NOT local DGX Spark GB10 evidence; zero blind-followup files touched).",
+    "sla": "No latency or SLA claim."
   }
 }

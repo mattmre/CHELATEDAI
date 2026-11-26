@@ -1,0 +1,11 @@
+{
+  "exit_code": 0,
+  "git_commit_sha": "fc7fc4b76195a292bc13268f11f35203c9cfb1da",
+  "hardware_cohort": "colab:NVIDIA L4",
+  "manifest_file": "w22c_b52_qscci_live_manifest.json",
+  "manifest_sha256": "c6f85f2d0d0fb4ad6788ee8a27cbb488ee2e3f41a037c6c227526e07cd4e87fe",
+  "schema_version": "colab_l4_burst_receipt_v1",
+  "shard_id": "w22c_b52_qscci_live",
+  "source_archive_sha256": "c8e8574dc8942995272687ed125af73d4722d36ca36569f5d8124fbe26ab7a2b",
+  "wall_seconds_total": 190.48
+}

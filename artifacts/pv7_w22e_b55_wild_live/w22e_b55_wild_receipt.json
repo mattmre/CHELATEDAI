@@ -1,0 +1,75 @@
+{
+  "bundle_id": 55,
+  "cohort_source": "frozen_wild_snapshots",
+  "evaluator_exit_code": 0,
+  "families_per_stratum": {
+    "equal_authority_vex_ghsa": 60,
+    "routine_amendment_control": 60,
+    "sec_item_402_nonreliance": 60,
+    "unlinked_cross_mirror_echo": 60
+  },
+  "generated_utc": "2026-11-26T00:07:04.704453+00:00",
+  "item": "6C",
+  "passed": true,
+  "report_sha256": "34018b13f70e525a225d33bffc6be2d7c6824f95fc730fdfdfb94748a6e8e664",
+  "retirement_summary": {
+    "accuracy_superior_lcb_positive": false,
+    "bootstrap_lcb": 0.0,
+    "bootstrap_mean": 0.0,
+    "bootstrap_resamples": 2000,
+    "bootstrap_ucb": 0.0,
+    "cluster_losses": 0,
+    "cluster_ties": 240,
+    "cluster_wins": 0,
+    "comparison_engine": "sqlite",
+    "cost_limit": 1.25,
+    "ek5_accuracy": 0.4375,
+    "ek5_cost_at_least_1_25x_lower": false,
+    "family_cluster_count": 240,
+    "losses": 0,
+    "mcnemar_p": 1.0,
+    "mirror_or_disputed_ek5_accuracy": 0.625,
+    "mirror_or_disputed_ek5_superior": false,
+    "mirror_or_disputed_sql_accuracy": 0.625,
+    "mirror_or_disputed_sql_trials": 480,
+    "mirror_or_disputed_trials": 480,
+    "noninferior_accuracy": true,
+    "preregistered_conjunction_met": false,
+    "retire_ek5_proprietary_superiority": true,
+    "sampling_unit": "family_id",
+    "sql_accuracy": 0.4375,
+    "sql_mode": "closure_table",
+    "sql_over_ek5_cost": 0.015324949080033816,
+    "sql_within_1_25x_cost": true,
+    "superiority_is_wild_evidence": false,
+    "ties": 240,
+    "wins": 0
+  },
+  "schema_version": "pv7_w22e_b55_wild_live_receipt_v1",
+  "snapshot_sha256": "e1b41570613902c7bdeab2794e46728e76ec08d44989222c1876b3b57adeb21e",
+  "source_feeds": [
+    {
+      "count": 60,
+      "sha256": "4d89e2e7ad8af9a795fc9811f90242376cbbe54e8656bc7fe2764c0df29e026d",
+      "source": "osv_pypi_all_zip"
+    },
+    {
+      "changes_csv_sha256": "166fae4a829e5da97d98a080486b13c7cb96fec70a6c6378418a2afebb8bdc05",
+      "count": 60,
+      "source": "redhat_csaf_v2_vex"
+    },
+    {
+      "count": 60,
+      "source": "sec_edgar_8k_item_402"
+    },
+    {
+      "count": 60,
+      "source": "sec_edgar_routine_amendments"
+    }
+  ],
+  "status": "EVALUATED",
+  "superiority_is_wild_evidence": false,
+  "wall_seconds": 159.13,
+  "wild_adjudicated_count": 240,
+  "wild_gate_met": true
+}

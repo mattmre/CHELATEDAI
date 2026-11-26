@@ -1,5 +1,5 @@
 {
-  "anti_l4_governance_note": "Passing an offline verifier (exit 0) or carrying registry status 'protocol-ready' does NOT make a Post-v7.0 bundle live confirmatory evidence. Among #47-#64: 3 are live-pass on synthetic/emulated fixtures (#48 synthetic 12k Gaussian across live Qdrant/OpenSearch/pgvector, where commit 25ae2067 raised BASE_EF/m/ef_construct/scan knobs alongside the receipt so eval-fixture knob tuning is not excluded; #57 synthetic .cspg cartridges in a Linux aarch64 6GiB cgroup host [host name not recorded in receipt]; #61 CPU software emulation with 3/5 live encoders & 2 dry stand-ins), 1 is observational live-shadow-pass (#53, live_pm6_gateway_executed=false), 1 is verified-mixed (#58 symmetric WAL deterministic drycheck floor only, no live measurement: clustered +18.9k..+22.5k B saved, scattered 0 B tie / -720 B loss vs floor), 1 is stage1-replay-pass whose live vLLM worker run FAILED (#62 overall_pass=false, 0/1680 on-time jobs under 560 ms SLA), 10 are local-drycheck-pass synthetic/smoke fixtures (#47, #49, #50, #51, #52, #54 [H6B_merge endpoint NOT met: passed=false, 6/12 positive vs 11/12 required, LCB95=-0.0090], #55 [superiority_is_wild_evidence=false], #56, #59, #60), and 2 are protocol-ready open DEV scorers (#63, #64, 0 partner runs).",
+  "anti_l4_governance_note": "Passing an offline verifier (exit 0) or carrying registry status 'protocol-ready' does NOT make a Post-v7.0 bundle live confirmatory evidence, and Colab burst GPU runs (hardware_cohort='colab:NVIDIA L4') are strictly separated from local DGX Spark GB10 evidence. Among #47-#64 after Wave 22 live empirical graduation: 3 are synthetic/emulated live-pass (#48 synthetic 12k Gaussian across live Qdrant/OpenSearch/pgvector where commit 25ae2067 raised BASE_EF/m/ef_construct/scan knobs; #57 synthetic .cspg cartridges in a Linux aarch64 6GiB cgroup host; #61 CPU software emulation with 3/5 live encoders & 2 stand-ins); 6 graduated to live real-model/real-corpus empirical runs with wins AND misses reported verbatim: #53 (live-shadow observational + Colab L4 PM-6 RCPS benign FPR closure PASS: 0.50%/0.67% FPR, CP_UB95=1.29%/1.52% <= 2.0%, vs N=50 overshoot 3.51%; live streaming gateway remains observational), #54 (Colab L4 12/12 unburned MTEB/BEIR domains x 5 real neural encoders, N=2,549 queries: H6B_merge PASSED 11/12 p=0.00317 LCB95=+0.92 pp & H6B_bridge_static PASSED 11/12 +5.28 pp vs Uncentered [ties Centered -0.32 pp], 20x500 anchor SD=0.56 pp, TRA-1 catches 100% of 5-20% dup/mismatch poisoning; HONEST MISS: 4-hop mixed 7/12 -2.48 pp & 5-domain prompt-shift underpowered LCB95=-1.95 pp), #52 (Colab L4 real weights Qwen2.5-1.5B & Qwen3.5-2B-Base at layers[11].mlp.down_proj: QSCCI steering PASSED +0.88/+1.13 logit margin & single-neuron +0.11 vs Top-K SAE/CAA/sham ~0.00, low collateral KL; HONEST LIMITATION: 2-pass 1-D restoration near zero -1.5%/+1.6%), #50 (Colab L4 12-domain Tango NI boundary: PASSED on 7-domain QA N=1,249 at 20% backfill LCB95=-2.99%, MISSED on pooled 12 heterogeneous domains N=2,549 LCB95=-6.98%), #49 (Colab L4 36 live-model cold-start sessions: wheel deterministic, 0/36 private imports, Phi-3.5-mini 12/12 PASS, but FAILED strict >=30/36 bar at 16/36 [28/36 functional], Qwen2.5-3B 0/12 strict/10/12 func, Granite-3.1-2B 4/12 strict/2 leak-check flags), #55 (CPU 240 real public OSV/Red Hat CSAF VEX/SEC EDGAR families, wild_gate_met=true: FIRED pre-registered retirement trigger retire_ek5_proprietary_superiority=true [EK5=SQL=43.75%, 240/240 ties, 0.99% echo recall due to sentence-initial proper-noun shift on OSV/SEC prefixes; 100% on CSAF VEX vs 50% recency and 0 vs 61 cross-tenant leaks]); 1 is stage1-replay-pass whose live workers remain overall_pass=false (#62 Spark #3 nemotron-lightning FAILED 6/8 0.0 JPM; Colab L4 Qwen2.5-0.5B improved to 7/8 beating full_restart 59.38 vs 0.00 JPM with 0 stale commits and positive per-job JPM interaction LCB95=+0.2586, but STILL FAILED sham_reopen_control_valid under unmodified 560 ms SLA); 1 is verified-mixed (#58 deterministic WAL floor); 5 remain local-drycheck-pass (#47, #51, #56, #59, #60); and 2 are protocol-ready open DEV scorers (#63, #64).",
   "base_verified_registry_sha256": "6ef7eba4f4147de1ea7e51f0ee5ade00711227f3e2a8d4b0c77e5ba7c0511542",
   "bundles": [
     {
@@ -595,13 +595,13 @@
     {
       "bundle_id": "pv7_49-t6d-sdk-coldstart",
       "evidence_disclosure": {
-        "label_deviation": "Orchestrator label map listed #49 as live-pass; the committed evidence is a local drycheck with zero live model calls, so the tier is local-drycheck-pass.",
-        "scope": "Local deterministic smoke of the SDK cold-start gate (36/36 sessions); gate_report.json records mode=local-drycheck, execution=deterministic-local-smoke, live_model_calls=0.",
+        "hardware_cohort": "colab:NVIDIA L4 (NOT local DGX Spark GB10 evidence).",
+        "per_family_live_breakdown": "microsoft/Phi-3.5-mini-instruct: 12/12 strict PASS (100%, 0 leaks, 0 private imports); Qwen/Qwen2.5-3B-Instruct: 0/12 strict PASS (10/12 functional, 0 leaks, omitted canary_blocked key in return dict); ibm-granite/granite-3.1-2b-instruct: 4/12 strict PASS (6/12 functional, 2 leak-check flags on stream_suppression_holdback, 4 uncaught UnsupportedCapabilityError blocks).",
+        "scope": "Local deterministic smoke passes (36/36, live_model_calls=0). Wave 22D live Colab L4 3-family cold-start benchmark (artifacts/pv7_w22d_b49_sdk_3family_live/w22d_b49_sdk_3family_manifest.json, sha256=e00975c01b98, hardware_cohort=colab:NVIDIA L4, live_model_calls=36) FAILED the strict >=30/36 gate: 16/36 strict pass (28/36 functional), wheel_deterministic=true (694bcec0e222), 0/36 private import violations.",
         "sla": "No latency or SLA claim.",
-        "synthetic": "Family names are labels on deterministic fixtures, not live models.",
-        "tuning": "Pass rule is preregistered; the Wilson upper bound 0.0964 is an uncertainty interval on 0/36 failures, not a measured failure rate."
+        "tuning": "Pass rule is preregistered (>=30/36 overall, >=8/12 per family, 0 private imports, 100% canary, 0 leaks); small 2B-3.8B open models failed overall gate (gate_pass=false, Wilson UB95 failure rate=0.7046)."
       },
-      "evidence_tier": "local-drycheck-pass",
+      "evidence_tier": "verified-mixed",
       "fragment_file": "docs/research/registry.d/49-t6d-sdk-coldstart.json",
       "fragment_id": 49,
       "ordinal": 49,
@@ -614,13 +614,14 @@
     {
       "bundle_id": "pv7_50-t3a-zero-write-ni",
       "evidence_disclosure": {
-        "burn_clean_scope": "local_drycheck_smoke_partial_inventory (confirmatory_eligible=false).",
-        "scope": "Local drycheck of the loft / zero-write non-interference probe; burn-ledger admission is the non-confirmatory local_drycheck_smoke path.",
+        "burn_clean_scope": "All 12 MTEB/BEIR domains verified against BURNED_CORPORA; local drycheck smoke remains non-confirmatory.",
+        "hardware_cohort": "colab:NVIDIA L4 (NOT local DGX Spark GB10 evidence).",
+        "live_tango_ni_outcomes": "Initial 7-domain technical/biomed QA cohort (N=1,249 real paired queries): 20%-backfill 4096->384 vs legacy 384-d PASSED -5.0% exact Tango NI (91.99% vs 93.35%, delta=-1.36 pp, LCB95=-2.99%, p=1.80e-5), while 0%-write missed (LCB95=-5.71%). Pooled across all 12 heterogeneous domains (N=2,549, adding dbpedia, climate-fever, cqadupstack-{english,gis,tex}): 20%-backfill 4096->384 MISSED -5.0% NI (85.80% vs 91.41%, delta=-5.61 pp, LCB95=-6.98%, p=0.815), and 0%-write missed (LCB95=-9.60%).",
+        "scope": "Local drycheck passes offline. Wave 22 live Colab L4 real-neural-encoder (MiniLM-384/bge-m3-1024/Qwen3-Embedding-8B 4096-d) evaluation across 12 unburned MTEB/BEIR domains (artifacts/pv7_colab_l4_closure_20261125/colab_l4_closure_manifest.json [04e7543bdbbc] + artifacts/pv7_w22a_b54_12dom_complete/w22a_b54_12dom_manifest.json [a12d2457a0bd], hardware_cohort=colab:NVIDIA L4) yields an honest domain-heterogeneity boundary.",
         "sla": "No latency or SLA claim.",
-        "synthetic": "Synthetic fixtures only.",
-        "tuning": "Thresholds preregistered in the fragment; no wild-corpus validation."
+        "tuning": "Preregistered -0.0500 NI margin was never loosened; zero-write linear bridging cannot claim universal -5% non-inferiority across hard fact-verification/entity corpora."
       },
-      "evidence_tier": "local-drycheck-pass",
+      "evidence_tier": "verified-mixed",
       "fragment_file": "docs/research/registry.d/50-t3a-zero-write-ni.json",
       "fragment_id": 50,
       "ordinal": 50,
@@ -652,13 +653,13 @@
     {
       "bundle_id": "pv7_52-t3c-qscci-singleton",
       "evidence_disclosure": {
-        "burn_clean_scope": "local_drycheck_smoke_partial_inventory (confirmatory_eligible=false).",
-        "scope": "Local drycheck of the QSCCI singleton probe.",
-        "sla": "No latency or SLA claim.",
-        "synthetic": "Synthetic fixtures only.",
-        "tuning": "Preregistered constants; no wild-corpus validation."
+        "hardware_cohort": "colab:NVIDIA L4 (NOT local DGX Spark GB10 evidence; zero blind-followup files touched).",
+        "live_gpu_outcomes": "Positive control PASSED on both (cos=1.00); GPU-trained Top-K SAE converged (R2=0.980/0.989); abs_cos(QSCCI,CAA)=0.018/0.002 (<0.95). Matched-norm REPORT causal steering PASSED on both: QSCCI (+0.8828 / +1.1309 delta logit margin, 95% CIs [+0.8125,+0.9571] / [+1.0859,+1.1758]) and single-coordinate neuron #479/#487 (+0.1074 / +0.1094) beat GPU Top-K SAE (-0.0117 / +0.0273), CAA (-0.0195 / +0.0078), and sham (+0.0117 / +0.0371); collateral KL=0.0606/0.0069 nats (87.5%/81.25% top-1 agreement).",
+        "restoration_limitation": "Two-pass 1-D causal activation-patching restoration on real 28-layer Qwen backbones is near zero (-1.51% / +1.60% vs sham -0.75% / -0.53%): Layer-11 MLP QSCCI is a potent additive steering write-site, NOT a sufficient 1-D bottleneck to restore full multi-layer factual truth.",
+        "scope": "Local CPU drycheck passes offline. Wave 22C live Colab L4 real-weights GPU evaluation (artifacts/pv7_w22c_b52_qscci_live/w22c_b52_qscci_live_manifest.json, sha256=c6f85f2d0d0f, hardware_cohort=colab:NVIDIA L4) executed on BOTH preregistered backbones: Qwen/Qwen2.5-1.5B (TRA-1=89bf4cc7439a) and Qwen/Qwen3.5-2B-Base (TRA-1=52c7d9179b42) at layers[11].mlp.down_proj with real .safetensors SHA-256 digests and disjoint non-blind control/dev/select/report splits.",
+        "sla": "No latency or SLA claim."
       },
-      "evidence_tier": "local-drycheck-pass",
+      "evidence_tier": "verified-mixed",
       "fragment_file": "docs/research/registry.d/52-t3c-qscci-singleton.json",
       "fragment_id": 52,
       "ordinal": 52,
@@ -671,12 +672,11 @@
     {
       "bundle_id": "pv7_53-t3d-pm6-shadow",
       "evidence_disclosure": {
-        "label_deviation": "Tier live-shadow-pass is kept per the label map but scoped strictly as observational; it must not be cited as a live PM6 gateway pass.",
-        "observational": "claim_level=observational-manifest; live_pm6_gateway_executed=false and report_emitted=false: the PM6 gateway itself was NOT executed, so this is not a live gateway pass.",
-        "scope": "Observational run-live-shadow manifest (100 families, 100 byte-identical, 0 shadow flags) replayed from a committed public-domain shadow input.",
-        "sla": "No latency or SLA claim.",
-        "synthetic": "Public-domain shadow input; family and domain names are labels on that fixture.",
-        "tuning": "No tuning; zero shadow flags is an observation, not a powered equivalence test."
+        "hardware_cohort": "colab:NVIDIA L4 (NOT local DGX Spark GB10 evidence).",
+        "observational": "Shadow probe claim_level=observational-manifest with live_pm6_gateway_executed=false and report_emitted=false: the end-to-end streaming PM-6 gateway itself was NOT re-executed live, so RCPS closure is strictly offline cross-encoder calibration on Colab L4.",
+        "rcps_calibration_closure": "Reproduced v7.0 D11's N=50 naive empirical quantile overshoot (3.51% FPR, 21/599, CP_UB95=5.01% FAIL; 26% of 50-draw trials >2%). Distribution-free Split-Conformal RCPS (Beta.ppf(0.95)<=0.02) CLOSED benign FPR below 2.0%: ZeroMu+RawCos+RCPS achieved 0.50% FPR (3/599, CP_UB95=1.29%<=2.0% PASS, 18.22% R3 TPR, 0.8233 AUROC) and ZeroMu+CSLS+RCPS achieved 0.67% FPR (4/599, CP_UB95=1.52%<=2.0% PASS, 12.71% R3 TPR, 0.8153 AUROC).",
+        "scope": "Observational run-live-shadow manifest (100 families, 100 byte-identical, 0 shadow flags) replayed from a committed public-domain shadow input; PLUS Wave 22 Colab L4 PM-6 RCPS benign FPR calibration closure (artifacts/pv7_colab_l4_closure_20261125/colab_l4_closure_manifest.json, sha256=04e7543bdbbc, hardware_cohort=colab:NVIDIA L4) across 10,009 real passages in 7 unburned domains (384-d MiniLM vault <- 4096-d Qwen3 stream, N_cal_neg=594, N_eval_neg=599).",
+        "sla": "No latency or SLA claim."
       },
       "evidence_tier": "live-shadow-pass",
       "fragment_file": "docs/research/registry.d/53-t3d-pm6-shadow.json",
@@ -691,14 +691,14 @@
     {
       "bundle_id": "pv7_54-t6b-12domain-4hop",
       "evidence_disclosure": {
-        "burn_clean_scope": "local_drycheck_smoke_partial_inventory (confirmatory_eligible=false).",
-        "failed_endpoint": "H6B_merge primary merge endpoint NOT met on the committed drycheck fixture (H6B_merge.passed=false: 6/12 positive domains vs 11/12 required in code / >=10/12 in registry prose, LCB95=-0.0090); the passing gate h6b_merge_evaluated verifies only that the statistic was computed, NOT that H6B_merge passed.",
-        "scope": "Local drycheck of the 12-domain 4-hop gauntlet.",
+        "hardware_cohort": "colab:NVIDIA L4 (NOT local DGX Spark GB10 evidence).",
+        "live_12domain_outcomes": "H6B_merge (CSLSMerge > CalibratedZScoreMerge): PASSED at 11/12 domains positive (mean=+2.45 pp, LCB95=+0.92 pp > 0, exact_binomial_p=0.00317). H6B_bridge_static (ZeroMu+CSLS vs UncenteredProcrustes+CSLS): PASSED at 11/12 positive (mean=+5.28 pp, LCB95=+3.35 pp, clearing -0.010 & -0.005 floors; statistical tie vs CenteredProcrustes+CSLS at -0.32 pp [-1.57,+0.68]). 20x500 anchor draws: within-domain SD=0.56 pp vs cross-domain SD=26.34 pp. Contamination sweep (0/1/5/10/20%): TRA-1 detects 100% of 5-20% duplicate & mismatched poisoning (0% FP at 0-1%, 60% on off_domain).",
+        "live_honest_misses": "H6B_4hop upward chain (384->384->768->1024->4096) is MIXED across 12/12 domains (7/12 positive, mean=-2.48 pp, LCB95=-5.95 pp); real prompt-wrapper shift (5-domain subset, prefix displacement norm=0.504) is positive point-estimate (4/5, +2.03 pp) but underpowered (LCB95=-1.95 pp).",
+        "scope": "Local synthetic drycheck retains H6B_merge.passed=false (6/12 positive, LCB95=-0.0090). Wave 22 live Colab L4 5-real-encoder (MiniLM-384, bge-small-384, mpnet-768, bge-m3-1024, Qwen3-Embedding-8B 4096-d) evaluation across ALL 12/12 unburned public MTEB/BEIR domains (artifacts/pv7_colab_l4_closure_20261125/colab_l4_closure_manifest.json [04e7543bdbbc] + artifacts/pv7_w22a_b54_12dom_complete/w22a_b54_12dom_manifest.json [a12d2457a0bd], N=2,549 real queries, hardware_cohort=colab:NVIDIA L4) CLOSED H6B_merge and H6B_bridge_static.",
         "sla": "No latency or SLA claim.",
-        "synthetic": "Synthetic domain fixtures; domain names are labels.",
-        "tuning": "Preregistered constants; no wild-corpus validation."
+        "tuning": "Zero eval-set retuning; all 12 domains verified against BURNED_CORPORA."
       },
-      "evidence_tier": "local-drycheck-pass",
+      "evidence_tier": "verified-mixed",
       "fragment_file": "docs/research/registry.d/54-t6b-12domain-4hop.json",
       "fragment_id": 54,
       "ordinal": 54,
@@ -711,12 +711,13 @@
     {
       "bundle_id": "pv7_55-t6c-wild-revisions",
       "evidence_disclosure": {
-        "scope": "Schema/local drycheck of the wild-revisions cohort rule.",
-        "sla": "No latency or SLA claim.",
-        "synthetic": "synthetic_labeled_wild: the fixture is labelled wild but is synthetic; superiority_is_wild_evidence is false.",
-        "tuning": "Cohort rule and retirement trigger are preregistered; not validated on real revisions."
+        "projection_disclosure": "Source advisory/VEX/SEC IDs, timestamps, accessions, and prose are 100% real frozen public records; cross-mirror digest wrapping and cross-tenant control pairs are deterministic timeline projections applied to those real records.",
+        "retirement_trigger_fired": "PRE-REGISTERED RETIREMENT TRIGGER FIRED (retire_ek5_proprietary_superiority=true, superiority_is_wild_evidence=false): EK5_v3 tied SQLiteChallengerLedger (closure_table) at 43.75% vs 43.75% (240/240 family-cluster ties, mcnemar_p=1.0, sql_over_ek5_cost=0.015x).",
+        "root_cause_finding": "Real wild syndicated mirror/wire prefixes shifted sentence-initial acronyms ('OSV', 'SEC') past token index 0 in ek5_v3_stratified.classify_high_similarity_pair, falsely firing CONFLICT_PROPER_ENTITY and dropping echo-collapse recall from 100% (synthetic schema drycheck) to 0.99% (3/303). On equal_authority_vex_ghsa (60 real Red Hat CSAF VEX conflicts), both EK5_v3 and SQLite hit 100.0% vs 50.0% recency, and tenant-aware filtering had 0 cross-tenant leaks vs 61 for unsigned_correlation_filter.",
+        "scope": "Wave 22E CPU-only real frozen public wild-stream evaluation (artifacts/pv7_w22e_b55_wild_live/w22e_b55_wild_receipt.json, report_sha256=34018b13f70e, snapshot_sha256=e1b415706139) cleared the wild gate (status=EVALUATED, wild_gate_met=true, 240 real public families = 60/stratum from OSV PyPI/all.zip [4d89e2e7ad8a], Red Hat CSAF v2 VEX [166fae4a829e], SEC EDGAR 8-K Item 4.02, and SEC EDGAR 10-K/A routine amendments).",
+        "sla": "No latency or SLA claim."
       },
-      "evidence_tier": "local-drycheck-pass",
+      "evidence_tier": "verified-mixed",
       "fragment_file": "docs/research/registry.d/55-t6c-wild-revisions.json",
       "fragment_id": 55,
       "ordinal": 55,
@@ -846,14 +847,14 @@
     {
       "bundle_id": "pv7_62-t4-pooled-workers",
       "evidence_disclosure": {
-        "label_deviation": "Orchestrator label map: stage1-replay-and-live-worker-pass. The live worker did NOT pass, so only stage1-replay-pass is claimed.",
-        "live_worker_outcome": "FAILED. The committed run-live-workers receipt (nemotron-lightning, 7842 live calls, 70 cells, 1680 jobs) has overall_pass=false and status=replay-fail: gates beats_full_restart_rebuild_jpm and sham_reopen_control_valid are false.",
-        "scope": "Stage-1 controlled replay passes offline (deterministic, 4 schedules x 24 templates at pool size 4).",
-        "sla": "All 1680 eligible jobs missed the 560 ms SLA (live worker latency ~3.7-7.9 s): on_time_cited_correct_jobs=0, so the full-restart comparator ties at 0.0 JPM and the primary interaction LCB is 0.",
+        "hardware_cohort": "Local Spark #3 (aarch64 nemotron-lightning) and colab:NVIDIA L4 (Qwen2.5-0.5B-Instruct) reported separately; Colab evidence is NOT local DGX Spark GB10 evidence.",
+        "live_worker_outcome_colab_l4": "MIXED / FAILED overall_pass (7/8 gates). Wave 22B Colab L4 receipt (artifacts/pv7_w22b_b62_d13_colab_l4/colab_l4_provenance.json, hardware_cohort=colab:NVIDIA L4, Qwen/Qwen2.5-0.5B-Instruct, 7,866 live calls, 70 cells, 1,680 jobs, deterministic_sha256=b7d6085bd27a): PASSED 7/8 gates including beats_full_restart_rebuild_jpm=true (ZeroMu+EK5_v3 59.38 JPM vs full_restart_rebuild 0.00 JPM, +59.38 JPM), zero_stale_commits_on_zeromu_ek5=true (0 stale commits), ek5_incremental_equals_full_parity=true (0 failures), and positive per-job JPM interaction (mean=+0.6779, LCB95=+0.2586 > 0). STILL FAILED sham_reopen_control_valid=false (overall_pass=false, status=replay-fail): batch p50 was 309-417 ms, so two sequential LLM calls (initial + sham reopen) averaged 2,141.7 ms vs 560.0 ms SLA (0/48 on-time sham jobs; matter-clustered rate interaction=0.0).",
+        "live_worker_outcome_spark3": "FAILED (6/8 gates). Spark #3 receipt (artifacts/pv7_w20_d13_pooled_agent_loops/report_receipt.json, nemotron-lightning, 7,842 live calls, 70 cells, 1,680 jobs): overall_pass=false, status=replay-fail; 0/1,680 on-time jobs under 560 ms SLA (3.7-7.9 s latency), beats_full_restart_rebuild_jpm=false and sham_reopen_control_valid=false.",
+        "scope": "Stage-1 controlled replay passes offline (deterministic, 4 schedules x 24 templates at pool size 4). Two live-worker sweeps are committed side-by-side: Spark #3 (nemotron-lightning) and Wave 22B Colab L4 (Qwen/Qwen2.5-0.5B-Instruct).",
         "synthetic": "Matter templates and arrival schedules are synthetic.",
-        "tuning": "The 560 ms deadline and stall constants are preregistered; they were not retuned to rescue the live run."
+        "tuning": "The preregistered 560.0 ms deadline and stall constants were NEVER retuned to rescue either live run."
       },
-      "evidence_tier": "stage1-replay-pass-live-worker-FAILED",
+      "evidence_tier": "stage1-replay-pass-live-workers-mixed-sla-failed",
       "fragment_file": "docs/research/registry.d/62-t4-pooled-workers.json",
       "fragment_id": 62,
       "ordinal": 62,
@@ -903,7 +904,7 @@
   "pv7_spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
   "release_status": "PRE-RELEASE / HUMAN AUDIT & CLEAN-RERUN GATES PENDING",
   "schema_version": "complete_64_bundle_evidence_scorecard_v1",
-  "scorecard_sha256": "192855cdfd2d1400ef8d4adea28a607d941e5281cd59f01e5a81bd01454abffe",
+  "scorecard_sha256": "7954f9fcf0c7aed5db5c5b6c39ef443c1dc5021941c11c00e3f970103faa2db1",
   "totals": {
     "base_v7_bundles_1_to_46": 46,
     "by_honest_evidence_classification": {
@@ -911,11 +912,11 @@
       "falsifier-negative": 1,
       "live-pass": 3,
       "live-shadow-pass": 1,
-      "local-drycheck-pass": 10,
+      "local-drycheck-pass": 5,
       "protocol-ready": 2,
-      "stage1-replay-pass-live-worker-FAILED": 1,
+      "stage1-replay-pass-live-workers-mixed-sla-failed": 1,
       "superseded-historical": 1,
-      "verified-mixed": 1,
+      "verified-mixed": 6,
       "verified-mixed-latency-miss-and-grpo-null": 1,
       "verified-mixed-needs-review": 1,
       "verified-mixed-r5-fpr-failed": 1,

@@ -58,11 +58,11 @@
   },
   "evidence_tier": "stage1-replay-pass",
   "evidence_disclosure": {
-    "scope": "Stage-1 controlled replay passes offline (deterministic, 4 schedules x 24 templates at pool size 4).",
-    "live_worker_outcome": "FAILED. The committed run-live-workers receipt (nemotron-lightning, 7842 live calls, 70 cells, 1680 jobs) has overall_pass=false and status=replay-fail: gates beats_full_restart_rebuild_jpm and sham_reopen_control_valid are false.",
-    "sla": "All 1680 eligible jobs missed the 560 ms SLA (live worker latency ~3.7-7.9 s): on_time_cited_correct_jobs=0, so the full-restart comparator ties at 0.0 JPM and the primary interaction LCB is 0.",
-    "label_deviation": "Orchestrator label map: stage1-replay-and-live-worker-pass. The live worker did NOT pass, so only stage1-replay-pass is claimed.",
+    "scope": "Stage-1 controlled replay passes offline (deterministic, 4 schedules x 24 templates at pool size 4). Two live-worker sweeps are committed side-by-side: Spark #3 (nemotron-lightning) and Wave 22B Colab L4 (Qwen/Qwen2.5-0.5B-Instruct).",
+    "live_worker_outcome_spark3": "FAILED (6/8 gates). Spark #3 receipt (artifacts/pv7_w20_d13_pooled_agent_loops/report_receipt.json, nemotron-lightning, 7,842 live calls, 70 cells, 1,680 jobs): overall_pass=false, status=replay-fail; 0/1,680 on-time jobs under 560 ms SLA (3.7-7.9 s latency), beats_full_restart_rebuild_jpm=false and sham_reopen_control_valid=false.",
+    "live_worker_outcome_colab_l4": "MIXED / FAILED overall_pass (7/8 gates). Wave 22B Colab L4 receipt (artifacts/pv7_w22b_b62_d13_colab_l4/colab_l4_provenance.json, hardware_cohort=colab:NVIDIA L4, Qwen/Qwen2.5-0.5B-Instruct, 7,866 live calls, 70 cells, 1,680 jobs, deterministic_sha256=b7d6085bd27a): PASSED 7/8 gates including beats_full_restart_rebuild_jpm=true (ZeroMu+EK5_v3 59.38 JPM vs full_restart_rebuild 0.00 JPM, +59.38 JPM), zero_stale_commits_on_zeromu_ek5=true (0 stale commits), ek5_incremental_equals_full_parity=true (0 failures), and positive per-job JPM interaction (mean=+0.6779, LCB95=+0.2586 > 0). STILL FAILED sham_reopen_control_valid=false (overall_pass=false, status=replay-fail): batch p50 was 309-417 ms, so two sequential LLM calls (initial + sham reopen) averaged 2,141.7 ms vs 560.0 ms SLA (0/48 on-time sham jobs; matter-clustered rate interaction=0.0).",
+    "hardware_cohort": "Local Spark #3 (aarch64 nemotron-lightning) and colab:NVIDIA L4 (Qwen2.5-0.5B-Instruct) reported separately; Colab evidence is NOT local DGX Spark GB10 evidence.",
     "synthetic": "Matter templates and arrival schedules are synthetic.",
-    "tuning": "The 560 ms deadline and stall constants are preregistered; they were not retuned to rescue the live run."
+    "tuning": "The preregistered 560.0 ms deadline and stall constants were NEVER retuned to rescue either live run."
   }
 }

@@ -64,13 +64,13 @@
       "run-live-gpu"
     ]
   },
-  "evidence_tier": "local-drycheck-pass",
+  "evidence_tier": "verified-mixed",
   "evidence_disclosure": {
-    "scope": "Local drycheck of the 12-domain 4-hop gauntlet.",
-    "failed_endpoint": "H6B_merge primary merge endpoint NOT met on the committed drycheck fixture (H6B_merge.passed=false: 6/12 positive domains vs 11/12 required in code / >=10/12 in registry prose, LCB95=-0.0090); the passing gate h6b_merge_evaluated verifies only that the statistic was computed, NOT that H6B_merge passed.",
-    "synthetic": "Synthetic domain fixtures; domain names are labels.",
-    "tuning": "Preregistered constants; no wild-corpus validation.",
-    "sla": "No latency or SLA claim.",
-    "burn_clean_scope": "local_drycheck_smoke_partial_inventory (confirmatory_eligible=false)."
+    "scope": "Local synthetic drycheck retains H6B_merge.passed=false (6/12 positive, LCB95=-0.0090). Wave 22 live Colab L4 5-real-encoder (MiniLM-384, bge-small-384, mpnet-768, bge-m3-1024, Qwen3-Embedding-8B 4096-d) evaluation across ALL 12/12 unburned public MTEB/BEIR domains (artifacts/pv7_colab_l4_closure_20261125/colab_l4_closure_manifest.json [04e7543bdbbc] + artifacts/pv7_w22a_b54_12dom_complete/w22a_b54_12dom_manifest.json [a12d2457a0bd], N=2,549 real queries, hardware_cohort=colab:NVIDIA L4) CLOSED H6B_merge and H6B_bridge_static.",
+    "live_12domain_outcomes": "H6B_merge (CSLSMerge > CalibratedZScoreMerge): PASSED at 11/12 domains positive (mean=+2.45 pp, LCB95=+0.92 pp > 0, exact_binomial_p=0.00317). H6B_bridge_static (ZeroMu+CSLS vs UncenteredProcrustes+CSLS): PASSED at 11/12 positive (mean=+5.28 pp, LCB95=+3.35 pp, clearing -0.010 & -0.005 floors; statistical tie vs CenteredProcrustes+CSLS at -0.32 pp [-1.57,+0.68]). 20x500 anchor draws: within-domain SD=0.56 pp vs cross-domain SD=26.34 pp. Contamination sweep (0/1/5/10/20%): TRA-1 detects 100% of 5-20% duplicate & mismatched poisoning (0% FP at 0-1%, 60% on off_domain).",
+    "live_honest_misses": "H6B_4hop upward chain (384->384->768->1024->4096) is MIXED across 12/12 domains (7/12 positive, mean=-2.48 pp, LCB95=-5.95 pp); real prompt-wrapper shift (5-domain subset, prefix displacement norm=0.504) is positive point-estimate (4/5, +2.03 pp) but underpowered (LCB95=-1.95 pp).",
+    "hardware_cohort": "colab:NVIDIA L4 (NOT local DGX Spark GB10 evidence).",
+    "tuning": "Zero eval-set retuning; all 12 domains verified against BURNED_CORPORA.",
+    "sla": "No latency or SLA claim."
   }
 }

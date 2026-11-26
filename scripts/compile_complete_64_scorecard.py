@@ -94,7 +94,7 @@ def build_scorecard() -> Dict[str, Any]:
         ev_tier = str(d["evidence_tier"])
         disc = d.get("evidence_disclosure", {})
         if bid == 62:
-            ev_key = "stage1-replay-pass-live-worker-FAILED"
+            ev_key = "stage1-replay-pass-live-workers-mixed-sla-failed"
         else:
             ev_key = ev_tier
         tier_counts[ev_key] += 1
@@ -131,19 +131,35 @@ def build_scorecard() -> Dict[str, Any]:
         },
         "anti_l4_governance_note": (
             "Passing an offline verifier (exit 0) or carrying registry status 'protocol-ready' does NOT make a "
-            "Post-v7.0 bundle live confirmatory evidence. Among #47-#64: 3 are live-pass on synthetic/emulated "
-            "fixtures (#48 synthetic 12k Gaussian across live Qdrant/OpenSearch/pgvector, where commit 25ae2067 raised "
-            "BASE_EF/m/ef_construct/scan knobs alongside the receipt so eval-fixture knob tuning is not excluded; #57 "
-            "synthetic .cspg cartridges in a Linux aarch64 6GiB cgroup host [host name not recorded in receipt]; #61 "
-            "CPU software emulation with 3/5 live encoders & 2 dry stand-ins), "
-            "1 is observational live-shadow-pass (#53, live_pm6_gateway_executed=false), 1 is verified-mixed (#58 "
-            "symmetric WAL deterministic drycheck floor only, no live measurement: clustered +18.9k..+22.5k B saved, "
-            "scattered 0 B tie / -720 B loss vs floor), 1 is "
-            "stage1-replay-pass whose live vLLM worker run FAILED (#62 overall_pass=false, 0/1680 on-time jobs under "
-            "560 ms SLA), 10 are local-drycheck-pass synthetic/smoke fixtures (#47, #49, #50, #51, #52, #54 [H6B_merge "
-            "endpoint NOT met: passed=false, 6/12 positive vs 11/12 required, LCB95=-0.0090], #55 "
-            "[superiority_is_wild_evidence=false], #56, #59, #60), and 2 are protocol-ready open DEV "
-            "scorers (#63, #64, 0 partner runs)."
+            "Post-v7.0 bundle live confirmatory evidence, and Colab burst GPU runs (hardware_cohort='colab:NVIDIA L4') "
+            "are strictly separated from local DGX Spark GB10 evidence. Among #47-#64 after Wave 22 live empirical "
+            "graduation: 3 are synthetic/emulated live-pass (#48 synthetic 12k Gaussian across live Qdrant/OpenSearch/"
+            "pgvector where commit 25ae2067 raised BASE_EF/m/ef_construct/scan knobs; #57 synthetic .cspg cartridges "
+            "in a Linux aarch64 6GiB cgroup host; #61 CPU software emulation with 3/5 live encoders & 2 stand-ins); "
+            "6 graduated to live real-model/real-corpus empirical runs with wins AND misses reported verbatim: "
+            "#53 (live-shadow observational + Colab L4 PM-6 RCPS benign FPR closure PASS: 0.50%/0.67% FPR, "
+            "CP_UB95=1.29%/1.52% <= 2.0%, vs N=50 overshoot 3.51%; live streaming gateway remains observational), "
+            "#54 (Colab L4 12/12 unburned MTEB/BEIR domains x 5 real neural encoders, N=2,549 queries: H6B_merge "
+            "PASSED 11/12 p=0.00317 LCB95=+0.92 pp & H6B_bridge_static PASSED 11/12 +5.28 pp vs Uncentered [ties "
+            "Centered -0.32 pp], 20x500 anchor SD=0.56 pp, TRA-1 catches 100% of 5-20% dup/mismatch poisoning; "
+            "HONEST MISS: 4-hop mixed 7/12 -2.48 pp & 5-domain prompt-shift underpowered LCB95=-1.95 pp), "
+            "#52 (Colab L4 real weights Qwen2.5-1.5B & Qwen3.5-2B-Base at layers[11].mlp.down_proj: QSCCI steering "
+            "PASSED +0.88/+1.13 logit margin & single-neuron +0.11 vs Top-K SAE/CAA/sham ~0.00, low collateral KL; "
+            "HONEST LIMITATION: 2-pass 1-D restoration near zero -1.5%/+1.6%), "
+            "#50 (Colab L4 12-domain Tango NI boundary: PASSED on 7-domain QA N=1,249 at 20% backfill LCB95=-2.99%, "
+            "MISSED on pooled 12 heterogeneous domains N=2,549 LCB95=-6.98%), "
+            "#49 (Colab L4 36 live-model cold-start sessions: wheel deterministic, 0/36 private imports, "
+            "Phi-3.5-mini 12/12 PASS, but FAILED strict >=30/36 bar at 16/36 [28/36 functional], Qwen2.5-3B 0/12 "
+            "strict/10/12 func, Granite-3.1-2B 4/12 strict/2 leak-check flags), "
+            "#55 (CPU 240 real public OSV/Red Hat CSAF VEX/SEC EDGAR families, wild_gate_met=true: FIRED "
+            "pre-registered retirement trigger retire_ek5_proprietary_superiority=true [EK5=SQL=43.75%, 240/240 ties, "
+            "0.99% echo recall due to sentence-initial proper-noun shift on OSV/SEC prefixes; 100% on CSAF VEX vs 50% "
+            "recency and 0 vs 61 cross-tenant leaks]); "
+            "1 is stage1-replay-pass whose live workers remain overall_pass=false (#62 Spark #3 nemotron-lightning "
+            "FAILED 6/8 0.0 JPM; Colab L4 Qwen2.5-0.5B improved to 7/8 beating full_restart 59.38 vs 0.00 JPM with "
+            "0 stale commits and positive per-job JPM interaction LCB95=+0.2586, but STILL FAILED sham_reopen_control_valid "
+            "under unmodified 560 ms SLA); 1 is verified-mixed (#58 deterministic WAL floor); 5 remain "
+            "local-drycheck-pass (#47, #51, #56, #59, #60); and 2 are protocol-ready open DEV scorers (#63, #64)."
         ),
         "bundles": rows,
     }
@@ -156,11 +172,11 @@ def render_markdown(sc: Dict[str, Any]) -> str:
     reg_sha12 = sc["base_verified_registry_sha256"][:12]
     sc_sha12 = sc["scorecard_sha256"][:12]
     lines: List[str] = [
-        "# Master Multi-Wave Evidence, Architecture, & Complete `64/64` Honest Scorecard (`Waves 1–21`)",
+        "# Master Multi-Wave Evidence, Architecture, & Complete `64/64` Honest Scorecard (`Waves 1–22`)",
         "",
         "> **Status (`2026-11-25`):** **`PRE-RELEASE / HUMAN AUDIT & CLEAN-RERUN GATES PENDING`**  ",
         f"> Base `v7.0` Registry (`#1–#46`): `docs/research/verified_registry.json` (`{reg_sha12}`) · Complete `64/64` Machine Scorecard: `docs/research/COMPLETE_64_BUNDLE_EVIDENCE_SCORECARD.json` (`{sc_sha12}`).  ",
-        "> Unqualified production release remains **BLOCKED (`PRE-RELEASE`)** pending **`PM-4b`** (`100`-item independent human grading of `pm4_human_audit_100_blind_sheet.csv`), **`PM-1b`** (`assignment_gates_pass = false`), and **`PM-6`** empirical benign false-refusal calibration (`6.25%/11.76% > 2.0%` target). Zero `Ship-Ready` claims are made anywhere in the repository, and per Brutal-Honesty Rulebook v3.3 (`L4` guard), `local-drycheck-pass` / `protocol-ready` / verifier `rc=0` cells are **never** counted as live confirmatory completions.",
+        "> Unqualified production release remains **BLOCKED (`PRE-RELEASE`)** pending **`PM-4b`** (`100`-item independent human grading of `pm4_human_audit_100_blind_sheet.csv`) and **`PM-1b`** (`assignment_gates_pass = false`). Wave 22 (`colab:NVIDIA L4` + CPU public wild feeds) closed **`PM-6`** offline benign FPR via Split-Conformal `RCPS` (`0.50%/0.67% <= 2.0%`), closed **`#54`** `H6B_merge` (`11/12`, `p=0.00317`) and `H6B_bridge_static` (`11/12`, `+5.28 pp`) on `12/12` unburned public domains, verified **`#52`** live `QSCCI` steering on `Qwen2.5-1.5B` & `Qwen3.5-2B-Base` (restoration null), and honestly surfaced real empirical boundaries/misses on **`#50`** (`12`-domain Tango NI miss vs `7`-domain pass), **`#49`** (`16/36` strict on small 2B-3.8B models, `12/12` Phi-3.5-mini), **`#55`** (240 real wild OSV/VEX/SEC families fired `retire_ek5_proprietary_superiority=true`), and **`#62`** (`7/8` gates on Colab L4 beating `full_restart` `59.38 vs 0.00 JPM`, still missing `sham_reopen_control_valid` under `560 ms` SLA). Zero `Ship-Ready` claims are made anywhere in the repository.",
         "",
         "---",
         "",
@@ -170,7 +186,7 @@ def render_markdown(sc: Dict[str, Any]) -> str:
         "|---|---|---|---|---|",
         "| **Layer 1 (`v6.0`)** | `#364` | `fix/stage0-metric-lineage-and-m1-ladder` (`tag: v6.0-wave13-sealed-20261125`) | `main` | **Parts I–VII (`Waves 1–13`, Bundles `#1–#45`, Registry `01738dbf94e6`):** Stage-0 `mlr-v1` Quarantine (`113/113`), Flagships #1 & #2, 4-Node Fleet (`D1–D5`), & Tier-1/2 Demos (`D6–D10`, including `D9` `2,104 ms > 1,500 ms` & `K4` GRPO null, `D10` `9.47M` `Quora -6.92 pp` Holm loss & `7B = 70B NF4` parity). Unanimous `2/2 APPROVED_FOR_V6_SEAL`. |",
         f"| **Layer 2 (`v7.0`)** | `#365` | `feat/v7-formal-pm6` (merged into `fix/stage0-metric-lineage-and-m1-ladder`) | `fix/stage0-metric-lineage-and-m1-ladder` | **Part VIII (`Waves 14–15`, Bundle `#46` + `/formal`, Registry `{reg_sha12}`):** Lean 4 `Spec.lean` `63fe3e644bde` (`68` theorems, `0 sorry/native_decide`, `nanoda_bin 0.4.32` `25,473` decls, `7,722`-ckpt conformance w/ `153` Pitfall-B reason diffs & incremental-deletions conformance-only) + Live `Demo D11 / PM-6` (`7248d05a02ba` + `pm6_posthoc_statistical_reanalysis.json`: **EMPIRICALLY MIXED** — beats `Arm 3` `+0.474/+0.476` AUROC & `DE` `+0.152`, `100%` Gate-1 `R4`, **FAILS `r5_benign_fpr_le_002` at `6.25%/11.76% > 2%`**, parity/loss vs `Arm 6/8` on EN `R3`, `15.6%/17.6%` `R2b` breach). |",
-        "| **Layer 3 (`Post-v7.0`)** | `#366` | `pv7/w16-core` | `fix/stage0-metric-lineage-and-m1-ladder` (`v7.0`) | **Part IX (`Waves 16–21`, Additive Bundles `#47–#64`, Spine `32693f54e0ce`):** Declarative `registry.d`/`routes.d`/`verifiers.d` loaders (`18/18` offline verifiers `rc=0`) + honest breakdown: `3` synthetic/emulated `live-pass` (`#48`, `#57`, `#61`), `1` observational `live-shadow-pass` (`#53`), `1` `verified-mixed` (`#58` clustered win / scattered `-720 B` loss vs floor), `1` `stage1-replay-pass` whose **live vLLM worker run FAILED** (`#62` `overall_pass=false`, `0/1,680` on-time jobs), `10` `local-drycheck-pass` synthetic/smoke fixtures (`#47, #49–#52, #54–#56, #59, #60`), and `2` `protocol-ready` open DEV scorers (`#63, #64`). |",
+        "| **Layer 3 (`Post-v7.0 + Wave 22`)** | `#366` | `pv7/w16-core` | `fix/stage0-metric-lineage-and-m1-ladder` (`v7.0`) | **Part IX (`Waves 16–22`, Additive Bundles `#47–#64`, Spine `32693f54e0ce`):** `18/18` offline verifiers `rc=0` + Wave 22 live empirical runs (`colab:NVIDIA L4` + CPU wild feeds, strictly separated from local DGX Spark GB10): `3` synthetic/emulated `live-pass` (`#48`, `#57`, `#61`), `6` live real-model/real-corpus graduated bundles with wins & honest boundaries (`#53` RCPS PASS, `#54` 12/12 merge+static PASS / 4-hop mixed, `#52` live Qwen2.5-1.5B & Qwen3.5-2B steering PASS / restoration null, `#50` 7-dom PASS / 12-dom NI miss, `#49` 16/36 live gate miss / Phi-3.5-mini 12/12, `#55` 240 real wild OSV/VEX/SEC families fired `retire_ek5_proprietary_superiority=true`), `1` `stage1-replay-pass` with live workers still `overall_pass=false` (`#62` Colab L4 `7/8` `+59.38 JPM` vs `full_restart`, Spark #3 `6/8` `0.0 JPM`), `1` `verified-mixed` (`#58`), `5` `local-drycheck-pass` (`#47, #51, #56, #59, #60`), and `2` `protocol-ready` open DEV scorers (`#63, #64`). |",
         "",
         "---",
         "",
