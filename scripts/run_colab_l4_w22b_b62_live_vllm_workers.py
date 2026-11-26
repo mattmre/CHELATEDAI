@@ -372,12 +372,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 headers={"Content-Type": "application/json"},
                 method="POST",
             )
-            with urllib.request.urlopen(req, timeout=30.0) as resp:
-                _ = json.loads(resp.read().decode("utf-8"))
+            with urllib.request.urlopen(req, timeout=180.0) as resp:
+                parsed_resp = json.loads(resp.read().decode("utf-8"))
+            if i == 0:
+                sample_txt = parsed_resp.get("choices", [{}])[0].get("message", {}).get("content", "")
+                print(f"[w22b:warmup-sample] {sample_txt[:120]!r}", flush=True)
             return (time.perf_counter() - t_c) * 1000.0
 
         warmup_latencies: List[float] = []
-        for r_idx in range(2):
+        for r_idx in range(3):
             with ThreadPoolExecutor(max_workers=4) as pool:
                 lats = list(pool.map(_warmup_call, range(4)))
             warmup_latencies.extend(lats)
