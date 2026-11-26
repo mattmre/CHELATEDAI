@@ -18,7 +18,7 @@ on:
 
 jobs:
   evidence-chain:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, arm64, spark2]
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
