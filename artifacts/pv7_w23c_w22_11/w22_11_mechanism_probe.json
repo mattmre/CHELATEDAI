@@ -1,0 +1,26 @@
+{
+ "post_hoc": true,
+ "note": "W22-11 POST-HOC mechanism probe (not preregistered; written after the main run).",
+ "counts": {
+  "T1|pos_cyc|inc_missed_cycle|partial_scc_in_dirty": 50,
+  "T1|pos_cyc|inc_missed_cycle|stale_not_resolved_this_batch": 822,
+  "T1|reason|REFUTED->UNFOUNDED_CYCLE|with_pos_cyc_diff": 668,
+  "T1|sequences_probed": 200,
+  "T2|pos_cyc|inc_missed_cycle|partial_scc_in_dirty": 1817,
+  "T2|pos_cyc|inc_missed_cycle|stale_not_resolved_this_batch": 4983,
+  "T2|reason|REFUTED->UNFOUNDED_CYCLE|with_pos_cyc_diff": 5521,
+  "T2|sequences_probed": 200,
+  "T3|pos_cyc|inc_missed_cycle|partial_scc_in_dirty": 3567,
+  "T3|pos_cyc|inc_missed_cycle|stale_not_resolved_this_batch": 13388,
+  "T3|reason|REFUTED->UNFOUNDED_CYCLE|with_pos_cyc_diff": 13512,
+  "T3|sequences_probed": 200,
+  "T4|pos_cyc|inc_missed_cycle|partial_scc_in_dirty": 848,
+  "T4|pos_cyc|inc_missed_cycle|stale_not_resolved_this_batch": 4557,
+  "T4|reason|REFUTED->UNFOUNDED_CYCLE|with_pos_cyc_diff": 3417,
+  "T4|sequences_probed": 25,
+  "T5|pos_cyc|inc_missed_cycle|partial_scc_in_dirty": 1545,
+  "T5|pos_cyc|inc_missed_cycle|stale_not_resolved_this_batch": 6041,
+  "T5|reason|REFUTED->UNFOUNDED_CYCLE|with_pos_cyc_diff": 4814,
+  "T5|sequences_probed": 25
+ }
+}

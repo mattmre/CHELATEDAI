@@ -1,0 +1,3349 @@
+{
+ "anchors": {
+  "A0": {
+   "expected": {
+    "by_field": {
+     "pos_cyc": 104,
+     "reason": 49
+    },
+    "checkpoints": 7722,
+    "total": 153
+   },
+   "got": {
+    "by_field": {
+     "pos_cyc": 104,
+     "reason": 49
+    },
+    "checkpoints": 7722,
+    "total": 153
+   },
+   "ran": true,
+   "reproduced": true
+  },
+  "A1": {
+   "expected": {
+    "by_field": {
+     "pos_cyc": 548,
+     "reason": 277
+    },
+    "checkpoints": 13881,
+    "total": 825
+   },
+   "got": {
+    "by_field": {
+     "pos_cyc": 548,
+     "reason": 277
+    },
+    "checkpoints": 13881,
+    "total": 825
+   },
+   "ran": true,
+   "reproduced": true
+  }
+ },
+ "chunks_completed": 1140,
+ "chunks_planned": 1140,
+ "deadline_seconds": 2400,
+ "elapsed_seconds": 945.2,
+ "frozen_invariant": {
+  "canonicalizer": "chelated_pv7_spine/ek5_reason_canonicalizer.py",
+  "canonicalizer_sha256": "b8440b62b8c20bf28d35a8c961ab671d3ea8ce90c45fd916c53e8b5a3d8dc432",
+  "definition": "sha256(json.dumps(export_canonical_ek5_audit_trace(S).to_dict(), sort_keys=True, separators=(\",\",\":\"))) is equal for the incremental store and every from-scratch rebuild of the same visible log under any insertion order",
+  "id": "CW-1"
+ },
+ "host": {
+  "cpu_count": 16,
+  "platform": "Windows-10-10.0.26300-SP0",
+  "python": "3.11.9"
+ },
+ "item": "W22-11",
+ "per_tier": {
+  "A0": {
+   "canonical_fresh_vs_fresh": {},
+   "canonical_inc_vs_fresh": {},
+   "canonical_inc_vs_fresh_checkpoints": 0,
+   "canonical_pos_cyc_vs_snapshot_scc": 0,
+   "canonical_vs_fresh_raw": {},
+   "checkpoints": 7722,
+   "checkpoints_after_dep_deletion": 837,
+   "checkpoints_as_of": 1722,
+   "checkpoints_mutation": 6000,
+   "deletions": {
+    "dep_edges": 926,
+    "remove": 704,
+    "withdraw": 2592
+   },
+   "dv_scc_nodes_total": 1570,
+   "dv_scc_size_hist": {
+    "2": 386,
+    "3-4": 68,
+    "self": 587
+   },
+   "liveness": {
+    "canonical_detected": 720,
+    "canonical_injected": 720,
+    "semantic_detected": 600,
+    "semantic_injected": 600
+   },
+   "max_dv_scc_seen": 4,
+   "max_nodes_seen": 11,
+   "node_comparisons": 46967,
+   "raw_diff_characterization": {
+    "A0|mutation|pos_cyc|inc_missed_cycle|fresh_scc=2|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 64,
+    "A0|mutation|pos_cyc|inc_missed_cycle|fresh_scc=2|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 12,
+    "A0|mutation|pos_cyc|inc_missed_cycle|fresh_scc=3-4|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 12,
+    "A0|mutation|pos_cyc|inc_missed_cycle|fresh_scc=self|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 15,
+    "A0|mutation|pos_cyc|inc_missed_cycle|fresh_scc=self|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 1,
+    "A0|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=2|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 32,
+    "A0|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=2|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 4,
+    "A0|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=3-4|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 4,
+    "A0|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=self|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 9
+   },
+   "raw_witness_fresh_vs_fresh": {},
+   "raw_witness_inc_vs_fresh": {
+    "pos_cyc": 104,
+    "reason": 49
+   },
+   "raw_witness_inc_vs_fresh_checkpoints": 60,
+   "samples": {
+    "canonical": [],
+    "order": [],
+    "raw_witness": [
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A0:2026173183379:5:mutation",
+      "field": "reason",
+      "fresh_scc": 1,
+      "node": "n03"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A0:2026173183379:5:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 1,
+      "node": "n03"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A0:2026173183411:2:mutation",
+      "field": "reason",
+      "fresh_scc": 2,
+      "node": "n02"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A0:2026173183411:2:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n02"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A0:2026173183411:2:mutation",
+      "field": "reason",
+      "fresh_scc": 2,
+      "node": "n03"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A0:2026173183411:2:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n03"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A0:2026173183411:3:mutation",
+      "field": "reason",
+      "fresh_scc": 2,
+      "node": "n02"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A0:2026173183411:3:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n02"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A0:2026173183411:3:mutation",
+      "field": "reason",
+      "fresh_scc": 2,
+      "node": "n03"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A0:2026173183411:3:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n03"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A0:2026173183411:4:mutation",
+      "field": "reason",
+      "fresh_scc": 2,
+      "node": "n02"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A0:2026173183411:4:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n02"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A0:2026173183411:4:mutation",
+      "field": "reason",
+      "fresh_scc": 2,
+      "node": "n03"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A0:2026173183411:4:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n03"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A0:2026173183411:5:mutation",
+      "field": "reason",
+      "fresh_scc": 2,
+      "node": "n02"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A0:2026173183411:5:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n02"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A0:2026173183411:5:mutation",
+      "field": "reason",
+      "fresh_scc": 2,
+      "node": "n03"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A0:2026173183411:5:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n03"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A0:2026173183425:1:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 3,
+      "node": "n00"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A0:2026173183425:1:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 3,
+      "node": "n01"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A0:2026173183425:1:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 3,
+      "node": "n02"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A0:2026173183464:3:mutation",
+      "field": "reason",
+      "fresh_scc": 2,
+      "node": "n00"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A0:2026173183464:3:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n00"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A0:2026173183464:3:mutation",
+      "field": "reason",
+      "fresh_scc": 2,
+      "node": "n02"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A0:2026173183464:3:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n02"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A0:2026173183464:4:mutation",
+      "field": "reason",
+      "fresh_scc": 2,
+      "node": "n00"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A0:2026173183464:4:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n00"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A0:2026173183464:4:mutation",
+      "field": "reason",
+      "fresh_scc": 2,
+      "node": "n02"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A0:2026173183464:4:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n02"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A0:2026173183505:4:mutation",
+      "field": "reason",
+      "fresh_scc": 3,
+      "node": "n01"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A0:2026173183505:4:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 3,
+      "node": "n01"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A0:2026173183505:4:mutation",
+      "field": "reason",
+      "fresh_scc": 3,
+      "node": "n03"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A0:2026173183505:4:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 3,
+      "node": "n03"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A0:2026173183505:5:mutation",
+      "field": "reason",
+      "fresh_scc": 3,
+      "node": "n01"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A0:2026173183505:5:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 3,
+      "node": "n01"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A0:2026173183505:5:mutation",
+      "field": "reason",
+      "fresh_scc": 3,
+      "node": "n03"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A0:2026173183505:5:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 3,
+      "node": "n03"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A0:2026173183512:5:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n01"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A0:2026173183512:5:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n02"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A0:2026173183557:2:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 1,
+      "node": "n00"
+     }
+    ],
+    "semantic": []
+   },
+   "semantic": {},
+   "sequences": 1000,
+   "summary": {
+    "canonical_fresh_vs_fresh_total": 0,
+    "canonical_inc_vs_fresh_total": 0,
+    "canonical_pos_cyc_vs_snapshot_scc": 0,
+    "canonical_vs_fresh_raw_total": 0,
+    "raw_witness_fresh_vs_fresh_total": 0,
+    "raw_witness_inc_vs_fresh_total": 153,
+    "semantic_total": 0
+   }
+  },
+  "A1": {
+   "canonical_fresh_vs_fresh": {},
+   "canonical_inc_vs_fresh": {},
+   "canonical_inc_vs_fresh_checkpoints": 0,
+   "canonical_pos_cyc_vs_snapshot_scc": 0,
+   "canonical_vs_fresh_raw": {},
+   "checkpoints": 13881,
+   "checkpoints_after_dep_deletion": 1802,
+   "checkpoints_as_of": 1881,
+   "checkpoints_mutation": 12000,
+   "deletions": {
+    "dep_edges": 1993,
+    "remove": 1554,
+    "withdraw": 5633
+   },
+   "dv_scc_nodes_total": 4399,
+   "dv_scc_size_hist": {
+    "2": 1107,
+    "3-4": 252,
+    "5-8": 6,
+    "self": 1362
+   },
+   "liveness": {
+    "canonical_detected": 1440,
+    "canonical_injected": 1440,
+    "semantic_detected": 1200,
+    "semantic_injected": 1200
+   },
+   "max_dv_scc_seen": 5,
+   "max_nodes_seen": 11,
+   "node_comparisons": 112300,
+   "raw_diff_characterization": {
+    "A1|mutation|pos_cyc|inc_missed_cycle|fresh_scc=2|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 284,
+    "A1|mutation|pos_cyc|inc_missed_cycle|fresh_scc=2|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 46,
+    "A1|mutation|pos_cyc|inc_missed_cycle|fresh_scc=3-4|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 148,
+    "A1|mutation|pos_cyc|inc_missed_cycle|fresh_scc=3-4|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 13,
+    "A1|mutation|pos_cyc|inc_missed_cycle|fresh_scc=self|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 53,
+    "A1|mutation|pos_cyc|inc_missed_cycle|fresh_scc=self|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 4,
+    "A1|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=2|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 151,
+    "A1|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=2|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 19,
+    "A1|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=3-4|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 85,
+    "A1|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=3-4|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 1,
+    "A1|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=self|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 21
+   },
+   "raw_witness_fresh_vs_fresh": {},
+   "raw_witness_inc_vs_fresh": {
+    "pos_cyc": 548,
+    "reason": 277
+   },
+   "raw_witness_inc_vs_fresh_checkpoints": 278,
+   "samples": {
+    "canonical": [],
+    "order": [],
+    "raw_witness": [
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A1:2026173183379:5:mutation",
+      "field": "reason",
+      "fresh_scc": 1,
+      "node": "n03"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A1:2026173183379:5:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 1,
+      "node": "n03"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A1:2026173183379:6:mutation",
+      "field": "reason",
+      "fresh_scc": 1,
+      "node": "n03"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A1:2026173183379:6:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 1,
+      "node": "n03"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A1:2026173183405:7:mutation",
+      "field": "reason",
+      "fresh_scc": 3,
+      "node": "n03"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A1:2026173183405:7:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 3,
+      "node": "n03"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A1:2026173183411:2:mutation",
+      "field": "reason",
+      "fresh_scc": 2,
+      "node": "n02"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A1:2026173183411:2:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n02"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A1:2026173183411:2:mutation",
+      "field": "reason",
+      "fresh_scc": 2,
+      "node": "n03"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A1:2026173183411:2:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n03"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A1:2026173183411:3:mutation",
+      "field": "reason",
+      "fresh_scc": 2,
+      "node": "n02"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A1:2026173183411:3:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n02"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A1:2026173183411:3:mutation",
+      "field": "reason",
+      "fresh_scc": 2,
+      "node": "n03"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A1:2026173183411:3:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n03"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A1:2026173183411:4:mutation",
+      "field": "reason",
+      "fresh_scc": 2,
+      "node": "n02"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A1:2026173183411:4:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n02"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A1:2026173183411:4:mutation",
+      "field": "reason",
+      "fresh_scc": 2,
+      "node": "n03"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A1:2026173183411:4:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n03"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A1:2026173183411:5:mutation",
+      "field": "reason",
+      "fresh_scc": 2,
+      "node": "n02"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A1:2026173183411:5:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n02"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A1:2026173183411:5:mutation",
+      "field": "reason",
+      "fresh_scc": 2,
+      "node": "n03"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A1:2026173183411:5:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n03"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A1:2026173183411:6:mutation",
+      "field": "reason",
+      "fresh_scc": 2,
+      "node": "n02"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A1:2026173183411:6:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n02"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A1:2026173183411:6:mutation",
+      "field": "reason",
+      "fresh_scc": 2,
+      "node": "n03"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A1:2026173183411:6:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n03"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A1:2026173183421:11:mutation",
+      "field": "reason",
+      "fresh_scc": 2,
+      "node": "n02"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A1:2026173183421:11:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n02"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A1:2026173183421:11:mutation",
+      "field": "reason",
+      "fresh_scc": 2,
+      "node": "n04"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A1:2026173183421:11:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n04"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A1:2026173183577:11:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n05"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A1:2026173183577:11:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n07"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A1:2026173183594:8:mutation",
+      "field": "reason",
+      "fresh_scc": 2,
+      "node": "n00"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A1:2026173183594:8:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n00"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A1:2026173183594:8:mutation",
+      "field": "reason",
+      "fresh_scc": 2,
+      "node": "n01"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A1:2026173183594:8:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n01"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A1:2026173183594:9:mutation",
+      "field": "reason",
+      "fresh_scc": 2,
+      "node": "n00"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A1:2026173183594:9:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n00"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "A1:2026173183594:9:mutation",
+      "field": "reason",
+      "fresh_scc": 2,
+      "node": "n01"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "A1:2026173183594:9:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n01"
+     }
+    ],
+    "semantic": []
+   },
+   "semantic": {},
+   "sequences": 1000,
+   "summary": {
+    "canonical_fresh_vs_fresh_total": 0,
+    "canonical_inc_vs_fresh_total": 0,
+    "canonical_pos_cyc_vs_snapshot_scc": 0,
+    "canonical_vs_fresh_raw_total": 0,
+    "raw_witness_fresh_vs_fresh_total": 0,
+    "raw_witness_inc_vs_fresh_total": 825,
+    "semantic_total": 0
+   }
+  },
+  "T1": {
+   "canonical_fresh_vs_fresh": {},
+   "canonical_inc_vs_fresh": {},
+   "canonical_inc_vs_fresh_checkpoints": 0,
+   "canonical_pos_cyc_vs_snapshot_scc": 0,
+   "canonical_vs_fresh_raw": {},
+   "checkpoints": 779502,
+   "checkpoints_after_dep_deletion": 116289,
+   "checkpoints_as_of": 59502,
+   "checkpoints_mutation": 720000,
+   "deletions": {
+    "dep_edges": 129476,
+    "remove": 102674,
+    "withdraw": 359390
+   },
+   "dv_scc_nodes_total": 472336,
+   "dv_scc_size_hist": {
+    "2": 92890,
+    "3-4": 42415,
+    "5-8": 8405,
+    "9-16": 142,
+    "self": 99101
+   },
+   "liveness": {
+    "canonical_detected": 86400,
+    "canonical_injected": 86400,
+    "semantic_detected": 72000,
+    "semantic_injected": 72000
+   },
+   "max_dv_scc_seen": 11,
+   "max_nodes_seen": 11,
+   "node_comparisons": 7333098,
+   "raw_diff_characterization": {
+    "T1|mutation|pos_cyc|inc_missed_cycle|fresh_scc=2|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 37801,
+    "T1|mutation|pos_cyc|inc_missed_cycle|fresh_scc=2|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 6362,
+    "T1|mutation|pos_cyc|inc_missed_cycle|fresh_scc=3-4|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 42189,
+    "T1|mutation|pos_cyc|inc_missed_cycle|fresh_scc=3-4|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 6841,
+    "T1|mutation|pos_cyc|inc_missed_cycle|fresh_scc=5-8|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 15957,
+    "T1|mutation|pos_cyc|inc_missed_cycle|fresh_scc=5-8|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 2413,
+    "T1|mutation|pos_cyc|inc_missed_cycle|fresh_scc=9-16|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 462,
+    "T1|mutation|pos_cyc|inc_missed_cycle|fresh_scc=9-16|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 11,
+    "T1|mutation|pos_cyc|inc_missed_cycle|fresh_scc=self|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 6806,
+    "T1|mutation|pos_cyc|inc_missed_cycle|fresh_scc=self|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 1160,
+    "T1|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=2|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 21795,
+    "T1|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=2|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 3626,
+    "T1|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=3-4|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 28683,
+    "T1|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=3-4|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 4600,
+    "T1|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=5-8|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 11784,
+    "T1|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=5-8|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 1740,
+    "T1|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=9-16|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 328,
+    "T1|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=9-16|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 11,
+    "T1|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=self|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 2401,
+    "T1|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=self|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 404
+   },
+   "raw_witness_fresh_vs_fresh": {},
+   "raw_witness_inc_vs_fresh": {
+    "pos_cyc": 120002,
+    "reason": 75372
+   },
+   "raw_witness_inc_vs_fresh_checkpoints": 51371,
+   "samples": {
+    "canonical": [],
+    "order": [],
+    "raw_witness": [
+     {
+      "a": false,
+      "b": true,
+      "cp": "T1:2026173283378:20:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n00"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T1:2026173283378:20:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n01"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T1:2026173283378:21:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n00"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T1:2026173283378:21:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n01"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T1:2026173283378:22:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n00"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T1:2026173283378:22:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n01"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T1:2026173283378:22:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n03"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T1:2026173283378:22:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n04"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T1:2026173283378:23:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n00"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T1:2026173283378:23:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n01"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T1:2026173283378:23:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n03"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T1:2026173283378:23:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 2,
+      "node": "n04"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T1:2026173283381:8:mutation",
+      "field": "reason",
+      "fresh_scc": 4,
+      "node": "n01"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T1:2026173283381:8:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 4,
+      "node": "n01"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T1:2026173283381:8:mutation",
+      "field": "reason",
+      "fresh_scc": 4,
+      "node": "n02"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T1:2026173283381:8:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 4,
+      "node": "n02"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T1:2026173283381:8:mutation",
+      "field": "reason",
+      "fresh_scc": 4,
+      "node": "n07"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T1:2026173283381:8:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 4,
+      "node": "n07"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T1:2026173283381:8:mutation",
+      "field": "reason",
+      "fresh_scc": 4,
+      "node": "n08"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T1:2026173283381:8:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 4,
+      "node": "n08"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T1:2026173283381:9:mutation",
+      "field": "reason",
+      "fresh_scc": 4,
+      "node": "n01"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T1:2026173283381:9:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 4,
+      "node": "n01"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T1:2026173283381:9:mutation",
+      "field": "reason",
+      "fresh_scc": 4,
+      "node": "n02"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T1:2026173283381:9:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 4,
+      "node": "n02"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T1:2026173283381:9:mutation",
+      "field": "reason",
+      "fresh_scc": 4,
+      "node": "n07"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T1:2026173283381:9:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 4,
+      "node": "n07"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T1:2026173283381:9:mutation",
+      "field": "reason",
+      "fresh_scc": 4,
+      "node": "n08"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T1:2026173283381:9:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 4,
+      "node": "n08"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T1:2026173283381:10:mutation",
+      "field": "reason",
+      "fresh_scc": 4,
+      "node": "n01"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T1:2026173283381:10:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 4,
+      "node": "n01"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T1:2026173283381:10:mutation",
+      "field": "reason",
+      "fresh_scc": 4,
+      "node": "n02"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T1:2026173283381:10:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 4,
+      "node": "n02"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T1:2026173283381:10:mutation",
+      "field": "reason",
+      "fresh_scc": 4,
+      "node": "n07"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T1:2026173283381:10:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 4,
+      "node": "n07"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T1:2026173283381:10:mutation",
+      "field": "reason",
+      "fresh_scc": 4,
+      "node": "n08"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T1:2026173283381:10:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 4,
+      "node": "n08"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T1:2026173283381:11:mutation",
+      "field": "reason",
+      "fresh_scc": 4,
+      "node": "n01"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T1:2026173283381:11:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 4,
+      "node": "n01"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T1:2026173283381:11:mutation",
+      "field": "reason",
+      "fresh_scc": 4,
+      "node": "n02"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T1:2026173283381:11:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 4,
+      "node": "n02"
+     }
+    ],
+    "semantic": []
+   },
+   "semantic": {},
+   "sequences": 30000,
+   "summary": {
+    "canonical_fresh_vs_fresh_total": 0,
+    "canonical_inc_vs_fresh_total": 0,
+    "canonical_pos_cyc_vs_snapshot_scc": 0,
+    "canonical_vs_fresh_raw_total": 0,
+    "raw_witness_fresh_vs_fresh_total": 0,
+    "raw_witness_inc_vs_fresh_total": 195374,
+    "semantic_total": 0
+   }
+  },
+  "T2": {
+   "canonical_fresh_vs_fresh": {},
+   "canonical_inc_vs_fresh": {},
+   "canonical_inc_vs_fresh_checkpoints": 0,
+   "canonical_pos_cyc_vs_snapshot_scc": 0,
+   "canonical_vs_fresh_raw": {},
+   "checkpoints": 311996,
+   "checkpoints_after_dep_deletion": 196580,
+   "checkpoints_as_of": 23996,
+   "checkpoints_mutation": 288000,
+   "deletions": {
+    "dep_edges": 354232,
+    "remove": 130188,
+    "withdraw": 376623
+   },
+   "dv_scc_nodes_total": 3354433,
+   "dv_scc_size_hist": {
+    "17-32": 94715,
+    "2": 12097,
+    "3-4": 23605,
+    "5-8": 32815,
+    "9-16": 72880,
+    "self": 3478
+   },
+   "liveness": {
+    "canonical_detected": 34560,
+    "canonical_injected": 34560,
+    "semantic_detected": 28800,
+    "semantic_injected": 28800
+   },
+   "max_dv_scc_seen": 32,
+   "max_nodes_seen": 32,
+   "node_comparisons": 7434706,
+   "raw_diff_characterization": {
+    "T2|mutation|pos_cyc|inc_missed_cycle|fresh_scc=17-32|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 48963,
+    "T2|mutation|pos_cyc|inc_missed_cycle|fresh_scc=17-32|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 140697,
+    "T2|mutation|pos_cyc|inc_missed_cycle|fresh_scc=2|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 589,
+    "T2|mutation|pos_cyc|inc_missed_cycle|fresh_scc=2|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 1731,
+    "T2|mutation|pos_cyc|inc_missed_cycle|fresh_scc=3-4|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 4039,
+    "T2|mutation|pos_cyc|inc_missed_cycle|fresh_scc=3-4|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 8791,
+    "T2|mutation|pos_cyc|inc_missed_cycle|fresh_scc=5-8|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 13073,
+    "T2|mutation|pos_cyc|inc_missed_cycle|fresh_scc=5-8|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 26027,
+    "T2|mutation|pos_cyc|inc_missed_cycle|fresh_scc=9-16|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 44463,
+    "T2|mutation|pos_cyc|inc_missed_cycle|fresh_scc=9-16|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 99273,
+    "T2|mutation|pos_cyc|inc_missed_cycle|fresh_scc=self|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 57,
+    "T2|mutation|pos_cyc|inc_missed_cycle|fresh_scc=self|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 103,
+    "T2|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=17-32|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 37608,
+    "T2|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=17-32|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 106686,
+    "T2|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=2|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 338,
+    "T2|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=2|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 1034,
+    "T2|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=3-4|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 3212,
+    "T2|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=3-4|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 6902,
+    "T2|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=5-8|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 11464,
+    "T2|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=5-8|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 22377,
+    "T2|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=9-16|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 39301,
+    "T2|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=9-16|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 86098,
+    "T2|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=self|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 17,
+    "T2|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=self|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 37
+   },
+   "raw_witness_fresh_vs_fresh": {},
+   "raw_witness_inc_vs_fresh": {
+    "pos_cyc": 387806,
+    "reason": 315074
+   },
+   "raw_witness_inc_vs_fresh_checkpoints": 50956,
+   "samples": {
+    "canonical": [],
+    "order": [],
+    "raw_witness": [
+     {
+      "a": false,
+      "b": true,
+      "cp": "T2:2026173383378:21:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 17,
+      "node": "n002"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T2:2026173383378:21:mutation",
+      "field": "reason",
+      "fresh_scc": 17,
+      "node": "n006"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T2:2026173383378:21:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 17,
+      "node": "n006"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T2:2026173383378:21:mutation",
+      "field": "reason",
+      "fresh_scc": 17,
+      "node": "n024"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T2:2026173383378:21:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 17,
+      "node": "n024"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T2:2026173383378:21:mutation",
+      "field": "reason",
+      "fresh_scc": 17,
+      "node": "n025"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T2:2026173383378:21:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 17,
+      "node": "n025"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T2:2026173383378:21:mutation",
+      "field": "reason",
+      "fresh_scc": 17,
+      "node": "n029"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T2:2026173383378:21:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 17,
+      "node": "n029"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T2:2026173383378:22:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 16,
+      "node": "n002"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T2:2026173383378:22:mutation",
+      "field": "reason",
+      "fresh_scc": 16,
+      "node": "n006"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T2:2026173383378:22:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 16,
+      "node": "n006"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T2:2026173383378:22:mutation",
+      "field": "reason",
+      "fresh_scc": 16,
+      "node": "n025"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T2:2026173383378:22:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 16,
+      "node": "n025"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T2:2026173383378:22:mutation",
+      "field": "reason",
+      "fresh_scc": 16,
+      "node": "n029"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T2:2026173383378:22:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 16,
+      "node": "n029"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T2:2026173383378:23:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 17,
+      "node": "n002"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T2:2026173383378:23:mutation",
+      "field": "reason",
+      "fresh_scc": 17,
+      "node": "n006"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T2:2026173383378:23:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 17,
+      "node": "n006"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T2:2026173383378:23:mutation",
+      "field": "reason",
+      "fresh_scc": 17,
+      "node": "n025"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T2:2026173383378:23:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 17,
+      "node": "n025"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T2:2026173383378:23:mutation",
+      "field": "reason",
+      "fresh_scc": 17,
+      "node": "n029"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T2:2026173383378:23:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 17,
+      "node": "n029"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T2:2026173383379:18:mutation",
+      "field": "reason",
+      "fresh_scc": 8,
+      "node": "n008"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T2:2026173383379:18:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 8,
+      "node": "n008"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T2:2026173383379:18:mutation",
+      "field": "reason",
+      "fresh_scc": 8,
+      "node": "n011"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T2:2026173383379:18:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 8,
+      "node": "n011"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T2:2026173383379:18:mutation",
+      "field": "reason",
+      "fresh_scc": 8,
+      "node": "n018"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T2:2026173383379:18:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 8,
+      "node": "n018"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T2:2026173383379:18:mutation",
+      "field": "reason",
+      "fresh_scc": 8,
+      "node": "n021"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T2:2026173383379:18:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 8,
+      "node": "n021"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T2:2026173383379:18:mutation",
+      "field": "reason",
+      "fresh_scc": 8,
+      "node": "n022"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T2:2026173383379:18:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 8,
+      "node": "n022"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T2:2026173383379:18:mutation",
+      "field": "reason",
+      "fresh_scc": 8,
+      "node": "n024"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T2:2026173383379:18:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 8,
+      "node": "n024"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T2:2026173383379:18:mutation",
+      "field": "reason",
+      "fresh_scc": 8,
+      "node": "n029"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T2:2026173383379:18:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 8,
+      "node": "n029"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T2:2026173383379:18:mutation",
+      "field": "reason",
+      "fresh_scc": 8,
+      "node": "n031"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T2:2026173383379:18:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 8,
+      "node": "n031"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T2:2026173383380:14:mutation",
+      "field": "reason",
+      "fresh_scc": 6,
+      "node": "n008"
+     }
+    ],
+    "semantic": []
+   },
+   "semantic": {},
+   "sequences": 12000,
+   "summary": {
+    "canonical_fresh_vs_fresh_total": 0,
+    "canonical_inc_vs_fresh_total": 0,
+    "canonical_pos_cyc_vs_snapshot_scc": 0,
+    "canonical_vs_fresh_raw_total": 0,
+    "raw_witness_fresh_vs_fresh_total": 0,
+    "raw_witness_inc_vs_fresh_total": 702880,
+    "semantic_total": 0
+   }
+  },
+  "T3": {
+   "canonical_fresh_vs_fresh": {},
+   "canonical_inc_vs_fresh": {},
+   "canonical_inc_vs_fresh_checkpoints": 0,
+   "canonical_pos_cyc_vs_snapshot_scc": 0,
+   "canonical_vs_fresh_raw": {},
+   "checkpoints": 156000,
+   "checkpoints_after_dep_deletion": 100409,
+   "checkpoints_as_of": 12000,
+   "checkpoints_mutation": 144000,
+   "deletions": {
+    "dep_edges": 178299,
+    "remove": 70239,
+    "withdraw": 194732
+   },
+   "dv_scc_nodes_total": 4114280,
+   "dv_scc_size_hist": {
+    "17-32": 39484,
+    "2": 4598,
+    "3-4": 5343,
+    "33+": 65221,
+    "5-8": 6986,
+    "9-16": 12393,
+    "self": 2746
+   },
+   "liveness": {
+    "canonical_detected": 17280,
+    "canonical_injected": 17280,
+    "semantic_detected": 14400,
+    "semantic_injected": 14400
+   },
+   "max_dv_scc_seen": 64,
+   "max_nodes_seen": 64,
+   "node_comparisons": 7078103,
+   "raw_diff_characterization": {
+    "T3|mutation|pos_cyc|inc_missed_cycle|fresh_scc=17-32|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 53359,
+    "T3|mutation|pos_cyc|inc_missed_cycle|fresh_scc=17-32|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 124527,
+    "T3|mutation|pos_cyc|inc_missed_cycle|fresh_scc=2|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 359,
+    "T3|mutation|pos_cyc|inc_missed_cycle|fresh_scc=2|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 725,
+    "T3|mutation|pos_cyc|inc_missed_cycle|fresh_scc=3-4|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 1417,
+    "T3|mutation|pos_cyc|inc_missed_cycle|fresh_scc=3-4|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 2848,
+    "T3|mutation|pos_cyc|inc_missed_cycle|fresh_scc=33+|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 66054,
+    "T3|mutation|pos_cyc|inc_missed_cycle|fresh_scc=33+|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 206437,
+    "T3|mutation|pos_cyc|inc_missed_cycle|fresh_scc=5-8|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 4873,
+    "T3|mutation|pos_cyc|inc_missed_cycle|fresh_scc=5-8|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 8625,
+    "T3|mutation|pos_cyc|inc_missed_cycle|fresh_scc=9-16|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 16740,
+    "T3|mutation|pos_cyc|inc_missed_cycle|fresh_scc=9-16|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 28334,
+    "T3|mutation|pos_cyc|inc_missed_cycle|fresh_scc=self|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 66,
+    "T3|mutation|pos_cyc|inc_missed_cycle|fresh_scc=self|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 101,
+    "T3|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=17-32|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 47066,
+    "T3|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=17-32|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 106775,
+    "T3|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=2|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 244,
+    "T3|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=2|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 470,
+    "T3|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=3-4|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 1180,
+    "T3|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=3-4|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 2382,
+    "T3|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=33+|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 46692,
+    "T3|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=33+|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 144030,
+    "T3|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=5-8|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 4473,
+    "T3|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=5-8|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 7910,
+    "T3|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=9-16|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 15659,
+    "T3|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=9-16|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 25883,
+    "T3|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=self|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 28,
+    "T3|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=self|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 45
+   },
+   "raw_witness_fresh_vs_fresh": {},
+   "raw_witness_inc_vs_fresh": {
+    "pos_cyc": 514465,
+    "reason": 402837
+   },
+   "raw_witness_inc_vs_fresh_checkpoints": 41839,
+   "samples": {
+    "canonical": [],
+    "order": [],
+    "raw_witness": [
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T3:2026173483431:4:mutation",
+      "field": "reason",
+      "fresh_scc": 5,
+      "node": "n003"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T3:2026173483431:4:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 5,
+      "node": "n003"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T3:2026173483431:4:mutation",
+      "field": "reason",
+      "fresh_scc": 5,
+      "node": "n006"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T3:2026173483431:4:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 5,
+      "node": "n006"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T3:2026173483431:4:mutation",
+      "field": "reason",
+      "fresh_scc": 5,
+      "node": "n012"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T3:2026173483431:4:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 5,
+      "node": "n012"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T3:2026173483431:4:mutation",
+      "field": "reason",
+      "fresh_scc": 5,
+      "node": "n021"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T3:2026173483431:4:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 5,
+      "node": "n021"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T3:2026173483431:4:mutation",
+      "field": "reason",
+      "fresh_scc": 5,
+      "node": "n023"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T3:2026173483431:4:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 5,
+      "node": "n023"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T3:2026173483431:10:mutation",
+      "field": "reason",
+      "fresh_scc": 4,
+      "node": "n008"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T3:2026173483431:10:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 4,
+      "node": "n008"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T3:2026173483431:10:mutation",
+      "field": "reason",
+      "fresh_scc": 4,
+      "node": "n028"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T3:2026173483431:10:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 4,
+      "node": "n028"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T3:2026173483431:10:mutation",
+      "field": "reason",
+      "fresh_scc": 4,
+      "node": "n029"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T3:2026173483431:10:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 4,
+      "node": "n029"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T3:2026173483431:10:mutation",
+      "field": "reason",
+      "fresh_scc": 4,
+      "node": "n033"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T3:2026173483431:10:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 4,
+      "node": "n033"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T3:2026173483431:12:mutation",
+      "field": "reason",
+      "fresh_scc": 8,
+      "node": "n002"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T3:2026173483431:12:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 8,
+      "node": "n002"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T3:2026173483431:12:mutation",
+      "field": "reason",
+      "fresh_scc": 8,
+      "node": "n006"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T3:2026173483431:12:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 8,
+      "node": "n006"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T3:2026173483431:12:mutation",
+      "field": "reason",
+      "fresh_scc": 8,
+      "node": "n013"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T3:2026173483431:12:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 8,
+      "node": "n013"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T3:2026173483431:12:mutation",
+      "field": "reason",
+      "fresh_scc": 8,
+      "node": "n014"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T3:2026173483431:12:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 8,
+      "node": "n014"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T3:2026173483431:12:mutation",
+      "field": "reason",
+      "fresh_scc": 8,
+      "node": "n021"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T3:2026173483431:12:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 8,
+      "node": "n021"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T3:2026173483431:12:mutation",
+      "field": "reason",
+      "fresh_scc": 8,
+      "node": "n024"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T3:2026173483431:12:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 8,
+      "node": "n024"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T3:2026173483431:12:mutation",
+      "field": "reason",
+      "fresh_scc": 8,
+      "node": "n027"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T3:2026173483431:12:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 8,
+      "node": "n027"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T3:2026173483431:12:mutation",
+      "field": "reason",
+      "fresh_scc": 8,
+      "node": "n044"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T3:2026173483431:12:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 8,
+      "node": "n044"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T3:2026173483431:13:mutation",
+      "field": "reason",
+      "fresh_scc": 8,
+      "node": "n002"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T3:2026173483431:13:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 8,
+      "node": "n002"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T3:2026173483431:13:mutation",
+      "field": "reason",
+      "fresh_scc": 8,
+      "node": "n006"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T3:2026173483431:13:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 8,
+      "node": "n006"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T3:2026173483431:13:mutation",
+      "field": "reason",
+      "fresh_scc": 8,
+      "node": "n013"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T3:2026173483431:13:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 8,
+      "node": "n013"
+     }
+    ],
+    "semantic": []
+   },
+   "semantic": {},
+   "sequences": 6000,
+   "summary": {
+    "canonical_fresh_vs_fresh_total": 0,
+    "canonical_inc_vs_fresh_total": 0,
+    "canonical_pos_cyc_vs_snapshot_scc": 0,
+    "canonical_vs_fresh_raw_total": 0,
+    "raw_witness_fresh_vs_fresh_total": 0,
+    "raw_witness_inc_vs_fresh_total": 917302,
+    "semantic_total": 0
+   }
+  },
+  "T4": {
+   "canonical_fresh_vs_fresh": {},
+   "canonical_inc_vs_fresh": {},
+   "canonical_inc_vs_fresh_checkpoints": 0,
+   "canonical_pos_cyc_vs_snapshot_scc": 0,
+   "canonical_vs_fresh_raw": {},
+   "checkpoints": 85000,
+   "checkpoints_after_dep_deletion": 58883,
+   "checkpoints_as_of": 5000,
+   "checkpoints_mutation": 80000,
+   "deletions": {
+    "dep_edges": 107982,
+    "remove": 40653,
+    "withdraw": 110466
+   },
+   "dv_scc_nodes_total": 5605205,
+   "dv_scc_size_hist": {
+    "17-32": 4887,
+    "2": 1297,
+    "3-4": 1212,
+    "33+": 66999,
+    "5-8": 1093,
+    "9-16": 2139,
+    "self": 1260
+   },
+   "liveness": {
+    "canonical_detected": 9600,
+    "canonical_injected": 9600,
+    "semantic_detected": 8000,
+    "semantic_injected": 8000
+   },
+   "max_dv_scc_seen": 128,
+   "max_nodes_seen": 128,
+   "node_comparisons": 7987248,
+   "raw_diff_characterization": {
+    "T4|mutation|pos_cyc|inc_missed_cycle|fresh_scc=17-32|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 14487,
+    "T4|mutation|pos_cyc|inc_missed_cycle|fresh_scc=17-32|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 26461,
+    "T4|mutation|pos_cyc|inc_missed_cycle|fresh_scc=2|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 108,
+    "T4|mutation|pos_cyc|inc_missed_cycle|fresh_scc=2|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 246,
+    "T4|mutation|pos_cyc|inc_missed_cycle|fresh_scc=3-4|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 241,
+    "T4|mutation|pos_cyc|inc_missed_cycle|fresh_scc=3-4|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 691,
+    "T4|mutation|pos_cyc|inc_missed_cycle|fresh_scc=33+|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 119689,
+    "T4|mutation|pos_cyc|inc_missed_cycle|fresh_scc=33+|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 402585,
+    "T4|mutation|pos_cyc|inc_missed_cycle|fresh_scc=5-8|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 671,
+    "T4|mutation|pos_cyc|inc_missed_cycle|fresh_scc=5-8|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 1538,
+    "T4|mutation|pos_cyc|inc_missed_cycle|fresh_scc=9-16|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 4155,
+    "T4|mutation|pos_cyc|inc_missed_cycle|fresh_scc=9-16|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 6521,
+    "T4|mutation|pos_cyc|inc_missed_cycle|fresh_scc=self|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 15,
+    "T4|mutation|pos_cyc|inc_missed_cycle|fresh_scc=self|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 34,
+    "T4|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=17-32|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 13817,
+    "T4|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=17-32|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 24845,
+    "T4|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=2|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 74,
+    "T4|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=2|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 188,
+    "T4|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=3-4|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 202,
+    "T4|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=3-4|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 554,
+    "T4|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=33+|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 86012,
+    "T4|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=33+|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 273751,
+    "T4|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=5-8|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 633,
+    "T4|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=5-8|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 1388,
+    "T4|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=9-16|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 4067,
+    "T4|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=9-16|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 6310,
+    "T4|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=self|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 6,
+    "T4|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=self|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 1
+   },
+   "raw_witness_fresh_vs_fresh": {},
+   "raw_witness_inc_vs_fresh": {
+    "pos_cyc": 577442,
+    "reason": 411848
+   },
+   "raw_witness_inc_vs_fresh_checkpoints": 28404,
+   "samples": {
+    "canonical": [],
+    "order": [],
+    "raw_witness": [
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T4:2026173583384:5:mutation",
+      "field": "reason",
+      "fresh_scc": 21,
+      "node": "n028"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T4:2026173583384:5:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 21,
+      "node": "n028"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T4:2026173583384:5:mutation",
+      "field": "reason",
+      "fresh_scc": 21,
+      "node": "n033"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T4:2026173583384:5:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 21,
+      "node": "n033"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T4:2026173583384:5:mutation",
+      "field": "reason",
+      "fresh_scc": 21,
+      "node": "n035"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T4:2026173583384:5:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 21,
+      "node": "n035"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T4:2026173583384:9:mutation",
+      "field": "reason",
+      "fresh_scc": 12,
+      "node": "n044"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T4:2026173583384:9:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 12,
+      "node": "n044"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T4:2026173583385:2:mutation",
+      "field": "reason",
+      "fresh_scc": 39,
+      "node": "n000"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T4:2026173583385:2:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 39,
+      "node": "n000"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T4:2026173583385:2:mutation",
+      "field": "reason",
+      "fresh_scc": 39,
+      "node": "n002"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T4:2026173583385:2:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 39,
+      "node": "n002"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T4:2026173583385:2:mutation",
+      "field": "reason",
+      "fresh_scc": 39,
+      "node": "n003"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T4:2026173583385:2:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 39,
+      "node": "n003"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T4:2026173583385:2:mutation",
+      "field": "reason",
+      "fresh_scc": 39,
+      "node": "n004"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T4:2026173583385:2:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 39,
+      "node": "n004"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T4:2026173583385:2:mutation",
+      "field": "reason",
+      "fresh_scc": 39,
+      "node": "n009"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T4:2026173583385:2:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 39,
+      "node": "n009"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T4:2026173583385:2:mutation",
+      "field": "reason",
+      "fresh_scc": 39,
+      "node": "n010"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T4:2026173583385:2:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 39,
+      "node": "n010"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T4:2026173583385:2:mutation",
+      "field": "reason",
+      "fresh_scc": 39,
+      "node": "n012"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T4:2026173583385:2:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 39,
+      "node": "n012"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T4:2026173583385:2:mutation",
+      "field": "reason",
+      "fresh_scc": 39,
+      "node": "n017"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T4:2026173583385:2:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 39,
+      "node": "n017"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T4:2026173583385:2:mutation",
+      "field": "reason",
+      "fresh_scc": 39,
+      "node": "n018"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T4:2026173583385:2:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 39,
+      "node": "n018"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T4:2026173583385:2:mutation",
+      "field": "reason",
+      "fresh_scc": 39,
+      "node": "n020"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T4:2026173583385:2:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 39,
+      "node": "n020"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T4:2026173583385:2:mutation",
+      "field": "reason",
+      "fresh_scc": 39,
+      "node": "n021"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T4:2026173583385:2:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 39,
+      "node": "n021"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T4:2026173583385:2:mutation",
+      "field": "reason",
+      "fresh_scc": 39,
+      "node": "n022"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T4:2026173583385:2:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 39,
+      "node": "n022"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T4:2026173583385:2:mutation",
+      "field": "reason",
+      "fresh_scc": 39,
+      "node": "n023"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T4:2026173583385:2:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 39,
+      "node": "n023"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T4:2026173583385:2:mutation",
+      "field": "reason",
+      "fresh_scc": 39,
+      "node": "n025"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T4:2026173583385:2:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 39,
+      "node": "n025"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T4:2026173583385:2:mutation",
+      "field": "reason",
+      "fresh_scc": 39,
+      "node": "n027"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T4:2026173583385:2:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 39,
+      "node": "n027"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T4:2026173583385:2:mutation",
+      "field": "reason",
+      "fresh_scc": 39,
+      "node": "n029"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T4:2026173583385:2:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 39,
+      "node": "n029"
+     }
+    ],
+    "semantic": []
+   },
+   "semantic": {},
+   "sequences": 2500,
+   "summary": {
+    "canonical_fresh_vs_fresh_total": 0,
+    "canonical_inc_vs_fresh_total": 0,
+    "canonical_pos_cyc_vs_snapshot_scc": 0,
+    "canonical_vs_fresh_raw_total": 0,
+    "raw_witness_fresh_vs_fresh_total": 0,
+    "raw_witness_inc_vs_fresh_total": 989290,
+    "semantic_total": 0
+   }
+  },
+  "T5": {
+   "canonical_fresh_vs_fresh": {},
+   "canonical_inc_vs_fresh": {},
+   "canonical_inc_vs_fresh_checkpoints": 0,
+   "canonical_pos_cyc_vs_snapshot_scc": 0,
+   "canonical_vs_fresh_raw": {},
+   "checkpoints": 16800,
+   "checkpoints_after_dep_deletion": 12221,
+   "checkpoints_as_of": 800,
+   "checkpoints_mutation": 16000,
+   "deletions": {
+    "dep_edges": 23376,
+    "remove": 8337,
+    "withdraw": 22423
+   },
+   "dv_scc_nodes_total": 2251221,
+   "dv_scc_size_hist": {
+    "17-32": 366,
+    "2": 181,
+    "3-4": 136,
+    "33+": 14906,
+    "5-8": 116,
+    "9-16": 104,
+    "self": 191
+   },
+   "liveness": {
+    "canonical_detected": 1920,
+    "canonical_injected": 1920,
+    "semantic_detected": 1600,
+    "semantic_injected": 1600
+   },
+   "max_dv_scc_seen": 255,
+   "max_nodes_seen": 256,
+   "node_comparisons": 2911239,
+   "raw_diff_characterization": {
+    "T5|mutation|pos_cyc|inc_missed_cycle|fresh_scc=17-32|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 1728,
+    "T5|mutation|pos_cyc|inc_missed_cycle|fresh_scc=17-32|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 2615,
+    "T5|mutation|pos_cyc|inc_missed_cycle|fresh_scc=2|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 24,
+    "T5|mutation|pos_cyc|inc_missed_cycle|fresh_scc=2|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 44,
+    "T5|mutation|pos_cyc|inc_missed_cycle|fresh_scc=3-4|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 21,
+    "T5|mutation|pos_cyc|inc_missed_cycle|fresh_scc=3-4|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 73,
+    "T5|mutation|pos_cyc|inc_missed_cycle|fresh_scc=33+|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 32655,
+    "T5|mutation|pos_cyc|inc_missed_cycle|fresh_scc=33+|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 123768,
+    "T5|mutation|pos_cyc|inc_missed_cycle|fresh_scc=5-8|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 65,
+    "T5|mutation|pos_cyc|inc_missed_cycle|fresh_scc=5-8|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 241,
+    "T5|mutation|pos_cyc|inc_missed_cycle|fresh_scc=9-16|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 104,
+    "T5|mutation|pos_cyc|inc_missed_cycle|fresh_scc=9-16|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 383,
+    "T5|mutation|pos_cyc|inc_missed_cycle|fresh_scc=self|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 6,
+    "T5|mutation|pos_cyc|inc_missed_cycle|fresh_scc=self|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 6,
+    "T5|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=17-32|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 1708,
+    "T5|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=17-32|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 2579,
+    "T5|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=2|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 11,
+    "T5|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=2|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 22,
+    "T5|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=3-4|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 21,
+    "T5|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=3-4|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 69,
+    "T5|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=33+|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 23409,
+    "T5|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=33+|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 81309,
+    "T5|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=5-8|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 57,
+    "T5|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=5-8|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 233,
+    "T5|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=9-16|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 104,
+    "T5|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=9-16|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 379,
+    "T5|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=self|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 6,
+    "T5|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=self|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 6
+   },
+   "raw_witness_fresh_vs_fresh": {},
+   "raw_witness_inc_vs_fresh": {
+    "pos_cyc": 161733,
+    "reason": 109913
+   },
+   "raw_witness_inc_vs_fresh_checkpoints": 5254,
+   "samples": {
+    "canonical": [],
+    "order": [],
+    "raw_witness": [
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T5:2026173683387:3:mutation",
+      "field": "reason",
+      "fresh_scc": 45,
+      "node": "n001"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T5:2026173683387:3:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 45,
+      "node": "n001"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T5:2026173683387:3:mutation",
+      "field": "reason",
+      "fresh_scc": 45,
+      "node": "n004"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T5:2026173683387:3:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 45,
+      "node": "n004"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T5:2026173683387:3:mutation",
+      "field": "reason",
+      "fresh_scc": 45,
+      "node": "n007"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T5:2026173683387:3:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 45,
+      "node": "n007"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T5:2026173683387:3:mutation",
+      "field": "reason",
+      "fresh_scc": 45,
+      "node": "n008"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T5:2026173683387:3:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 45,
+      "node": "n008"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T5:2026173683387:3:mutation",
+      "field": "reason",
+      "fresh_scc": 45,
+      "node": "n017"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T5:2026173683387:3:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 45,
+      "node": "n017"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T5:2026173683387:3:mutation",
+      "field": "reason",
+      "fresh_scc": 45,
+      "node": "n018"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T5:2026173683387:3:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 45,
+      "node": "n018"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T5:2026173683387:3:mutation",
+      "field": "reason",
+      "fresh_scc": 45,
+      "node": "n020"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T5:2026173683387:3:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 45,
+      "node": "n020"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T5:2026173683387:3:mutation",
+      "field": "reason",
+      "fresh_scc": 45,
+      "node": "n035"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T5:2026173683387:3:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 45,
+      "node": "n035"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T5:2026173683387:3:mutation",
+      "field": "reason",
+      "fresh_scc": 45,
+      "node": "n046"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T5:2026173683387:3:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 45,
+      "node": "n046"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T5:2026173683387:3:mutation",
+      "field": "reason",
+      "fresh_scc": 45,
+      "node": "n053"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T5:2026173683387:3:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 45,
+      "node": "n053"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T5:2026173683387:3:mutation",
+      "field": "reason",
+      "fresh_scc": 45,
+      "node": "n054"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T5:2026173683387:3:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 45,
+      "node": "n054"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T5:2026173683387:3:mutation",
+      "field": "reason",
+      "fresh_scc": 45,
+      "node": "n064"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T5:2026173683387:3:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 45,
+      "node": "n064"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T5:2026173683388:3:mutation",
+      "field": "reason",
+      "fresh_scc": 73,
+      "node": "n022"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T5:2026173683388:3:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 73,
+      "node": "n022"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T5:2026173683388:3:mutation",
+      "field": "reason",
+      "fresh_scc": 73,
+      "node": "n029"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T5:2026173683388:3:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 73,
+      "node": "n029"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T5:2026173683388:3:mutation",
+      "field": "reason",
+      "fresh_scc": 73,
+      "node": "n039"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T5:2026173683388:3:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 73,
+      "node": "n039"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T5:2026173683388:3:mutation",
+      "field": "reason",
+      "fresh_scc": 73,
+      "node": "n042"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T5:2026173683388:3:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 73,
+      "node": "n042"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T5:2026173683388:3:mutation",
+      "field": "reason",
+      "fresh_scc": 73,
+      "node": "n054"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T5:2026173683388:3:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 73,
+      "node": "n054"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T5:2026173683388:3:mutation",
+      "field": "reason",
+      "fresh_scc": 73,
+      "node": "n065"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T5:2026173683388:3:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 73,
+      "node": "n065"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T5:2026173683388:3:mutation",
+      "field": "reason",
+      "fresh_scc": 73,
+      "node": "n080"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T5:2026173683388:3:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 73,
+      "node": "n080"
+     },
+     {
+      "a": "REFUTED",
+      "b": "UNFOUNDED_CYCLE",
+      "cp": "T5:2026173683389:20:mutation",
+      "field": "reason",
+      "fresh_scc": 136,
+      "node": "n093"
+     },
+     {
+      "a": false,
+      "b": true,
+      "cp": "T5:2026173683389:20:mutation",
+      "field": "pos_cyc",
+      "fresh_scc": 136,
+      "node": "n093"
+     }
+    ],
+    "semantic": []
+   },
+   "semantic": {},
+   "sequences": 400,
+   "summary": {
+    "canonical_fresh_vs_fresh_total": 0,
+    "canonical_inc_vs_fresh_total": 0,
+    "canonical_pos_cyc_vs_snapshot_scc": 0,
+    "canonical_vs_fresh_raw_total": 0,
+    "raw_witness_fresh_vs_fresh_total": 0,
+    "raw_witness_inc_vs_fresh_total": 271646,
+    "semantic_total": 0
+   }
+  }
+ },
+ "pinned_sources": {
+  "chelated_pv7_spine/ek5_reason_canonicalizer.py": {
+   "expected": "b8440b62b8c20bf28d35a8c961ab671d3ea8ce90c45fd916c53e8b5a3d8dc432",
+   "got": "b8440b62b8c20bf28d35a8c961ab671d3ea8ce90c45fd916c53e8b5a3d8dc432",
+   "ok": true
+  },
+  "ek5_v3_stratified.py": {
+   "expected": "b54dadb51e1f54576f39e22808fa9c7cd9209fe3de86bf62139eded10b13dfd0",
+   "got": "b54dadb51e1f54576f39e22808fa9c7cd9209fe3de86bf62139eded10b13dfd0",
+   "ok": true
+  },
+  "formal/run_conformance.py": {
+   "expected": "49c56c3344d635e026284f9f44eb7e62d19a95339924ea6a3c84bd37d2ce271e",
+   "got": "49c56c3344d635e026284f9f44eb7e62d19a95339924ea6a3c84bd37d2ce271e",
+   "ok": true
+  }
+ },
+ "preregistration": "artifacts/pv7_w23c_w22_11/PREREGISTRATION.md",
+ "scale": 1.0,
+ "schema_version": 1,
+ "stopped_early_at_deadline": false,
+ "tiers": {
+  "A0": {
+   "adds_first": [
+    2,
+    6
+   ],
+   "adds_per_step": [
+    0,
+    4
+   ],
+   "first_nodes": [
+    3,
+    5
+   ],
+   "generator": "baseline",
+   "max_nodes": 11,
+   "max_withdraw": 3,
+   "name": "A0",
+   "new_nodes_per_step": [
+    0,
+    2
+   ],
+   "p_chord": 0.3,
+   "p_cycle_break": 0.5,
+   "p_cycle_refuter": 0.5,
+   "p_plant": 0.3,
+   "p_remove": 0.3,
+   "p_withdraw": 0.6,
+   "scc_size": [
+    3,
+    8
+   ],
+   "seed_offset": 0,
+   "sequences": 1000,
+   "steps": 6
+  },
+  "A1": {
+   "adds_first": [
+    2,
+    6
+   ],
+   "adds_per_step": [
+    0,
+    4
+   ],
+   "first_nodes": [
+    3,
+    5
+   ],
+   "generator": "baseline",
+   "max_nodes": 11,
+   "max_withdraw": 3,
+   "name": "A1",
+   "new_nodes_per_step": [
+    0,
+    2
+   ],
+   "p_chord": 0.3,
+   "p_cycle_break": 0.5,
+   "p_cycle_refuter": 0.5,
+   "p_plant": 0.3,
+   "p_remove": 0.3,
+   "p_withdraw": 0.6,
+   "scc_size": [
+    3,
+    8
+   ],
+   "seed_offset": 0,
+   "sequences": 1000,
+   "steps": 12
+  },
+  "T1": {
+   "adds_first": [
+    2,
+    6
+   ],
+   "adds_per_step": [
+    0,
+    4
+   ],
+   "first_nodes": [
+    3,
+    5
+   ],
+   "generator": "baseline",
+   "max_nodes": 11,
+   "max_withdraw": 3,
+   "name": "T1",
+   "new_nodes_per_step": [
+    0,
+    2
+   ],
+   "p_chord": 0.3,
+   "p_cycle_break": 0.5,
+   "p_cycle_refuter": 0.5,
+   "p_plant": 0.3,
+   "p_remove": 0.3,
+   "p_withdraw": 0.6,
+   "scc_size": [
+    3,
+    8
+   ],
+   "seed_offset": 1,
+   "sequences": 30000,
+   "steps": 24
+  },
+  "T2": {
+   "adds_first": [
+    2,
+    6
+   ],
+   "adds_per_step": [
+    0,
+    4
+   ],
+   "first_nodes": [
+    8,
+    12
+   ],
+   "generator": "stress",
+   "max_nodes": 32,
+   "max_withdraw": 3,
+   "name": "T2",
+   "new_nodes_per_step": [
+    0,
+    3
+   ],
+   "p_chord": 0.3,
+   "p_cycle_break": 0.5,
+   "p_cycle_refuter": 0.5,
+   "p_plant": 0.3,
+   "p_remove": 0.3,
+   "p_withdraw": 0.6,
+   "scc_size": [
+    3,
+    16
+   ],
+   "seed_offset": 2,
+   "sequences": 12000,
+   "steps": 24
+  },
+  "T3": {
+   "adds_first": [
+    8,
+    16
+   ],
+   "adds_per_step": [
+    2,
+    8
+   ],
+   "first_nodes": [
+    16,
+    24
+   ],
+   "generator": "stress",
+   "max_nodes": 64,
+   "max_withdraw": 3,
+   "name": "T3",
+   "new_nodes_per_step": [
+    1,
+    4
+   ],
+   "p_chord": 0.3,
+   "p_cycle_break": 0.5,
+   "p_cycle_refuter": 0.5,
+   "p_plant": 0.3,
+   "p_remove": 0.3,
+   "p_withdraw": 0.6,
+   "scc_size": [
+    4,
+    32
+   ],
+   "seed_offset": 3,
+   "sequences": 6000,
+   "steps": 24
+  },
+  "T4": {
+   "adds_first": [
+    16,
+    32
+   ],
+   "adds_per_step": [
+    4,
+    12
+   ],
+   "first_nodes": [
+    32,
+    48
+   ],
+   "generator": "stress",
+   "max_nodes": 128,
+   "max_withdraw": 3,
+   "name": "T4",
+   "new_nodes_per_step": [
+    2,
+    6
+   ],
+   "p_chord": 0.3,
+   "p_cycle_break": 0.5,
+   "p_cycle_refuter": 0.5,
+   "p_plant": 0.3,
+   "p_remove": 0.3,
+   "p_withdraw": 0.6,
+   "scc_size": [
+    8,
+    64
+   ],
+   "seed_offset": 4,
+   "sequences": 2500,
+   "steps": 32
+  },
+  "T5": {
+   "adds_first": [
+    32,
+    64
+   ],
+   "adds_per_step": [
+    6,
+    16
+   ],
+   "first_nodes": [
+    64,
+    96
+   ],
+   "generator": "stress",
+   "max_nodes": 256,
+   "max_withdraw": 3,
+   "name": "T5",
+   "new_nodes_per_step": [
+    2,
+    8
+   ],
+   "p_chord": 0.3,
+   "p_cycle_break": 0.5,
+   "p_cycle_refuter": 0.5,
+   "p_plant": 0.3,
+   "p_remove": 0.3,
+   "p_withdraw": 0.6,
+   "scc_size": [
+    16,
+    128
+   ],
+   "seed_offset": 5,
+   "sequences": 400,
+   "steps": 40
+  }
+ },
+ "totals": {
+  "canonical_fresh_vs_fresh": {},
+  "canonical_inc_vs_fresh": {},
+  "canonical_inc_vs_fresh_checkpoints": 0,
+  "canonical_pos_cyc_vs_snapshot_scc": 0,
+  "canonical_vs_fresh_raw": {},
+  "checkpoints": 1370901,
+  "checkpoints_after_dep_deletion": 487021,
+  "checkpoints_as_of": 104901,
+  "checkpoints_mutation": 1266000,
+  "deletions": {
+   "dep_edges": 796284,
+   "remove": 354349,
+   "withdraw": 1071859
+  },
+  "dv_scc_nodes_total": 15803444,
+  "dv_scc_size_hist": {
+   "17-32": 139452,
+   "2": 112556,
+   "3-4": 73031,
+   "33+": 147126,
+   "5-8": 49421,
+   "9-16": 87658,
+   "self": 108725
+  },
+  "liveness": {
+   "canonical_detected": 151920,
+   "canonical_injected": 151920,
+   "semantic_detected": 126600,
+   "semantic_injected": 126600
+  },
+  "max_dv_scc_seen": 255,
+  "max_nodes_seen": 256,
+  "node_comparisons": 32903661,
+  "raw_diff_characterization": {
+   "A0|mutation|pos_cyc|inc_missed_cycle|fresh_scc=2|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 64,
+   "A0|mutation|pos_cyc|inc_missed_cycle|fresh_scc=2|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 12,
+   "A0|mutation|pos_cyc|inc_missed_cycle|fresh_scc=3-4|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 12,
+   "A0|mutation|pos_cyc|inc_missed_cycle|fresh_scc=self|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 15,
+   "A0|mutation|pos_cyc|inc_missed_cycle|fresh_scc=self|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 1,
+   "A0|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=2|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 32,
+   "A0|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=2|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 4,
+   "A0|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=3-4|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 4,
+   "A0|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=self|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 9,
+   "A1|mutation|pos_cyc|inc_missed_cycle|fresh_scc=2|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 284,
+   "A1|mutation|pos_cyc|inc_missed_cycle|fresh_scc=2|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 46,
+   "A1|mutation|pos_cyc|inc_missed_cycle|fresh_scc=3-4|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 148,
+   "A1|mutation|pos_cyc|inc_missed_cycle|fresh_scc=3-4|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 13,
+   "A1|mutation|pos_cyc|inc_missed_cycle|fresh_scc=self|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 53,
+   "A1|mutation|pos_cyc|inc_missed_cycle|fresh_scc=self|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 4,
+   "A1|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=2|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 151,
+   "A1|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=2|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 19,
+   "A1|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=3-4|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 85,
+   "A1|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=3-4|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 1,
+   "A1|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=self|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 21,
+   "T1|mutation|pos_cyc|inc_missed_cycle|fresh_scc=2|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 37801,
+   "T1|mutation|pos_cyc|inc_missed_cycle|fresh_scc=2|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 6362,
+   "T1|mutation|pos_cyc|inc_missed_cycle|fresh_scc=3-4|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 42189,
+   "T1|mutation|pos_cyc|inc_missed_cycle|fresh_scc=3-4|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 6841,
+   "T1|mutation|pos_cyc|inc_missed_cycle|fresh_scc=5-8|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 15957,
+   "T1|mutation|pos_cyc|inc_missed_cycle|fresh_scc=5-8|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 2413,
+   "T1|mutation|pos_cyc|inc_missed_cycle|fresh_scc=9-16|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 462,
+   "T1|mutation|pos_cyc|inc_missed_cycle|fresh_scc=9-16|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 11,
+   "T1|mutation|pos_cyc|inc_missed_cycle|fresh_scc=self|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 6806,
+   "T1|mutation|pos_cyc|inc_missed_cycle|fresh_scc=self|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 1160,
+   "T1|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=2|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 21795,
+   "T1|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=2|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 3626,
+   "T1|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=3-4|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 28683,
+   "T1|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=3-4|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 4600,
+   "T1|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=5-8|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 11784,
+   "T1|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=5-8|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 1740,
+   "T1|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=9-16|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 328,
+   "T1|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=9-16|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 11,
+   "T1|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=self|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 2401,
+   "T1|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=self|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 404,
+   "T2|mutation|pos_cyc|inc_missed_cycle|fresh_scc=17-32|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 48963,
+   "T2|mutation|pos_cyc|inc_missed_cycle|fresh_scc=17-32|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 140697,
+   "T2|mutation|pos_cyc|inc_missed_cycle|fresh_scc=2|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 589,
+   "T2|mutation|pos_cyc|inc_missed_cycle|fresh_scc=2|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 1731,
+   "T2|mutation|pos_cyc|inc_missed_cycle|fresh_scc=3-4|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 4039,
+   "T2|mutation|pos_cyc|inc_missed_cycle|fresh_scc=3-4|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 8791,
+   "T2|mutation|pos_cyc|inc_missed_cycle|fresh_scc=5-8|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 13073,
+   "T2|mutation|pos_cyc|inc_missed_cycle|fresh_scc=5-8|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 26027,
+   "T2|mutation|pos_cyc|inc_missed_cycle|fresh_scc=9-16|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 44463,
+   "T2|mutation|pos_cyc|inc_missed_cycle|fresh_scc=9-16|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 99273,
+   "T2|mutation|pos_cyc|inc_missed_cycle|fresh_scc=self|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 57,
+   "T2|mutation|pos_cyc|inc_missed_cycle|fresh_scc=self|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 103,
+   "T2|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=17-32|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 37608,
+   "T2|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=17-32|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 106686,
+   "T2|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=2|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 338,
+   "T2|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=2|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 1034,
+   "T2|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=3-4|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 3212,
+   "T2|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=3-4|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 6902,
+   "T2|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=5-8|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 11464,
+   "T2|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=5-8|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 22377,
+   "T2|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=9-16|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 39301,
+   "T2|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=9-16|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 86098,
+   "T2|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=self|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 17,
+   "T2|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=self|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 37,
+   "T3|mutation|pos_cyc|inc_missed_cycle|fresh_scc=17-32|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 53359,
+   "T3|mutation|pos_cyc|inc_missed_cycle|fresh_scc=17-32|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 124527,
+   "T3|mutation|pos_cyc|inc_missed_cycle|fresh_scc=2|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 359,
+   "T3|mutation|pos_cyc|inc_missed_cycle|fresh_scc=2|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 725,
+   "T3|mutation|pos_cyc|inc_missed_cycle|fresh_scc=3-4|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 1417,
+   "T3|mutation|pos_cyc|inc_missed_cycle|fresh_scc=3-4|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 2848,
+   "T3|mutation|pos_cyc|inc_missed_cycle|fresh_scc=33+|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 66054,
+   "T3|mutation|pos_cyc|inc_missed_cycle|fresh_scc=33+|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 206437,
+   "T3|mutation|pos_cyc|inc_missed_cycle|fresh_scc=5-8|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 4873,
+   "T3|mutation|pos_cyc|inc_missed_cycle|fresh_scc=5-8|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 8625,
+   "T3|mutation|pos_cyc|inc_missed_cycle|fresh_scc=9-16|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 16740,
+   "T3|mutation|pos_cyc|inc_missed_cycle|fresh_scc=9-16|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 28334,
+   "T3|mutation|pos_cyc|inc_missed_cycle|fresh_scc=self|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 66,
+   "T3|mutation|pos_cyc|inc_missed_cycle|fresh_scc=self|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 101,
+   "T3|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=17-32|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 47066,
+   "T3|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=17-32|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 106775,
+   "T3|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=2|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 244,
+   "T3|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=2|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 470,
+   "T3|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=3-4|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 1180,
+   "T3|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=3-4|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 2382,
+   "T3|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=33+|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 46692,
+   "T3|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=33+|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 144030,
+   "T3|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=5-8|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 4473,
+   "T3|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=5-8|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 7910,
+   "T3|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=9-16|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 15659,
+   "T3|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=9-16|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 25883,
+   "T3|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=self|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 28,
+   "T3|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=self|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 45,
+   "T4|mutation|pos_cyc|inc_missed_cycle|fresh_scc=17-32|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 14487,
+   "T4|mutation|pos_cyc|inc_missed_cycle|fresh_scc=17-32|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 26461,
+   "T4|mutation|pos_cyc|inc_missed_cycle|fresh_scc=2|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 108,
+   "T4|mutation|pos_cyc|inc_missed_cycle|fresh_scc=2|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 246,
+   "T4|mutation|pos_cyc|inc_missed_cycle|fresh_scc=3-4|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 241,
+   "T4|mutation|pos_cyc|inc_missed_cycle|fresh_scc=3-4|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 691,
+   "T4|mutation|pos_cyc|inc_missed_cycle|fresh_scc=33+|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 119689,
+   "T4|mutation|pos_cyc|inc_missed_cycle|fresh_scc=33+|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 402585,
+   "T4|mutation|pos_cyc|inc_missed_cycle|fresh_scc=5-8|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 671,
+   "T4|mutation|pos_cyc|inc_missed_cycle|fresh_scc=5-8|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 1538,
+   "T4|mutation|pos_cyc|inc_missed_cycle|fresh_scc=9-16|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 4155,
+   "T4|mutation|pos_cyc|inc_missed_cycle|fresh_scc=9-16|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 6521,
+   "T4|mutation|pos_cyc|inc_missed_cycle|fresh_scc=self|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 15,
+   "T4|mutation|pos_cyc|inc_missed_cycle|fresh_scc=self|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 34,
+   "T4|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=17-32|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 13817,
+   "T4|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=17-32|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 24845,
+   "T4|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=2|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 74,
+   "T4|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=2|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 188,
+   "T4|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=3-4|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 202,
+   "T4|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=3-4|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 554,
+   "T4|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=33+|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 86012,
+   "T4|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=33+|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 273751,
+   "T4|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=5-8|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 633,
+   "T4|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=5-8|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 1388,
+   "T4|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=9-16|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 4067,
+   "T4|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=9-16|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 6310,
+   "T4|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=self|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 6,
+   "T4|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=self|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 1,
+   "T5|mutation|pos_cyc|inc_missed_cycle|fresh_scc=17-32|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 1728,
+   "T5|mutation|pos_cyc|inc_missed_cycle|fresh_scc=17-32|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 2615,
+   "T5|mutation|pos_cyc|inc_missed_cycle|fresh_scc=2|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 24,
+   "T5|mutation|pos_cyc|inc_missed_cycle|fresh_scc=2|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 44,
+   "T5|mutation|pos_cyc|inc_missed_cycle|fresh_scc=3-4|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 21,
+   "T5|mutation|pos_cyc|inc_missed_cycle|fresh_scc=3-4|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 73,
+   "T5|mutation|pos_cyc|inc_missed_cycle|fresh_scc=33+|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 32655,
+   "T5|mutation|pos_cyc|inc_missed_cycle|fresh_scc=33+|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 123768,
+   "T5|mutation|pos_cyc|inc_missed_cycle|fresh_scc=5-8|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 65,
+   "T5|mutation|pos_cyc|inc_missed_cycle|fresh_scc=5-8|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 241,
+   "T5|mutation|pos_cyc|inc_missed_cycle|fresh_scc=9-16|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 104,
+   "T5|mutation|pos_cyc|inc_missed_cycle|fresh_scc=9-16|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 383,
+   "T5|mutation|pos_cyc|inc_missed_cycle|fresh_scc=self|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 6,
+   "T5|mutation|pos_cyc|inc_missed_cycle|fresh_scc=self|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 6,
+   "T5|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=17-32|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 1708,
+   "T5|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=17-32|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 2579,
+   "T5|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=2|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 11,
+   "T5|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=2|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 22,
+   "T5|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=3-4|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 21,
+   "T5|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=3-4|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 69,
+   "T5|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=33+|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 23409,
+   "T5|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=33+|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 81309,
+   "T5|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=5-8|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 57,
+   "T5|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=5-8|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 233,
+   "T5|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=9-16|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 104,
+   "T5|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=9-16|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 379,
+   "T5|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=self|val=F|dep_del_in_batch=False|fresh_order_dependent=False": 6,
+   "T5|mutation|reason|REFUTED->UNFOUNDED_CYCLE|fresh_scc=self|val=F|dep_del_in_batch=True|fresh_order_dependent=False": 6
+  },
+  "raw_witness_fresh_vs_fresh": {},
+  "raw_witness_inc_vs_fresh": {
+   "pos_cyc": 1762100,
+   "reason": 1315370
+  },
+  "raw_witness_inc_vs_fresh_checkpoints": 178162,
+  "semantic": {},
+  "sequences": 52900,
+  "summary": {
+   "canonical_fresh_vs_fresh_total": 0,
+   "canonical_inc_vs_fresh_total": 0,
+   "canonical_pos_cyc_vs_snapshot_scc": 0,
+   "canonical_vs_fresh_raw_total": 0,
+   "raw_witness_fresh_vs_fresh_total": 0,
+   "raw_witness_inc_vs_fresh_total": 3077470,
+   "semantic_total": 0
+  }
+ },
+ "verdict": {
+  "all_checkpoints": 1370901,
+  "canonical_gate_total": 0,
+  "liveness_ok": true,
+  "mutation_checkpoints": 1266000,
+  "pinned_hashes_ok": true,
+  "raw_witness_inc_vs_fresh_total": 3077470,
+  "semantic_total": 0,
+  "target_mutation_checkpoints": 1000000,
+  "verdict": "CLEAN_1M_CANONICAL_FROZEN"
+ },
+ "workers": 16
+}
