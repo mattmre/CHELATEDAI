@@ -1,0 +1,3118 @@
+{
+  "config": {
+    "alpha": 0.1,
+    "contrast_bridge": "UncenteredProcrustes",
+    "data_seed": 20261125,
+    "k": 10,
+    "primary_bridge": "CenteredProcrustes"
+  },
+  "embedding_cache_provenance": {
+    "prior7": {
+      "MiniLM-384": {
+        "dim": 384,
+        "file": "C:\\Users\\mattm\\AppData\\Local\\Temp\\claude\\439e695c92b40043\\c9f4318c-455f-427a-844a-07562a0a3c42\\scratchpad\\w22-04\\artifacts\\pv7_w23a_w22_04\\scratch\\emb_prior7_MiniLM-384_d5b73089c7f7ef53.npy",
+        "rows": 10009,
+        "texts_sha256": "d5b73089c7f7ef53a8fafea446617a0bc8c3bbcdb3b0c4bb483d3155e9323492"
+      },
+      "Qwen3-4096": {
+        "dim": 4096,
+        "file": "C:\\Users\\mattm\\AppData\\Local\\Temp\\claude\\439e695c92b40043\\c9f4318c-455f-427a-844a-07562a0a3c42\\scratchpad\\w22-04\\artifacts\\pv7_w23a_w22_04\\scratch\\emb_prior7_Qwen3-4096_d5b73089c7f7ef53.npy",
+        "rows": 10009,
+        "texts_sha256": "d5b73089c7f7ef53a8fafea446617a0bc8c3bbcdb3b0c4bb483d3155e9323492"
+      }
+    },
+    "remaining5": {
+      "MiniLM-384": {
+        "dim": 384,
+        "file": "C:\\Users\\mattm\\AppData\\Local\\Temp\\claude\\439e695c92b40043\\c9f4318c-455f-427a-844a-07562a0a3c42\\scratchpad\\w22-04\\artifacts\\pv7_w23a_w22_04\\scratch\\emb_remaining5_MiniLM-384_109edcb401f1cfac.npy",
+        "rows": 9654,
+        "texts_sha256": "109edcb401f1cfac97bb4eaa12c7ed74ba57bc8a67fcd9c480ec5663af2a4244"
+      },
+      "Qwen3-4096": {
+        "dim": 4096,
+        "file": "C:\\Users\\mattm\\AppData\\Local\\Temp\\claude\\439e695c92b40043\\c9f4318c-455f-427a-844a-07562a0a3c42\\scratchpad\\w22-04\\artifacts\\pv7_w23a_w22_04\\scratch\\emb_remaining5_Qwen3-4096_f88aaa3cd23f413b.npy",
+        "rows": 11354,
+        "texts_sha256": "f88aaa3cd23f413ba9b6a6388b2f3d01b00706176876b4d785338fdcbed5822e"
+      }
+    }
+  },
+  "generated_utc": "2026-11-26T10:16:16.820710+00:00",
+  "git_sha_at_run": "8ff93b0f450a5d7fc1fcffc534df9864dd3abf3b",
+  "hardware": {
+    "cpu_count": 16,
+    "cuda_visible_devices": "",
+    "numpy_version": "2.4.5",
+    "platform": "Windows-10-10.0.26300-SP0",
+    "python_version": "3.11.9"
+  },
+  "item": "W22-06",
+  "per_domain": {
+    "climate-fever": {
+      "centering": {
+        "gain_g": 0.039084138090606874,
+        "heldout_fit_error_centered": 0.4038586279358728,
+        "heldout_fit_error_uncentered": 0.4003190601601716,
+        "predictor_x": -0.003539567775701191
+      },
+      "flips": {
+        "frac_missing_margin_explainable": 1.0,
+        "frac_queries_with_any_error": 1.0,
+        "frac_queries_with_flip": 1.0,
+        "mean_missing_per_query": 6.503846153846154,
+        "n_missing_margin_explainable": 1691,
+        "n_missing_total": 1691,
+        "n_queries": 260
+      },
+      "group": "remaining5",
+      "ledger": {
+        "CenteredProcrustes": {
+          "added_bytes_fp32": 8770138,
+          "added_bytes_fp64": 17540118,
+          "added_over_full_reindex_fp32": 0.7137156575520833,
+          "already_retained_legacy_index_bytes_fp32": 1152000,
+          "backfill_index_bits": 750,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 2457600,
+              "bytes_fp64": 4915200,
+              "item": "native_backfill_embeddings",
+              "n_floats": 614400
+            }
+          ],
+          "bridge": "CenteredProcrustes",
+          "bridge_param_bits_fp32": 50475040,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0028489430745442,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "Q",
+              "n_floats": 1572864
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "mu_x",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 1536,
+              "bytes_fp64": 3072,
+              "item": "mu_y",
+              "n_floats": 384
+            },
+            {
+              "bytes_fp32": 4,
+              "bytes_fp64": 8,
+              "item": "scale",
+              "n_floats": 1
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "csls_r_d_legacy",
+              "n_floats": 600
+            },
+            {
+              "bytes_fp32": 600,
+              "bytes_fp64": 1200,
+              "item": "csls_r_d_native",
+              "n_floats": 150
+            }
+          ],
+          "full_reindex_bytes_fp32": 12288000,
+          "full_reindex_forward_passes": 750,
+          "new_encoder_forward_passes": 730,
+          "precision_metadata_bytes": 64,
+          "samples": {
+            "anchors": 500,
+            "dev_queries": 80,
+            "dev_ref_docs": 180
+          },
+          "work_over_full_reindex": 0.9733333333333334
+        },
+        "UncenteredProcrustes": {
+          "added_bytes_fp32": 8752190,
+          "added_bytes_fp64": 17504246,
+          "added_over_full_reindex_fp32": 0.7122550455729166,
+          "already_retained_legacy_index_bytes_fp32": 1152000,
+          "backfill_index_bits": 750,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 2457600,
+              "bytes_fp64": 4915200,
+              "item": "native_backfill_embeddings",
+              "n_floats": 614400
+            }
+          ],
+          "bridge": "UncenteredProcrustes",
+          "bridge_param_bits_fp32": 50331648,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "W",
+              "n_floats": 1572864
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "csls_r_d_legacy",
+              "n_floats": 600
+            },
+            {
+              "bytes_fp32": 600,
+              "bytes_fp64": 1200,
+              "item": "csls_r_d_native",
+              "n_floats": 150
+            }
+          ],
+          "full_reindex_bytes_fp32": 12288000,
+          "full_reindex_forward_passes": 750,
+          "new_encoder_forward_passes": 730,
+          "precision_metadata_bytes": 40,
+          "samples": {
+            "anchors": 500,
+            "dev_queries": 80,
+            "dev_ref_docs": 180
+          },
+          "work_over_full_reindex": 0.9733333333333334
+        },
+        "ZeroMuPolarBridge": {
+          "added_bytes_fp32": 8788926,
+          "added_bytes_fp64": 17575286,
+          "added_over_full_reindex_fp32": 0.71524462890625,
+          "already_retained_legacy_index_bytes_fp32": 1152000,
+          "backfill_index_bits": 750,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 2457600,
+              "bytes_fp64": 4915200,
+              "item": "native_backfill_embeddings",
+              "n_floats": 614400
+            }
+          ],
+          "bridge": "ZeroMuPolarBridge",
+          "bridge_param_bits_fp32": 50606080,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0054524739583333,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "Q",
+              "n_floats": 1572864
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "mu_x",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 1536,
+              "bytes_fp64": 3072,
+              "item": "mu_d_dev",
+              "n_floats": 384
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "ema_mu_q_state",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "per_doc_centered_norm_sidecar_fp32",
+              "n_floats": 600
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "csls_r_d_legacy",
+              "n_floats": 600
+            },
+            {
+              "bytes_fp32": 600,
+              "bytes_fp64": 1200,
+              "item": "csls_r_d_native",
+              "n_floats": 150
+            }
+          ],
+          "full_reindex_bytes_fp32": 12288000,
+          "full_reindex_forward_passes": 750,
+          "new_encoder_forward_passes": 730,
+          "precision_metadata_bytes": 72,
+          "samples": {
+            "anchors": 500,
+            "dev_queries": 80,
+            "dev_ref_docs": 180
+          },
+          "work_over_full_reindex": 0.9733333333333334
+        }
+      },
+      "margin_calibration": {
+        "a": 0.30998480625183694,
+        "b": 0.07488257211668707,
+        "margin": 0.1524637001320683,
+        "n_pairs": 6180,
+        "residual_abs_median": 0.05275489685929871
+      },
+      "n_anchors_fit": 500,
+      "n_backfill": 150,
+      "n_dev_queries": 80,
+      "n_dev_ref_docs": 180,
+      "n_eval_docs": 750,
+      "n_eval_queries": 260,
+      "ndcg10": {
+        "centered_csls": 0.256419,
+        "native_qwen_full_reindex": 0.556775,
+        "uncentered_csls": 0.217335
+      },
+      "reproduction_vs_w22_04": {
+        "centered_abs_diff": 0.0,
+        "centered_csls_recorded": 0.256419,
+        "uncentered_abs_diff": 0.0,
+        "uncentered_csls_recorded": 0.217335
+      }
+    },
+    "cqadupstack-android": {
+      "centering": {
+        "gain_g": 0.03711216276318963,
+        "heldout_fit_error_centered": 0.3309532537417795,
+        "heldout_fit_error_uncentered": 0.33669352825965165,
+        "predictor_x": 0.005740274517872179
+      },
+      "flips": {
+        "frac_missing_margin_explainable": 0.9905263157894737,
+        "frac_queries_with_any_error": 1.0,
+        "frac_queries_with_flip": 1.0,
+        "mean_missing_per_query": 3.9583333333333335,
+        "n_missing_margin_explainable": 941,
+        "n_missing_total": 950,
+        "n_queries": 240
+      },
+      "group": "prior7",
+      "ledger": {
+        "CenteredProcrustes": {
+          "added_bytes_fp32": 8770138,
+          "added_bytes_fp64": 17540118,
+          "added_over_full_reindex_fp32": 0.7137156575520833,
+          "already_retained_legacy_index_bytes_fp32": 1152000,
+          "backfill_index_bits": 750,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 2457600,
+              "bytes_fp64": 4915200,
+              "item": "native_backfill_embeddings",
+              "n_floats": 614400
+            }
+          ],
+          "bridge": "CenteredProcrustes",
+          "bridge_param_bits_fp32": 50475040,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0028489430745442,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "Q",
+              "n_floats": 1572864
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "mu_x",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 1536,
+              "bytes_fp64": 3072,
+              "item": "mu_y",
+              "n_floats": 384
+            },
+            {
+              "bytes_fp32": 4,
+              "bytes_fp64": 8,
+              "item": "scale",
+              "n_floats": 1
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "csls_r_d_legacy",
+              "n_floats": 600
+            },
+            {
+              "bytes_fp32": 600,
+              "bytes_fp64": 1200,
+              "item": "csls_r_d_native",
+              "n_floats": 150
+            }
+          ],
+          "full_reindex_bytes_fp32": 12288000,
+          "full_reindex_forward_passes": 750,
+          "new_encoder_forward_passes": 510,
+          "precision_metadata_bytes": 64,
+          "samples": {
+            "anchors": 280,
+            "dev_queries": 80,
+            "dev_ref_docs": 160
+          },
+          "work_over_full_reindex": 0.68
+        },
+        "UncenteredProcrustes": {
+          "added_bytes_fp32": 8752190,
+          "added_bytes_fp64": 17504246,
+          "added_over_full_reindex_fp32": 0.7122550455729166,
+          "already_retained_legacy_index_bytes_fp32": 1152000,
+          "backfill_index_bits": 750,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 2457600,
+              "bytes_fp64": 4915200,
+              "item": "native_backfill_embeddings",
+              "n_floats": 614400
+            }
+          ],
+          "bridge": "UncenteredProcrustes",
+          "bridge_param_bits_fp32": 50331648,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "W",
+              "n_floats": 1572864
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "csls_r_d_legacy",
+              "n_floats": 600
+            },
+            {
+              "bytes_fp32": 600,
+              "bytes_fp64": 1200,
+              "item": "csls_r_d_native",
+              "n_floats": 150
+            }
+          ],
+          "full_reindex_bytes_fp32": 12288000,
+          "full_reindex_forward_passes": 750,
+          "new_encoder_forward_passes": 510,
+          "precision_metadata_bytes": 40,
+          "samples": {
+            "anchors": 280,
+            "dev_queries": 80,
+            "dev_ref_docs": 160
+          },
+          "work_over_full_reindex": 0.68
+        },
+        "ZeroMuPolarBridge": {
+          "added_bytes_fp32": 8788926,
+          "added_bytes_fp64": 17575286,
+          "added_over_full_reindex_fp32": 0.71524462890625,
+          "already_retained_legacy_index_bytes_fp32": 1152000,
+          "backfill_index_bits": 750,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 2457600,
+              "bytes_fp64": 4915200,
+              "item": "native_backfill_embeddings",
+              "n_floats": 614400
+            }
+          ],
+          "bridge": "ZeroMuPolarBridge",
+          "bridge_param_bits_fp32": 50606080,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0054524739583333,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "Q",
+              "n_floats": 1572864
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "mu_x",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 1536,
+              "bytes_fp64": 3072,
+              "item": "mu_d_dev",
+              "n_floats": 384
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "ema_mu_q_state",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "per_doc_centered_norm_sidecar_fp32",
+              "n_floats": 600
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "csls_r_d_legacy",
+              "n_floats": 600
+            },
+            {
+              "bytes_fp32": 600,
+              "bytes_fp64": 1200,
+              "item": "csls_r_d_native",
+              "n_floats": 150
+            }
+          ],
+          "full_reindex_bytes_fp32": 12288000,
+          "full_reindex_forward_passes": 750,
+          "new_encoder_forward_passes": 510,
+          "precision_metadata_bytes": 72,
+          "samples": {
+            "anchors": 280,
+            "dev_queries": 80,
+            "dev_ref_docs": 160
+          },
+          "work_over_full_reindex": 0.68
+        }
+      },
+      "margin_calibration": {
+        "a": 0.5051291643759527,
+        "b": 0.20942274947049255,
+        "margin": 0.09581222192589978,
+        "n_pairs": 5590,
+        "residual_abs_median": 0.038682138464574606
+      },
+      "n_anchors_fit": 280,
+      "n_backfill": 150,
+      "n_dev_queries": 80,
+      "n_dev_ref_docs": 160,
+      "n_eval_docs": 750,
+      "n_eval_queries": 240,
+      "ndcg10": {
+        "centered_csls": 0.807369,
+        "native_qwen_full_reindex": 0.833935,
+        "uncentered_csls": 0.770256
+      },
+      "reproduction_vs_w22_04": {
+        "centered_abs_diff": 0.0,
+        "centered_csls_recorded": 0.807369,
+        "uncentered_abs_diff": 0.0,
+        "uncentered_csls_recorded": 0.770256
+      }
+    },
+    "cqadupstack-english": {
+      "centering": {
+        "gain_g": 0.07958577646759224,
+        "heldout_fit_error_centered": 0.40705035163997316,
+        "heldout_fit_error_uncentered": 0.4225084482478222,
+        "predictor_x": 0.015458096607849026
+      },
+      "flips": {
+        "frac_missing_margin_explainable": 1.0,
+        "frac_queries_with_any_error": 1.0,
+        "frac_queries_with_flip": 1.0,
+        "mean_missing_per_query": 5.523076923076923,
+        "n_missing_margin_explainable": 1436,
+        "n_missing_total": 1436,
+        "n_queries": 260
+      },
+      "group": "remaining5",
+      "ledger": {
+        "CenteredProcrustes": {
+          "added_bytes_fp32": 8770138,
+          "added_bytes_fp64": 17540118,
+          "added_over_full_reindex_fp32": 0.7137156575520833,
+          "already_retained_legacy_index_bytes_fp32": 1152000,
+          "backfill_index_bits": 750,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 2457600,
+              "bytes_fp64": 4915200,
+              "item": "native_backfill_embeddings",
+              "n_floats": 614400
+            }
+          ],
+          "bridge": "CenteredProcrustes",
+          "bridge_param_bits_fp32": 50475040,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0028489430745442,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "Q",
+              "n_floats": 1572864
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "mu_x",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 1536,
+              "bytes_fp64": 3072,
+              "item": "mu_y",
+              "n_floats": 384
+            },
+            {
+              "bytes_fp32": 4,
+              "bytes_fp64": 8,
+              "item": "scale",
+              "n_floats": 1
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "csls_r_d_legacy",
+              "n_floats": 600
+            },
+            {
+              "bytes_fp32": 600,
+              "bytes_fp64": 1200,
+              "item": "csls_r_d_native",
+              "n_floats": 150
+            }
+          ],
+          "full_reindex_bytes_fp32": 12288000,
+          "full_reindex_forward_passes": 750,
+          "new_encoder_forward_passes": 730,
+          "precision_metadata_bytes": 64,
+          "samples": {
+            "anchors": 500,
+            "dev_queries": 80,
+            "dev_ref_docs": 180
+          },
+          "work_over_full_reindex": 0.9733333333333334
+        },
+        "UncenteredProcrustes": {
+          "added_bytes_fp32": 8752190,
+          "added_bytes_fp64": 17504246,
+          "added_over_full_reindex_fp32": 0.7122550455729166,
+          "already_retained_legacy_index_bytes_fp32": 1152000,
+          "backfill_index_bits": 750,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 2457600,
+              "bytes_fp64": 4915200,
+              "item": "native_backfill_embeddings",
+              "n_floats": 614400
+            }
+          ],
+          "bridge": "UncenteredProcrustes",
+          "bridge_param_bits_fp32": 50331648,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "W",
+              "n_floats": 1572864
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "csls_r_d_legacy",
+              "n_floats": 600
+            },
+            {
+              "bytes_fp32": 600,
+              "bytes_fp64": 1200,
+              "item": "csls_r_d_native",
+              "n_floats": 150
+            }
+          ],
+          "full_reindex_bytes_fp32": 12288000,
+          "full_reindex_forward_passes": 750,
+          "new_encoder_forward_passes": 730,
+          "precision_metadata_bytes": 40,
+          "samples": {
+            "anchors": 500,
+            "dev_queries": 80,
+            "dev_ref_docs": 180
+          },
+          "work_over_full_reindex": 0.9733333333333334
+        },
+        "ZeroMuPolarBridge": {
+          "added_bytes_fp32": 8788926,
+          "added_bytes_fp64": 17575286,
+          "added_over_full_reindex_fp32": 0.71524462890625,
+          "already_retained_legacy_index_bytes_fp32": 1152000,
+          "backfill_index_bits": 750,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 2457600,
+              "bytes_fp64": 4915200,
+              "item": "native_backfill_embeddings",
+              "n_floats": 614400
+            }
+          ],
+          "bridge": "ZeroMuPolarBridge",
+          "bridge_param_bits_fp32": 50606080,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0054524739583333,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "Q",
+              "n_floats": 1572864
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "mu_x",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 1536,
+              "bytes_fp64": 3072,
+              "item": "mu_d_dev",
+              "n_floats": 384
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "ema_mu_q_state",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "per_doc_centered_norm_sidecar_fp32",
+              "n_floats": 600
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "csls_r_d_legacy",
+              "n_floats": 600
+            },
+            {
+              "bytes_fp32": 600,
+              "bytes_fp64": 1200,
+              "item": "csls_r_d_native",
+              "n_floats": 150
+            }
+          ],
+          "full_reindex_bytes_fp32": 12288000,
+          "full_reindex_forward_passes": 750,
+          "new_encoder_forward_passes": 730,
+          "precision_metadata_bytes": 72,
+          "samples": {
+            "anchors": 500,
+            "dev_queries": 80,
+            "dev_ref_docs": 180
+          },
+          "work_over_full_reindex": 0.9733333333333334
+        }
+      },
+      "margin_calibration": {
+        "a": 0.4626398286092936,
+        "b": 0.1631584554535842,
+        "margin": 0.12772906133199544,
+        "n_pairs": 6013,
+        "residual_abs_median": 0.055168029357865855
+      },
+      "n_anchors_fit": 500,
+      "n_backfill": 150,
+      "n_dev_queries": 80,
+      "n_dev_ref_docs": 180,
+      "n_eval_docs": 750,
+      "n_eval_queries": 260,
+      "ndcg10": {
+        "centered_csls": 0.650257,
+        "native_qwen_full_reindex": 0.750792,
+        "uncentered_csls": 0.570671
+      },
+      "reproduction_vs_w22_04": {
+        "centered_abs_diff": 0.0,
+        "centered_csls_recorded": 0.650257,
+        "uncentered_abs_diff": 0.0,
+        "uncentered_csls_recorded": 0.570671
+      }
+    },
+    "cqadupstack-gis": {
+      "centering": {
+        "gain_g": 0.04367221882560579,
+        "heldout_fit_error_centered": 0.34272727111787976,
+        "heldout_fit_error_uncentered": 0.3848435214296057,
+        "predictor_x": 0.042116250311725945
+      },
+      "flips": {
+        "frac_missing_margin_explainable": 0.9906716417910447,
+        "frac_queries_with_any_error": 0.9923076923076923,
+        "frac_queries_with_flip": 0.9923076923076923,
+        "mean_missing_per_query": 4.123076923076923,
+        "n_missing_margin_explainable": 1062,
+        "n_missing_total": 1072,
+        "n_queries": 260
+      },
+      "group": "remaining5",
+      "ledger": {
+        "CenteredProcrustes": {
+          "added_bytes_fp32": 8770138,
+          "added_bytes_fp64": 17540118,
+          "added_over_full_reindex_fp32": 0.7137156575520833,
+          "already_retained_legacy_index_bytes_fp32": 1152000,
+          "backfill_index_bits": 750,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 2457600,
+              "bytes_fp64": 4915200,
+              "item": "native_backfill_embeddings",
+              "n_floats": 614400
+            }
+          ],
+          "bridge": "CenteredProcrustes",
+          "bridge_param_bits_fp32": 50475040,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0028489430745442,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "Q",
+              "n_floats": 1572864
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "mu_x",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 1536,
+              "bytes_fp64": 3072,
+              "item": "mu_y",
+              "n_floats": 384
+            },
+            {
+              "bytes_fp32": 4,
+              "bytes_fp64": 8,
+              "item": "scale",
+              "n_floats": 1
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "csls_r_d_legacy",
+              "n_floats": 600
+            },
+            {
+              "bytes_fp32": 600,
+              "bytes_fp64": 1200,
+              "item": "csls_r_d_native",
+              "n_floats": 150
+            }
+          ],
+          "full_reindex_bytes_fp32": 12288000,
+          "full_reindex_forward_passes": 750,
+          "new_encoder_forward_passes": 730,
+          "precision_metadata_bytes": 64,
+          "samples": {
+            "anchors": 500,
+            "dev_queries": 80,
+            "dev_ref_docs": 180
+          },
+          "work_over_full_reindex": 0.9733333333333334
+        },
+        "UncenteredProcrustes": {
+          "added_bytes_fp32": 8752190,
+          "added_bytes_fp64": 17504246,
+          "added_over_full_reindex_fp32": 0.7122550455729166,
+          "already_retained_legacy_index_bytes_fp32": 1152000,
+          "backfill_index_bits": 750,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 2457600,
+              "bytes_fp64": 4915200,
+              "item": "native_backfill_embeddings",
+              "n_floats": 614400
+            }
+          ],
+          "bridge": "UncenteredProcrustes",
+          "bridge_param_bits_fp32": 50331648,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "W",
+              "n_floats": 1572864
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "csls_r_d_legacy",
+              "n_floats": 600
+            },
+            {
+              "bytes_fp32": 600,
+              "bytes_fp64": 1200,
+              "item": "csls_r_d_native",
+              "n_floats": 150
+            }
+          ],
+          "full_reindex_bytes_fp32": 12288000,
+          "full_reindex_forward_passes": 750,
+          "new_encoder_forward_passes": 730,
+          "precision_metadata_bytes": 40,
+          "samples": {
+            "anchors": 500,
+            "dev_queries": 80,
+            "dev_ref_docs": 180
+          },
+          "work_over_full_reindex": 0.9733333333333334
+        },
+        "ZeroMuPolarBridge": {
+          "added_bytes_fp32": 8788926,
+          "added_bytes_fp64": 17575286,
+          "added_over_full_reindex_fp32": 0.71524462890625,
+          "already_retained_legacy_index_bytes_fp32": 1152000,
+          "backfill_index_bits": 750,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 2457600,
+              "bytes_fp64": 4915200,
+              "item": "native_backfill_embeddings",
+              "n_floats": 614400
+            }
+          ],
+          "bridge": "ZeroMuPolarBridge",
+          "bridge_param_bits_fp32": 50606080,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0054524739583333,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "Q",
+              "n_floats": 1572864
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "mu_x",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 1536,
+              "bytes_fp64": 3072,
+              "item": "mu_d_dev",
+              "n_floats": 384
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "ema_mu_q_state",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "per_doc_centered_norm_sidecar_fp32",
+              "n_floats": 600
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "csls_r_d_legacy",
+              "n_floats": 600
+            },
+            {
+              "bytes_fp32": 600,
+              "bytes_fp64": 1200,
+              "item": "csls_r_d_native",
+              "n_floats": 150
+            }
+          ],
+          "full_reindex_bytes_fp32": 12288000,
+          "full_reindex_forward_passes": 750,
+          "new_encoder_forward_passes": 730,
+          "precision_metadata_bytes": 72,
+          "samples": {
+            "anchors": 500,
+            "dev_queries": 80,
+            "dev_ref_docs": 180
+          },
+          "work_over_full_reindex": 0.9733333333333334
+        }
+      },
+      "margin_calibration": {
+        "a": 0.5172156690988862,
+        "b": 0.22675633981846063,
+        "margin": 0.10488431542157109,
+        "n_pairs": 5554,
+        "residual_abs_median": 0.04236559501462803
+      },
+      "n_anchors_fit": 500,
+      "n_backfill": 150,
+      "n_dev_queries": 80,
+      "n_dev_ref_docs": 180,
+      "n_eval_docs": 750,
+      "n_eval_queries": 260,
+      "ndcg10": {
+        "centered_csls": 0.737974,
+        "native_qwen_full_reindex": 0.780203,
+        "uncentered_csls": 0.694302
+      },
+      "reproduction_vs_w22_04": {
+        "centered_abs_diff": 0.0,
+        "centered_csls_recorded": 0.737974,
+        "uncentered_abs_diff": 0.0,
+        "uncentered_csls_recorded": 0.694302
+      }
+    },
+    "cqadupstack-physics": {
+      "centering": {
+        "gain_g": 0.05791171026463926,
+        "heldout_fit_error_centered": 0.42380506028112386,
+        "heldout_fit_error_uncentered": 0.44736281387451343,
+        "predictor_x": 0.023557753593389574
+      },
+      "flips": {
+        "frac_missing_margin_explainable": 0.9981078524124882,
+        "frac_queries_with_any_error": 1.0,
+        "frac_queries_with_flip": 1.0,
+        "mean_missing_per_query": 4.404166666666667,
+        "n_missing_margin_explainable": 1055,
+        "n_missing_total": 1057,
+        "n_queries": 240
+      },
+      "group": "prior7",
+      "ledger": {
+        "CenteredProcrustes": {
+          "added_bytes_fp32": 8770138,
+          "added_bytes_fp64": 17540118,
+          "added_over_full_reindex_fp32": 0.7137156575520833,
+          "already_retained_legacy_index_bytes_fp32": 1152000,
+          "backfill_index_bits": 750,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 2457600,
+              "bytes_fp64": 4915200,
+              "item": "native_backfill_embeddings",
+              "n_floats": 614400
+            }
+          ],
+          "bridge": "CenteredProcrustes",
+          "bridge_param_bits_fp32": 50475040,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0028489430745442,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "Q",
+              "n_floats": 1572864
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "mu_x",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 1536,
+              "bytes_fp64": 3072,
+              "item": "mu_y",
+              "n_floats": 384
+            },
+            {
+              "bytes_fp32": 4,
+              "bytes_fp64": 8,
+              "item": "scale",
+              "n_floats": 1
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "csls_r_d_legacy",
+              "n_floats": 600
+            },
+            {
+              "bytes_fp32": 600,
+              "bytes_fp64": 1200,
+              "item": "csls_r_d_native",
+              "n_floats": 150
+            }
+          ],
+          "full_reindex_bytes_fp32": 12288000,
+          "full_reindex_forward_passes": 750,
+          "new_encoder_forward_passes": 510,
+          "precision_metadata_bytes": 64,
+          "samples": {
+            "anchors": 280,
+            "dev_queries": 80,
+            "dev_ref_docs": 160
+          },
+          "work_over_full_reindex": 0.68
+        },
+        "UncenteredProcrustes": {
+          "added_bytes_fp32": 8752190,
+          "added_bytes_fp64": 17504246,
+          "added_over_full_reindex_fp32": 0.7122550455729166,
+          "already_retained_legacy_index_bytes_fp32": 1152000,
+          "backfill_index_bits": 750,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 2457600,
+              "bytes_fp64": 4915200,
+              "item": "native_backfill_embeddings",
+              "n_floats": 614400
+            }
+          ],
+          "bridge": "UncenteredProcrustes",
+          "bridge_param_bits_fp32": 50331648,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "W",
+              "n_floats": 1572864
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "csls_r_d_legacy",
+              "n_floats": 600
+            },
+            {
+              "bytes_fp32": 600,
+              "bytes_fp64": 1200,
+              "item": "csls_r_d_native",
+              "n_floats": 150
+            }
+          ],
+          "full_reindex_bytes_fp32": 12288000,
+          "full_reindex_forward_passes": 750,
+          "new_encoder_forward_passes": 510,
+          "precision_metadata_bytes": 40,
+          "samples": {
+            "anchors": 280,
+            "dev_queries": 80,
+            "dev_ref_docs": 160
+          },
+          "work_over_full_reindex": 0.68
+        },
+        "ZeroMuPolarBridge": {
+          "added_bytes_fp32": 8788926,
+          "added_bytes_fp64": 17575286,
+          "added_over_full_reindex_fp32": 0.71524462890625,
+          "already_retained_legacy_index_bytes_fp32": 1152000,
+          "backfill_index_bits": 750,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 2457600,
+              "bytes_fp64": 4915200,
+              "item": "native_backfill_embeddings",
+              "n_floats": 614400
+            }
+          ],
+          "bridge": "ZeroMuPolarBridge",
+          "bridge_param_bits_fp32": 50606080,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0054524739583333,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "Q",
+              "n_floats": 1572864
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "mu_x",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 1536,
+              "bytes_fp64": 3072,
+              "item": "mu_d_dev",
+              "n_floats": 384
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "ema_mu_q_state",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "per_doc_centered_norm_sidecar_fp32",
+              "n_floats": 600
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "csls_r_d_legacy",
+              "n_floats": 600
+            },
+            {
+              "bytes_fp32": 600,
+              "bytes_fp64": 1200,
+              "item": "csls_r_d_native",
+              "n_floats": 150
+            }
+          ],
+          "full_reindex_bytes_fp32": 12288000,
+          "full_reindex_forward_passes": 750,
+          "new_encoder_forward_passes": 510,
+          "precision_metadata_bytes": 72,
+          "samples": {
+            "anchors": 280,
+            "dev_queries": 80,
+            "dev_ref_docs": 160
+          },
+          "work_over_full_reindex": 0.68
+        }
+      },
+      "margin_calibration": {
+        "a": 0.4387949160155607,
+        "b": 0.22080578058689218,
+        "margin": 0.10763674469760055,
+        "n_pairs": 5665,
+        "residual_abs_median": 0.04576623189528145
+      },
+      "n_anchors_fit": 280,
+      "n_backfill": 150,
+      "n_dev_queries": 80,
+      "n_dev_ref_docs": 160,
+      "n_eval_docs": 750,
+      "n_eval_queries": 240,
+      "ndcg10": {
+        "centered_csls": 0.74353,
+        "native_qwen_full_reindex": 0.859019,
+        "uncentered_csls": 0.685618
+      },
+      "reproduction_vs_w22_04": {
+        "centered_abs_diff": 0.0,
+        "centered_csls_recorded": 0.74353,
+        "uncentered_abs_diff": 0.0,
+        "uncentered_csls_recorded": 0.685618
+      }
+    },
+    "cqadupstack-programmers": {
+      "centering": {
+        "gain_g": 0.0786133550875554,
+        "heldout_fit_error_centered": 0.3922010900219733,
+        "heldout_fit_error_uncentered": 0.3956024344753807,
+        "predictor_x": 0.0034013444534073956
+      },
+      "flips": {
+        "frac_missing_margin_explainable": 0.9900271985494107,
+        "frac_queries_with_any_error": 1.0,
+        "frac_queries_with_flip": 1.0,
+        "mean_missing_per_query": 4.595833333333333,
+        "n_missing_margin_explainable": 1092,
+        "n_missing_total": 1103,
+        "n_queries": 240
+      },
+      "group": "prior7",
+      "ledger": {
+        "CenteredProcrustes": {
+          "added_bytes_fp32": 8770138,
+          "added_bytes_fp64": 17540118,
+          "added_over_full_reindex_fp32": 0.7137156575520833,
+          "already_retained_legacy_index_bytes_fp32": 1152000,
+          "backfill_index_bits": 750,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 2457600,
+              "bytes_fp64": 4915200,
+              "item": "native_backfill_embeddings",
+              "n_floats": 614400
+            }
+          ],
+          "bridge": "CenteredProcrustes",
+          "bridge_param_bits_fp32": 50475040,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0028489430745442,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "Q",
+              "n_floats": 1572864
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "mu_x",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 1536,
+              "bytes_fp64": 3072,
+              "item": "mu_y",
+              "n_floats": 384
+            },
+            {
+              "bytes_fp32": 4,
+              "bytes_fp64": 8,
+              "item": "scale",
+              "n_floats": 1
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "csls_r_d_legacy",
+              "n_floats": 600
+            },
+            {
+              "bytes_fp32": 600,
+              "bytes_fp64": 1200,
+              "item": "csls_r_d_native",
+              "n_floats": 150
+            }
+          ],
+          "full_reindex_bytes_fp32": 12288000,
+          "full_reindex_forward_passes": 750,
+          "new_encoder_forward_passes": 510,
+          "precision_metadata_bytes": 64,
+          "samples": {
+            "anchors": 280,
+            "dev_queries": 80,
+            "dev_ref_docs": 160
+          },
+          "work_over_full_reindex": 0.68
+        },
+        "UncenteredProcrustes": {
+          "added_bytes_fp32": 8752190,
+          "added_bytes_fp64": 17504246,
+          "added_over_full_reindex_fp32": 0.7122550455729166,
+          "already_retained_legacy_index_bytes_fp32": 1152000,
+          "backfill_index_bits": 750,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 2457600,
+              "bytes_fp64": 4915200,
+              "item": "native_backfill_embeddings",
+              "n_floats": 614400
+            }
+          ],
+          "bridge": "UncenteredProcrustes",
+          "bridge_param_bits_fp32": 50331648,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "W",
+              "n_floats": 1572864
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "csls_r_d_legacy",
+              "n_floats": 600
+            },
+            {
+              "bytes_fp32": 600,
+              "bytes_fp64": 1200,
+              "item": "csls_r_d_native",
+              "n_floats": 150
+            }
+          ],
+          "full_reindex_bytes_fp32": 12288000,
+          "full_reindex_forward_passes": 750,
+          "new_encoder_forward_passes": 510,
+          "precision_metadata_bytes": 40,
+          "samples": {
+            "anchors": 280,
+            "dev_queries": 80,
+            "dev_ref_docs": 160
+          },
+          "work_over_full_reindex": 0.68
+        },
+        "ZeroMuPolarBridge": {
+          "added_bytes_fp32": 8788926,
+          "added_bytes_fp64": 17575286,
+          "added_over_full_reindex_fp32": 0.71524462890625,
+          "already_retained_legacy_index_bytes_fp32": 1152000,
+          "backfill_index_bits": 750,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 2457600,
+              "bytes_fp64": 4915200,
+              "item": "native_backfill_embeddings",
+              "n_floats": 614400
+            }
+          ],
+          "bridge": "ZeroMuPolarBridge",
+          "bridge_param_bits_fp32": 50606080,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0054524739583333,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "Q",
+              "n_floats": 1572864
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "mu_x",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 1536,
+              "bytes_fp64": 3072,
+              "item": "mu_d_dev",
+              "n_floats": 384
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "ema_mu_q_state",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "per_doc_centered_norm_sidecar_fp32",
+              "n_floats": 600
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "csls_r_d_legacy",
+              "n_floats": 600
+            },
+            {
+              "bytes_fp32": 600,
+              "bytes_fp64": 1200,
+              "item": "csls_r_d_native",
+              "n_floats": 150
+            }
+          ],
+          "full_reindex_bytes_fp32": 12288000,
+          "full_reindex_forward_passes": 750,
+          "new_encoder_forward_passes": 510,
+          "precision_metadata_bytes": 72,
+          "samples": {
+            "anchors": 280,
+            "dev_queries": 80,
+            "dev_ref_docs": 160
+          },
+          "work_over_full_reindex": 0.68
+        }
+      },
+      "margin_calibration": {
+        "a": 0.4526739592284583,
+        "b": 0.2798782846763121,
+        "margin": 0.10705327374778266,
+        "n_pairs": 5628,
+        "residual_abs_median": 0.04384050781824844
+      },
+      "n_anchors_fit": 280,
+      "n_backfill": 150,
+      "n_dev_queries": 80,
+      "n_dev_ref_docs": 160,
+      "n_eval_docs": 750,
+      "n_eval_queries": 240,
+      "ndcg10": {
+        "centered_csls": 0.698483,
+        "native_qwen_full_reindex": 0.842293,
+        "uncentered_csls": 0.61987
+      },
+      "reproduction_vs_w22_04": {
+        "centered_abs_diff": 0.0,
+        "centered_csls_recorded": 0.698483,
+        "uncentered_abs_diff": 0.0,
+        "uncentered_csls_recorded": 0.61987
+      }
+    },
+    "cqadupstack-stats": {
+      "centering": {
+        "gain_g": 0.0784803971604463,
+        "heldout_fit_error_centered": 0.4213629240697462,
+        "heldout_fit_error_uncentered": 0.4369830911552112,
+        "predictor_x": 0.015620167085465042
+      },
+      "flips": {
+        "frac_missing_margin_explainable": 0.9989878542510121,
+        "frac_queries_with_any_error": 1.0,
+        "frac_queries_with_flip": 1.0,
+        "mean_missing_per_query": 4.490909090909091,
+        "n_missing_margin_explainable": 987,
+        "n_missing_total": 988,
+        "n_queries": 220
+      },
+      "group": "prior7",
+      "ledger": {
+        "CenteredProcrustes": {
+          "added_bytes_fp32": 8770138,
+          "added_bytes_fp64": 17540118,
+          "added_over_full_reindex_fp32": 0.7137156575520833,
+          "already_retained_legacy_index_bytes_fp32": 1152000,
+          "backfill_index_bits": 750,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 2457600,
+              "bytes_fp64": 4915200,
+              "item": "native_backfill_embeddings",
+              "n_floats": 614400
+            }
+          ],
+          "bridge": "CenteredProcrustes",
+          "bridge_param_bits_fp32": 50475040,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0028489430745442,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "Q",
+              "n_floats": 1572864
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "mu_x",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 1536,
+              "bytes_fp64": 3072,
+              "item": "mu_y",
+              "n_floats": 384
+            },
+            {
+              "bytes_fp32": 4,
+              "bytes_fp64": 8,
+              "item": "scale",
+              "n_floats": 1
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "csls_r_d_legacy",
+              "n_floats": 600
+            },
+            {
+              "bytes_fp32": 600,
+              "bytes_fp64": 1200,
+              "item": "csls_r_d_native",
+              "n_floats": 150
+            }
+          ],
+          "full_reindex_bytes_fp32": 12288000,
+          "full_reindex_forward_passes": 750,
+          "new_encoder_forward_passes": 510,
+          "precision_metadata_bytes": 64,
+          "samples": {
+            "anchors": 280,
+            "dev_queries": 80,
+            "dev_ref_docs": 160
+          },
+          "work_over_full_reindex": 0.68
+        },
+        "UncenteredProcrustes": {
+          "added_bytes_fp32": 8752190,
+          "added_bytes_fp64": 17504246,
+          "added_over_full_reindex_fp32": 0.7122550455729166,
+          "already_retained_legacy_index_bytes_fp32": 1152000,
+          "backfill_index_bits": 750,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 2457600,
+              "bytes_fp64": 4915200,
+              "item": "native_backfill_embeddings",
+              "n_floats": 614400
+            }
+          ],
+          "bridge": "UncenteredProcrustes",
+          "bridge_param_bits_fp32": 50331648,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "W",
+              "n_floats": 1572864
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "csls_r_d_legacy",
+              "n_floats": 600
+            },
+            {
+              "bytes_fp32": 600,
+              "bytes_fp64": 1200,
+              "item": "csls_r_d_native",
+              "n_floats": 150
+            }
+          ],
+          "full_reindex_bytes_fp32": 12288000,
+          "full_reindex_forward_passes": 750,
+          "new_encoder_forward_passes": 510,
+          "precision_metadata_bytes": 40,
+          "samples": {
+            "anchors": 280,
+            "dev_queries": 80,
+            "dev_ref_docs": 160
+          },
+          "work_over_full_reindex": 0.68
+        },
+        "ZeroMuPolarBridge": {
+          "added_bytes_fp32": 8788926,
+          "added_bytes_fp64": 17575286,
+          "added_over_full_reindex_fp32": 0.71524462890625,
+          "already_retained_legacy_index_bytes_fp32": 1152000,
+          "backfill_index_bits": 750,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 2457600,
+              "bytes_fp64": 4915200,
+              "item": "native_backfill_embeddings",
+              "n_floats": 614400
+            }
+          ],
+          "bridge": "ZeroMuPolarBridge",
+          "bridge_param_bits_fp32": 50606080,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0054524739583333,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "Q",
+              "n_floats": 1572864
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "mu_x",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 1536,
+              "bytes_fp64": 3072,
+              "item": "mu_d_dev",
+              "n_floats": 384
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "ema_mu_q_state",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "per_doc_centered_norm_sidecar_fp32",
+              "n_floats": 600
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "csls_r_d_legacy",
+              "n_floats": 600
+            },
+            {
+              "bytes_fp32": 600,
+              "bytes_fp64": 1200,
+              "item": "csls_r_d_native",
+              "n_floats": 150
+            }
+          ],
+          "full_reindex_bytes_fp32": 12288000,
+          "full_reindex_forward_passes": 750,
+          "new_encoder_forward_passes": 510,
+          "precision_metadata_bytes": 72,
+          "samples": {
+            "anchors": 280,
+            "dev_queries": 80,
+            "dev_ref_docs": 160
+          },
+          "work_over_full_reindex": 0.68
+        }
+      },
+      "margin_calibration": {
+        "a": 0.4900359017505322,
+        "b": 0.19021737290818216,
+        "margin": 0.10684227912964203,
+        "n_pairs": 5764,
+        "residual_abs_median": 0.042584369019018076
+      },
+      "n_anchors_fit": 280,
+      "n_backfill": 150,
+      "n_dev_queries": 80,
+      "n_dev_ref_docs": 160,
+      "n_eval_docs": 750,
+      "n_eval_queries": 220,
+      "ndcg10": {
+        "centered_csls": 0.664394,
+        "native_qwen_full_reindex": 0.763638,
+        "uncentered_csls": 0.585914
+      },
+      "reproduction_vs_w22_04": {
+        "centered_abs_diff": 0.0,
+        "centered_csls_recorded": 0.664394,
+        "uncentered_abs_diff": 0.0,
+        "uncentered_csls_recorded": 0.585914
+      }
+    },
+    "cqadupstack-tex": {
+      "centering": {
+        "gain_g": 0.05737631784909614,
+        "heldout_fit_error_centered": 0.37553540424383774,
+        "heldout_fit_error_uncentered": 0.40744776622607276,
+        "predictor_x": 0.031912361982235016
+      },
+      "flips": {
+        "frac_missing_margin_explainable": 0.9910233393177738,
+        "frac_queries_with_any_error": 1.0,
+        "frac_queries_with_flip": 1.0,
+        "mean_missing_per_query": 4.2846153846153845,
+        "n_missing_margin_explainable": 1104,
+        "n_missing_total": 1114,
+        "n_queries": 260
+      },
+      "group": "remaining5",
+      "ledger": {
+        "CenteredProcrustes": {
+          "added_bytes_fp32": 8770138,
+          "added_bytes_fp64": 17540118,
+          "added_over_full_reindex_fp32": 0.7137156575520833,
+          "already_retained_legacy_index_bytes_fp32": 1152000,
+          "backfill_index_bits": 750,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 2457600,
+              "bytes_fp64": 4915200,
+              "item": "native_backfill_embeddings",
+              "n_floats": 614400
+            }
+          ],
+          "bridge": "CenteredProcrustes",
+          "bridge_param_bits_fp32": 50475040,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0028489430745442,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "Q",
+              "n_floats": 1572864
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "mu_x",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 1536,
+              "bytes_fp64": 3072,
+              "item": "mu_y",
+              "n_floats": 384
+            },
+            {
+              "bytes_fp32": 4,
+              "bytes_fp64": 8,
+              "item": "scale",
+              "n_floats": 1
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "csls_r_d_legacy",
+              "n_floats": 600
+            },
+            {
+              "bytes_fp32": 600,
+              "bytes_fp64": 1200,
+              "item": "csls_r_d_native",
+              "n_floats": 150
+            }
+          ],
+          "full_reindex_bytes_fp32": 12288000,
+          "full_reindex_forward_passes": 750,
+          "new_encoder_forward_passes": 730,
+          "precision_metadata_bytes": 64,
+          "samples": {
+            "anchors": 500,
+            "dev_queries": 80,
+            "dev_ref_docs": 180
+          },
+          "work_over_full_reindex": 0.9733333333333334
+        },
+        "UncenteredProcrustes": {
+          "added_bytes_fp32": 8752190,
+          "added_bytes_fp64": 17504246,
+          "added_over_full_reindex_fp32": 0.7122550455729166,
+          "already_retained_legacy_index_bytes_fp32": 1152000,
+          "backfill_index_bits": 750,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 2457600,
+              "bytes_fp64": 4915200,
+              "item": "native_backfill_embeddings",
+              "n_floats": 614400
+            }
+          ],
+          "bridge": "UncenteredProcrustes",
+          "bridge_param_bits_fp32": 50331648,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "W",
+              "n_floats": 1572864
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "csls_r_d_legacy",
+              "n_floats": 600
+            },
+            {
+              "bytes_fp32": 600,
+              "bytes_fp64": 1200,
+              "item": "csls_r_d_native",
+              "n_floats": 150
+            }
+          ],
+          "full_reindex_bytes_fp32": 12288000,
+          "full_reindex_forward_passes": 750,
+          "new_encoder_forward_passes": 730,
+          "precision_metadata_bytes": 40,
+          "samples": {
+            "anchors": 500,
+            "dev_queries": 80,
+            "dev_ref_docs": 180
+          },
+          "work_over_full_reindex": 0.9733333333333334
+        },
+        "ZeroMuPolarBridge": {
+          "added_bytes_fp32": 8788926,
+          "added_bytes_fp64": 17575286,
+          "added_over_full_reindex_fp32": 0.71524462890625,
+          "already_retained_legacy_index_bytes_fp32": 1152000,
+          "backfill_index_bits": 750,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 2457600,
+              "bytes_fp64": 4915200,
+              "item": "native_backfill_embeddings",
+              "n_floats": 614400
+            }
+          ],
+          "bridge": "ZeroMuPolarBridge",
+          "bridge_param_bits_fp32": 50606080,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0054524739583333,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "Q",
+              "n_floats": 1572864
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "mu_x",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 1536,
+              "bytes_fp64": 3072,
+              "item": "mu_d_dev",
+              "n_floats": 384
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "ema_mu_q_state",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "per_doc_centered_norm_sidecar_fp32",
+              "n_floats": 600
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "csls_r_d_legacy",
+              "n_floats": 600
+            },
+            {
+              "bytes_fp32": 600,
+              "bytes_fp64": 1200,
+              "item": "csls_r_d_native",
+              "n_floats": 150
+            }
+          ],
+          "full_reindex_bytes_fp32": 12288000,
+          "full_reindex_forward_passes": 750,
+          "new_encoder_forward_passes": 730,
+          "precision_metadata_bytes": 72,
+          "samples": {
+            "anchors": 500,
+            "dev_queries": 80,
+            "dev_ref_docs": 180
+          },
+          "work_over_full_reindex": 0.9733333333333334
+        }
+      },
+      "margin_calibration": {
+        "a": 0.5205141248033266,
+        "b": 0.2961676929599397,
+        "margin": 0.12148328349634177,
+        "n_pairs": 5508,
+        "residual_abs_median": 0.04783945276562518
+      },
+      "n_anchors_fit": 500,
+      "n_backfill": 150,
+      "n_dev_queries": 80,
+      "n_dev_ref_docs": 180,
+      "n_eval_docs": 750,
+      "n_eval_queries": 260,
+      "ndcg10": {
+        "centered_csls": 0.707127,
+        "native_qwen_full_reindex": 0.774611,
+        "uncentered_csls": 0.64975
+      },
+      "reproduction_vs_w22_04": {
+        "centered_abs_diff": 0.0,
+        "centered_csls_recorded": 0.707127,
+        "uncentered_abs_diff": 0.0,
+        "uncentered_csls_recorded": 0.64975
+      }
+    },
+    "cqadupstack-unix": {
+      "centering": {
+        "gain_g": 0.05874617860297182,
+        "heldout_fit_error_centered": 0.40444606556608614,
+        "heldout_fit_error_uncentered": 0.42478093952479307,
+        "predictor_x": 0.020334873958706923
+      },
+      "flips": {
+        "frac_missing_margin_explainable": 0.9952335557673975,
+        "frac_queries_with_any_error": 1.0,
+        "frac_queries_with_flip": 1.0,
+        "mean_missing_per_query": 4.370833333333334,
+        "n_missing_margin_explainable": 1044,
+        "n_missing_total": 1049,
+        "n_queries": 240
+      },
+      "group": "prior7",
+      "ledger": {
+        "CenteredProcrustes": {
+          "added_bytes_fp32": 8770138,
+          "added_bytes_fp64": 17540118,
+          "added_over_full_reindex_fp32": 0.7137156575520833,
+          "already_retained_legacy_index_bytes_fp32": 1152000,
+          "backfill_index_bits": 750,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 2457600,
+              "bytes_fp64": 4915200,
+              "item": "native_backfill_embeddings",
+              "n_floats": 614400
+            }
+          ],
+          "bridge": "CenteredProcrustes",
+          "bridge_param_bits_fp32": 50475040,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0028489430745442,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "Q",
+              "n_floats": 1572864
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "mu_x",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 1536,
+              "bytes_fp64": 3072,
+              "item": "mu_y",
+              "n_floats": 384
+            },
+            {
+              "bytes_fp32": 4,
+              "bytes_fp64": 8,
+              "item": "scale",
+              "n_floats": 1
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "csls_r_d_legacy",
+              "n_floats": 600
+            },
+            {
+              "bytes_fp32": 600,
+              "bytes_fp64": 1200,
+              "item": "csls_r_d_native",
+              "n_floats": 150
+            }
+          ],
+          "full_reindex_bytes_fp32": 12288000,
+          "full_reindex_forward_passes": 750,
+          "new_encoder_forward_passes": 510,
+          "precision_metadata_bytes": 64,
+          "samples": {
+            "anchors": 280,
+            "dev_queries": 80,
+            "dev_ref_docs": 160
+          },
+          "work_over_full_reindex": 0.68
+        },
+        "UncenteredProcrustes": {
+          "added_bytes_fp32": 8752190,
+          "added_bytes_fp64": 17504246,
+          "added_over_full_reindex_fp32": 0.7122550455729166,
+          "already_retained_legacy_index_bytes_fp32": 1152000,
+          "backfill_index_bits": 750,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 2457600,
+              "bytes_fp64": 4915200,
+              "item": "native_backfill_embeddings",
+              "n_floats": 614400
+            }
+          ],
+          "bridge": "UncenteredProcrustes",
+          "bridge_param_bits_fp32": 50331648,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "W",
+              "n_floats": 1572864
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "csls_r_d_legacy",
+              "n_floats": 600
+            },
+            {
+              "bytes_fp32": 600,
+              "bytes_fp64": 1200,
+              "item": "csls_r_d_native",
+              "n_floats": 150
+            }
+          ],
+          "full_reindex_bytes_fp32": 12288000,
+          "full_reindex_forward_passes": 750,
+          "new_encoder_forward_passes": 510,
+          "precision_metadata_bytes": 40,
+          "samples": {
+            "anchors": 280,
+            "dev_queries": 80,
+            "dev_ref_docs": 160
+          },
+          "work_over_full_reindex": 0.68
+        },
+        "ZeroMuPolarBridge": {
+          "added_bytes_fp32": 8788926,
+          "added_bytes_fp64": 17575286,
+          "added_over_full_reindex_fp32": 0.71524462890625,
+          "already_retained_legacy_index_bytes_fp32": 1152000,
+          "backfill_index_bits": 750,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 2457600,
+              "bytes_fp64": 4915200,
+              "item": "native_backfill_embeddings",
+              "n_floats": 614400
+            }
+          ],
+          "bridge": "ZeroMuPolarBridge",
+          "bridge_param_bits_fp32": 50606080,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0054524739583333,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "Q",
+              "n_floats": 1572864
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "mu_x",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 1536,
+              "bytes_fp64": 3072,
+              "item": "mu_d_dev",
+              "n_floats": 384
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "ema_mu_q_state",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "per_doc_centered_norm_sidecar_fp32",
+              "n_floats": 600
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "csls_r_d_legacy",
+              "n_floats": 600
+            },
+            {
+              "bytes_fp32": 600,
+              "bytes_fp64": 1200,
+              "item": "csls_r_d_native",
+              "n_floats": 150
+            }
+          ],
+          "full_reindex_bytes_fp32": 12288000,
+          "full_reindex_forward_passes": 750,
+          "new_encoder_forward_passes": 510,
+          "precision_metadata_bytes": 72,
+          "samples": {
+            "anchors": 280,
+            "dev_queries": 80,
+            "dev_ref_docs": 160
+          },
+          "work_over_full_reindex": 0.68
+        }
+      },
+      "margin_calibration": {
+        "a": 0.4360813296981579,
+        "b": 0.21461572565846102,
+        "margin": 0.10584757170150862,
+        "n_pairs": 5730,
+        "residual_abs_median": 0.04248422588567302
+      },
+      "n_anchors_fit": 280,
+      "n_backfill": 150,
+      "n_dev_queries": 80,
+      "n_dev_ref_docs": 160,
+      "n_eval_docs": 750,
+      "n_eval_queries": 240,
+      "ndcg10": {
+        "centered_csls": 0.776028,
+        "native_qwen_full_reindex": 0.884365,
+        "uncentered_csls": 0.717282
+      },
+      "reproduction_vs_w22_04": {
+        "centered_abs_diff": 0.0,
+        "centered_csls_recorded": 0.776028,
+        "uncentered_abs_diff": 0.0,
+        "uncentered_csls_recorded": 0.717282
+      }
+    },
+    "dbpedia": {
+      "centering": {
+        "gain_g": 0.05909302776587677,
+        "heldout_fit_error_centered": 0.47165375754336125,
+        "heldout_fit_error_uncentered": 0.4762568469555027,
+        "predictor_x": 0.004603089412141437
+      },
+      "flips": {
+        "frac_missing_margin_explainable": 0.994991652754591,
+        "frac_queries_with_any_error": 0.9961538461538462,
+        "frac_queries_with_flip": 0.9961538461538462,
+        "mean_missing_per_query": 4.607692307692307,
+        "n_missing_margin_explainable": 1192,
+        "n_missing_total": 1198,
+        "n_queries": 260
+      },
+      "group": "remaining5",
+      "ledger": {
+        "CenteredProcrustes": {
+          "added_bytes_fp32": 9442724,
+          "added_bytes_fp64": 18885264,
+          "added_over_full_reindex_fp32": 0.6041280238633385,
+          "already_retained_legacy_index_bytes_fp32": 1465344,
+          "backfill_index_bits": 954,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 3129344,
+              "bytes_fp64": 6258688,
+              "item": "native_backfill_embeddings",
+              "n_floats": 782336
+            }
+          ],
+          "bridge": "CenteredProcrustes",
+          "bridge_param_bits_fp32": 50475040,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0028489430745442,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "Q",
+              "n_floats": 1572864
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "mu_x",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 1536,
+              "bytes_fp64": 3072,
+              "item": "mu_y",
+              "n_floats": 384
+            },
+            {
+              "bytes_fp32": 4,
+              "bytes_fp64": 8,
+              "item": "scale",
+              "n_floats": 1
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 3052,
+              "bytes_fp64": 6104,
+              "item": "csls_r_d_legacy",
+              "n_floats": 763
+            },
+            {
+              "bytes_fp32": 764,
+              "bytes_fp64": 1528,
+              "item": "csls_r_d_native",
+              "n_floats": 191
+            }
+          ],
+          "full_reindex_bytes_fp32": 15630336,
+          "full_reindex_forward_passes": 954,
+          "new_encoder_forward_passes": 771,
+          "precision_metadata_bytes": 64,
+          "samples": {
+            "anchors": 500,
+            "dev_queries": 80,
+            "dev_ref_docs": 180
+          },
+          "work_over_full_reindex": 0.8081761006289309
+        },
+        "UncenteredProcrustes": {
+          "added_bytes_fp32": 9424776,
+          "added_bytes_fp64": 18849392,
+          "added_over_full_reindex_fp32": 0.6029797440055031,
+          "already_retained_legacy_index_bytes_fp32": 1465344,
+          "backfill_index_bits": 954,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 3129344,
+              "bytes_fp64": 6258688,
+              "item": "native_backfill_embeddings",
+              "n_floats": 782336
+            }
+          ],
+          "bridge": "UncenteredProcrustes",
+          "bridge_param_bits_fp32": 50331648,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "W",
+              "n_floats": 1572864
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 3052,
+              "bytes_fp64": 6104,
+              "item": "csls_r_d_legacy",
+              "n_floats": 763
+            },
+            {
+              "bytes_fp32": 764,
+              "bytes_fp64": 1528,
+              "item": "csls_r_d_native",
+              "n_floats": 191
+            }
+          ],
+          "full_reindex_bytes_fp32": 15630336,
+          "full_reindex_forward_passes": 954,
+          "new_encoder_forward_passes": 771,
+          "precision_metadata_bytes": 40,
+          "samples": {
+            "anchors": 500,
+            "dev_queries": 80,
+            "dev_ref_docs": 180
+          },
+          "work_over_full_reindex": 0.8081761006289309
+        },
+        "ZeroMuPolarBridge": {
+          "added_bytes_fp32": 9462164,
+          "added_bytes_fp64": 18921084,
+          "added_over_full_reindex_fp32": 0.6053717591227725,
+          "already_retained_legacy_index_bytes_fp32": 1465344,
+          "backfill_index_bits": 954,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 3129344,
+              "bytes_fp64": 6258688,
+              "item": "native_backfill_embeddings",
+              "n_floats": 782336
+            }
+          ],
+          "bridge": "ZeroMuPolarBridge",
+          "bridge_param_bits_fp32": 50606080,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0054524739583333,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "Q",
+              "n_floats": 1572864
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "mu_x",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 1536,
+              "bytes_fp64": 3072,
+              "item": "mu_d_dev",
+              "n_floats": 384
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "ema_mu_q_state",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 3052,
+              "bytes_fp64": 6104,
+              "item": "per_doc_centered_norm_sidecar_fp32",
+              "n_floats": 763
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 3052,
+              "bytes_fp64": 6104,
+              "item": "csls_r_d_legacy",
+              "n_floats": 763
+            },
+            {
+              "bytes_fp32": 764,
+              "bytes_fp64": 1528,
+              "item": "csls_r_d_native",
+              "n_floats": 191
+            }
+          ],
+          "full_reindex_bytes_fp32": 15630336,
+          "full_reindex_forward_passes": 954,
+          "new_encoder_forward_passes": 771,
+          "precision_metadata_bytes": 72,
+          "samples": {
+            "anchors": 500,
+            "dev_queries": 80,
+            "dev_ref_docs": 180
+          },
+          "work_over_full_reindex": 0.8081761006289309
+        }
+      },
+      "margin_calibration": {
+        "a": 0.2975552965681095,
+        "b": 0.23534002627833883,
+        "margin": 0.10153441097250258,
+        "n_pairs": 5848,
+        "residual_abs_median": 0.03786111181699761
+      },
+      "n_anchors_fit": 500,
+      "n_backfill": 191,
+      "n_dev_queries": 80,
+      "n_dev_ref_docs": 180,
+      "n_eval_docs": 954,
+      "n_eval_queries": 260,
+      "ndcg10": {
+        "centered_csls": 0.678749,
+        "native_qwen_full_reindex": 0.879408,
+        "uncentered_csls": 0.619656
+      },
+      "reproduction_vs_w22_04": {
+        "centered_abs_diff": 0.0,
+        "centered_csls_recorded": 0.678749,
+        "uncentered_abs_diff": 0.0,
+        "uncentered_csls_recorded": 0.619656
+      }
+    },
+    "touche-2020": {
+      "centering": {
+        "gain_g": 0.03254156712516554,
+        "heldout_fit_error_centered": 0.38374991717775075,
+        "heldout_fit_error_uncentered": 0.38393319565672146,
+        "predictor_x": 0.00018327847897070537
+      },
+      "flips": {
+        "frac_missing_margin_explainable": 0.9882352941176471,
+        "frac_queries_with_any_error": 0.8823529411764706,
+        "frac_queries_with_flip": 0.8529411764705882,
+        "mean_missing_per_query": 2.5,
+        "n_missing_margin_explainable": 84,
+        "n_missing_total": 85,
+        "n_queries": 34
+      },
+      "group": "prior7",
+      "ledger": {
+        "CenteredProcrustes": {
+          "added_bytes_fp32": 8770138,
+          "added_bytes_fp64": 17540118,
+          "added_over_full_reindex_fp32": 0.7137156575520833,
+          "already_retained_legacy_index_bytes_fp32": 1152000,
+          "backfill_index_bits": 750,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 2457600,
+              "bytes_fp64": 4915200,
+              "item": "native_backfill_embeddings",
+              "n_floats": 614400
+            }
+          ],
+          "bridge": "CenteredProcrustes",
+          "bridge_param_bits_fp32": 50475040,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0028489430745442,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "Q",
+              "n_floats": 1572864
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "mu_x",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 1536,
+              "bytes_fp64": 3072,
+              "item": "mu_y",
+              "n_floats": 384
+            },
+            {
+              "bytes_fp32": 4,
+              "bytes_fp64": 8,
+              "item": "scale",
+              "n_floats": 1
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "csls_r_d_legacy",
+              "n_floats": 600
+            },
+            {
+              "bytes_fp32": 600,
+              "bytes_fp64": 1200,
+              "item": "csls_r_d_native",
+              "n_floats": 150
+            }
+          ],
+          "full_reindex_bytes_fp32": 12288000,
+          "full_reindex_forward_passes": 750,
+          "new_encoder_forward_passes": 445,
+          "precision_metadata_bytes": 64,
+          "samples": {
+            "anchors": 280,
+            "dev_queries": 15,
+            "dev_ref_docs": 160
+          },
+          "work_over_full_reindex": 0.5933333333333334
+        },
+        "UncenteredProcrustes": {
+          "added_bytes_fp32": 8752190,
+          "added_bytes_fp64": 17504246,
+          "added_over_full_reindex_fp32": 0.7122550455729166,
+          "already_retained_legacy_index_bytes_fp32": 1152000,
+          "backfill_index_bits": 750,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 2457600,
+              "bytes_fp64": 4915200,
+              "item": "native_backfill_embeddings",
+              "n_floats": 614400
+            }
+          ],
+          "bridge": "UncenteredProcrustes",
+          "bridge_param_bits_fp32": 50331648,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "W",
+              "n_floats": 1572864
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "csls_r_d_legacy",
+              "n_floats": 600
+            },
+            {
+              "bytes_fp32": 600,
+              "bytes_fp64": 1200,
+              "item": "csls_r_d_native",
+              "n_floats": 150
+            }
+          ],
+          "full_reindex_bytes_fp32": 12288000,
+          "full_reindex_forward_passes": 750,
+          "new_encoder_forward_passes": 445,
+          "precision_metadata_bytes": 40,
+          "samples": {
+            "anchors": 280,
+            "dev_queries": 15,
+            "dev_ref_docs": 160
+          },
+          "work_over_full_reindex": 0.5933333333333334
+        },
+        "ZeroMuPolarBridge": {
+          "added_bytes_fp32": 8788926,
+          "added_bytes_fp64": 17575286,
+          "added_over_full_reindex_fp32": 0.71524462890625,
+          "already_retained_legacy_index_bytes_fp32": 1152000,
+          "backfill_index_bits": 750,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 2457600,
+              "bytes_fp64": 4915200,
+              "item": "native_backfill_embeddings",
+              "n_floats": 614400
+            }
+          ],
+          "bridge": "ZeroMuPolarBridge",
+          "bridge_param_bits_fp32": 50606080,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0054524739583333,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "Q",
+              "n_floats": 1572864
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "mu_x",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 1536,
+              "bytes_fp64": 3072,
+              "item": "mu_d_dev",
+              "n_floats": 384
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "ema_mu_q_state",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "per_doc_centered_norm_sidecar_fp32",
+              "n_floats": 600
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "csls_r_d_legacy",
+              "n_floats": 600
+            },
+            {
+              "bytes_fp32": 600,
+              "bytes_fp64": 1200,
+              "item": "csls_r_d_native",
+              "n_floats": 150
+            }
+          ],
+          "full_reindex_bytes_fp32": 12288000,
+          "full_reindex_forward_passes": 750,
+          "new_encoder_forward_passes": 445,
+          "precision_metadata_bytes": 72,
+          "samples": {
+            "anchors": 280,
+            "dev_queries": 15,
+            "dev_ref_docs": 160
+          },
+          "work_over_full_reindex": 0.5933333333333334
+        }
+      },
+      "margin_calibration": {
+        "a": 0.43765816866603163,
+        "b": 0.3037272519614368,
+        "margin": 0.14065139983368685,
+        "n_pairs": 1104,
+        "residual_abs_median": 0.051494010025140896
+      },
+      "n_anchors_fit": 280,
+      "n_backfill": 150,
+      "n_dev_queries": 15,
+      "n_dev_ref_docs": 160,
+      "n_eval_docs": 750,
+      "n_eval_queries": 34,
+      "ndcg10": {
+        "centered_csls": 0.811037,
+        "native_qwen_full_reindex": 0.885175,
+        "uncentered_csls": 0.778495
+      },
+      "reproduction_vs_w22_04": {
+        "centered_abs_diff": 0.0,
+        "centered_csls_recorded": 0.811037,
+        "uncentered_abs_diff": 0.0,
+        "uncentered_csls_recorded": 0.778495
+      }
+    },
+    "trec-covid": {
+      "centering": {
+        "gain_g": 0.0560643592289346,
+        "heldout_fit_error_centered": 0.33873668104791466,
+        "heldout_fit_error_uncentered": 0.33603473462416655,
+        "predictor_x": -0.002701946423748103
+      },
+      "flips": {
+        "frac_missing_margin_explainable": 1.0,
+        "frac_queries_with_any_error": 1.0,
+        "frac_queries_with_flip": 1.0,
+        "mean_missing_per_query": 7.171428571428572,
+        "n_missing_margin_explainable": 251,
+        "n_missing_total": 251,
+        "n_queries": 35
+      },
+      "group": "prior7",
+      "ledger": {
+        "CenteredProcrustes": {
+          "added_bytes_fp32": 8770138,
+          "added_bytes_fp64": 17540118,
+          "added_over_full_reindex_fp32": 0.7137156575520833,
+          "already_retained_legacy_index_bytes_fp32": 1152000,
+          "backfill_index_bits": 750,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 2457600,
+              "bytes_fp64": 4915200,
+              "item": "native_backfill_embeddings",
+              "n_floats": 614400
+            }
+          ],
+          "bridge": "CenteredProcrustes",
+          "bridge_param_bits_fp32": 50475040,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0028489430745442,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "Q",
+              "n_floats": 1572864
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "mu_x",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 1536,
+              "bytes_fp64": 3072,
+              "item": "mu_y",
+              "n_floats": 384
+            },
+            {
+              "bytes_fp32": 4,
+              "bytes_fp64": 8,
+              "item": "scale",
+              "n_floats": 1
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "csls_r_d_legacy",
+              "n_floats": 600
+            },
+            {
+              "bytes_fp32": 600,
+              "bytes_fp64": 1200,
+              "item": "csls_r_d_native",
+              "n_floats": 150
+            }
+          ],
+          "full_reindex_bytes_fp32": 12288000,
+          "full_reindex_forward_passes": 750,
+          "new_encoder_forward_passes": 445,
+          "precision_metadata_bytes": 64,
+          "samples": {
+            "anchors": 280,
+            "dev_queries": 15,
+            "dev_ref_docs": 160
+          },
+          "work_over_full_reindex": 0.5933333333333334
+        },
+        "UncenteredProcrustes": {
+          "added_bytes_fp32": 8752190,
+          "added_bytes_fp64": 17504246,
+          "added_over_full_reindex_fp32": 0.7122550455729166,
+          "already_retained_legacy_index_bytes_fp32": 1152000,
+          "backfill_index_bits": 750,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 2457600,
+              "bytes_fp64": 4915200,
+              "item": "native_backfill_embeddings",
+              "n_floats": 614400
+            }
+          ],
+          "bridge": "UncenteredProcrustes",
+          "bridge_param_bits_fp32": 50331648,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "W",
+              "n_floats": 1572864
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "csls_r_d_legacy",
+              "n_floats": 600
+            },
+            {
+              "bytes_fp32": 600,
+              "bytes_fp64": 1200,
+              "item": "csls_r_d_native",
+              "n_floats": 150
+            }
+          ],
+          "full_reindex_bytes_fp32": 12288000,
+          "full_reindex_forward_passes": 750,
+          "new_encoder_forward_passes": 445,
+          "precision_metadata_bytes": 40,
+          "samples": {
+            "anchors": 280,
+            "dev_queries": 15,
+            "dev_ref_docs": 160
+          },
+          "work_over_full_reindex": 0.5933333333333334
+        },
+        "ZeroMuPolarBridge": {
+          "added_bytes_fp32": 8788926,
+          "added_bytes_fp64": 17575286,
+          "added_over_full_reindex_fp32": 0.71524462890625,
+          "already_retained_legacy_index_bytes_fp32": 1152000,
+          "backfill_index_bits": 750,
+          "backfill_payload": [
+            {
+              "bytes_fp32": 2457600,
+              "bytes_fp64": 4915200,
+              "item": "native_backfill_embeddings",
+              "n_floats": 614400
+            }
+          ],
+          "bridge": "ZeroMuPolarBridge",
+          "bridge_param_bits_fp32": 50606080,
+          "bridge_param_bits_over_dsrc_dtgt_32": 1.0054524739583333,
+          "bridge_params": [
+            {
+              "bytes_fp32": 6291456,
+              "bytes_fp64": 12582912,
+              "item": "Q",
+              "n_floats": 1572864
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "mu_x",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 1536,
+              "bytes_fp64": 3072,
+              "item": "mu_d_dev",
+              "n_floats": 384
+            },
+            {
+              "bytes_fp32": 16384,
+              "bytes_fp64": 32768,
+              "item": "ema_mu_q_state",
+              "n_floats": 4096
+            },
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "per_doc_centered_norm_sidecar_fp32",
+              "n_floats": 600
+            }
+          ],
+          "csls_state": [
+            {
+              "bytes_fp32": 2400,
+              "bytes_fp64": 4800,
+              "item": "csls_r_d_legacy",
+              "n_floats": 600
+            },
+            {
+              "bytes_fp32": 600,
+              "bytes_fp64": 1200,
+              "item": "csls_r_d_native",
+              "n_floats": 150
+            }
+          ],
+          "full_reindex_bytes_fp32": 12288000,
+          "full_reindex_forward_passes": 750,
+          "new_encoder_forward_passes": 445,
+          "precision_metadata_bytes": 72,
+          "samples": {
+            "anchors": 280,
+            "dev_queries": 15,
+            "dev_ref_docs": 160
+          },
+          "work_over_full_reindex": 0.5933333333333334
+        }
+      },
+      "margin_calibration": {
+        "a": 0.5453908972456251,
+        "b": -0.09713339635954202,
+        "margin": 0.13910656582356262,
+        "n_pairs": 1252,
+        "residual_abs_median": 0.056391277624642244
+      },
+      "n_anchors_fit": 280,
+      "n_backfill": 150,
+      "n_dev_queries": 15,
+      "n_dev_ref_docs": 160,
+      "n_eval_docs": 750,
+      "n_eval_queries": 35,
+      "ndcg10": {
+        "centered_csls": 0.484398,
+        "native_qwen_full_reindex": 0.388352,
+        "uncentered_csls": 0.428334
+      },
+      "reproduction_vs_w22_04": {
+        "centered_abs_diff": 0.0,
+        "centered_csls_recorded": 0.484398,
+        "uncentered_abs_diff": 0.0,
+        "uncentered_csls_recorded": 0.428334
+      }
+    }
+  },
+  "per_query_dump": {
+    "path": "C:\\Users\\mattm\\AppData\\Local\\Temp\\claude\\439e695c92b40043\\c9f4318c-455f-427a-844a-07562a0a3c42\\scratchpad\\w22-06\\artifacts\\pv7_w23b_w22_06\\scratch\\w22_06_per_query.jsonl",
+    "rows": 2549
+  },
+  "preregistration": "artifacts/pv7_w23b_w22_06/PREREGISTRATION.md",
+  "row_collisions_scrubbed": {
+    "prior7": {
+      "anchor_docs": 0,
+      "dev_queries": 0,
+      "dev_ref_docs": 0
+    },
+    "remaining5": {
+      "anchor_docs": 0,
+      "dev_queries": 0,
+      "dev_ref_docs": 0
+    }
+  },
+  "subtest_a_margin_flips": {
+    "decision": {
+      "claim_errors_are_margin_level": "SUPPORTED",
+      "domains_with_frac_explainable_ge_0_50": 12,
+      "margin_vulnerability_phenomenon": "PRESENT",
+      "n_domains": 12,
+      "pooled_frac_missing_margin_explainable": 0.9954143738535934,
+      "pooled_frac_queries_with_flip": 0.9968615143193409
+    },
+    "pooled": {
+      "frac_missing_margin_explainable": 0.9954143738535934,
+      "frac_queries_with_any_error": 0.9972538250294233,
+      "frac_queries_with_flip": 0.9968615143193409,
+      "mean_missing_per_query": 4.705374656728129,
+      "n_missing_margin_explainable": 11939,
+      "n_missing_total": 11994,
+      "n_queries": 2549
+    }
+  },
+  "subtest_b_chain_vs_direct": {
+    "reason": "needs bge-small-384, mpnet-768 and bge-m3-1024 embeddings; none cached; task rule: re-encoding parts are scoped out instead of using the GPU",
+    "status": "DEFERRED_SCOPE",
+    "verdict": null
+  },
+  "subtest_c_centering_law_lodo": {
+    "domains": [
+      "climate-fever",
+      "cqadupstack-android",
+      "cqadupstack-english",
+      "cqadupstack-gis",
+      "cqadupstack-physics",
+      "cqadupstack-programmers",
+      "cqadupstack-stats",
+      "cqadupstack-tex",
+      "cqadupstack-unix",
+      "dbpedia",
+      "touche-2020",
+      "trec-covid"
+    ],
+    "in_sample_alpha": 0.05482239981670563,
+    "in_sample_beta": 0.13027593104348065,
+    "in_sample_r2": 0.013191748625912325,
+    "lodo_predictions": {
+      "climate-fever": 0.058275834049273396,
+      "cqadupstack-android": 0.05777680148356549,
+      "cqadupstack-english": 0.05469953569687017,
+      "cqadupstack-gis": 0.07409616146783472,
+      "cqadupstack-physics": 0.05788833079230388,
+      "cqadupstack-programmers": 0.0519554891478357,
+      "cqadupstack-stats": 0.054817331318597694,
+      "cqadupstack-tex": 0.05948351122459865,
+      "cqadupstack-unix": 0.057319567363903264,
+      "dbpedia": 0.05494676353034254,
+      "touche-2020": 0.05896644964374964,
+      "trec-covid": 0.05409139086977706
+    },
+    "r2_lodo": -0.4762937974048804,
+    "sign_accuracy": 1.0,
+    "spearman_x_g": 0.20979020979020982,
+    "verdict": "KILL"
+  },
+  "subtest_d_conformal_containment": {
+    "alpha": 0.1,
+    "group_transfer": {
+      "prior7_to_remaining5": {
+        "coverage": 0.7955271565495208,
+        "k_star": 301,
+        "n_cal": 599,
+        "n_test": 626
+      },
+      "remaining5_to_prior7": {
+        "coverage": 0.9615384615384616,
+        "k_star": 448,
+        "n_cal": 674,
+        "n_test": 650
+      }
+    },
+    "k": 10,
+    "kill_reasons": {
+      "in_minus_ood_coverage_gt_5pp": true,
+      "median_in_domain_set_size_gt_limit": true,
+      "median_lodo_set_size_gt_limit": true,
+      "nominal_minus_ood_coverage_gt_5pp": false
+    },
+    "max_k_star_in_domain": 602,
+    "max_k_star_lodo": 402,
+    "mean_coverage_in_domain": 0.9217093425472789,
+    "mean_coverage_lodo": 0.8614559334364916,
+    "median_k_star_in_domain": 329.0,
+    "median_k_star_lodo": 393.0,
+    "per_domain": {
+      "climate-fever": {
+        "coverage_drop": 0.17391304347826086,
+        "coverage_in_domain": 0.9565217391304348,
+        "coverage_lodo": 0.782608695652174,
+        "k_star_in_domain": 562,
+        "k_star_lodo": 365,
+        "n_cal": 145,
+        "n_docs": 750,
+        "n_test": 115
+      },
+      "cqadupstack-android": {
+        "coverage_drop": -0.07377049180327866,
+        "coverage_in_domain": 0.819672131147541,
+        "coverage_lodo": 0.8934426229508197,
+        "k_star_in_domain": 311,
+        "k_star_lodo": 396,
+        "n_cal": 118,
+        "n_docs": 750,
+        "n_test": 122
+      },
+      "cqadupstack-english": {
+        "coverage_drop": 0.2706766917293233,
+        "coverage_in_domain": 0.924812030075188,
+        "coverage_lodo": 0.6541353383458647,
+        "k_star_in_domain": 549,
+        "k_star_lodo": 354,
+        "n_cal": 127,
+        "n_docs": 750,
+        "n_test": 133
+      },
+      "cqadupstack-gis": {
+        "coverage_drop": -0.024390243902438935,
+        "coverage_in_domain": 0.926829268292683,
+        "coverage_lodo": 0.9512195121951219,
+        "k_star_in_domain": 251,
+        "k_star_lodo": 402,
+        "n_cal": 137,
+        "n_docs": 750,
+        "n_test": 123
+      },
+      "cqadupstack-physics": {
+        "coverage_drop": -0.0714285714285714,
+        "coverage_in_domain": 0.9107142857142857,
+        "coverage_lodo": 0.9821428571428571,
+        "k_star_in_domain": 260,
+        "k_star_lodo": 397,
+        "n_cal": 128,
+        "n_docs": 750,
+        "n_test": 112
+      },
+      "cqadupstack-programmers": {
+        "coverage_drop": -0.04255319148936165,
+        "coverage_in_domain": 0.9361702127659575,
+        "coverage_lodo": 0.9787234042553191,
+        "k_star_in_domain": 286,
+        "k_star_lodo": 401,
+        "n_cal": 99,
+        "n_docs": 750,
+        "n_test": 141
+      },
+      "cqadupstack-stats": {
+        "coverage_drop": 0.0,
+        "coverage_in_domain": 0.88,
+        "coverage_lodo": 0.88,
+        "k_star_in_domain": 373,
+        "k_star_lodo": 390,
+        "n_cal": 95,
+        "n_docs": 750,
+        "n_test": 125
+      },
+      "cqadupstack-tex": {
+        "coverage_drop": -0.040000000000000036,
+        "coverage_in_domain": 0.944,
+        "coverage_lodo": 0.984,
+        "k_star_in_domain": 297,
+        "k_star_lodo": 397,
+        "n_cal": 135,
+        "n_docs": 750,
+        "n_test": 125
+      },
+      "cqadupstack-unix": {
+        "coverage_drop": -0.03539823008849552,
+        "coverage_in_domain": 0.9469026548672567,
+        "coverage_lodo": 0.9823008849557522,
+        "k_star_in_domain": 292,
+        "k_star_lodo": 401,
+        "n_cal": 127,
+        "n_docs": 750,
+        "n_test": 113
+      },
+      "dbpedia": {
+        "coverage_drop": 0.09230769230769231,
+        "coverage_in_domain": 0.9230769230769231,
+        "coverage_lodo": 0.8307692307692308,
+        "k_star_in_domain": 449,
+        "k_star_lodo": 371,
+        "n_cal": 130,
+        "n_docs": 954,
+        "n_test": 130
+      },
+      "touche-2020": {
+        "coverage_drop": 0.0,
+        "coverage_in_domain": 0.9444444444444444,
+        "coverage_lodo": 0.9444444444444444,
+        "k_star_in_domain": 347,
+        "k_star_lodo": 390,
+        "n_cal": 16,
+        "n_docs": 750,
+        "n_test": 18
+      },
+      "trec-covid": {
+        "coverage_drop": 0.47368421052631576,
+        "coverage_in_domain": 0.9473684210526315,
+        "coverage_lodo": 0.47368421052631576,
+        "k_star_in_domain": 602,
+        "k_star_lodo": 376,
+        "n_cal": 16,
+        "n_docs": 750,
+        "n_test": 19
+      }
+    },
+    "secondary_verdict_if_max_instead_of_median": "KILL",
+    "set_size_limit": 200,
+    "verdict": "KILL"
+  },
+  "subtest_e_bit_ledger_note": "per-domain ledgers under per_domain[*].ledger; descriptive, no kill rule",
+  "wall_seconds": 196.2
+}
