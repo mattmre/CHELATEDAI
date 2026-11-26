@@ -16,8 +16,10 @@ Numerical-tie contract (``PRW-NUMERICAL-TIE-CONTRACT-001``)
 The dense carrier scorer ranks exact integers, never raw float FFT output.
 
 1. Scope.  Query and reference carriers must be bipolar (every entry +/-1).
-   The query is checked directly; each reference layer must have squared norm
-   ``L``.  Anything else fails closed with :class:`CampaignValidationError`.
+   The query is checked directly; each reference layer is reconstructed from
+   its cached spectrum (inverse rfft) and every entry must be within ``0.25``
+   of ``+/-1``, and its squared norm must be ``L``.  Anything else fails
+   closed with :class:`CampaignValidationError`.
    Every campaign query (planted, bit-flipped, non-cyclic, unrelated) and
    every Legendre/Rademacher template is bipolar.
 2. Exact quantity.  For bipolar layers the cyclic correlation count
@@ -36,9 +38,13 @@ The dense carrier scorer ranks exact integers, never raw float FFT output.
    ``L = 4691`` the bound is about ``3.2e-8``; residuals observed at
    ``L in {4091, 4096, 4691}`` were below ``1e-12``.
 4. Exact recovery.  The bound must be below ``0.25`` (half of the one-half
-   unique-rounding radius), otherwise the scorer refuses.  The computed value
-   is rounded to the nearest integer only if its residual is within the bound;
-   a larger residual fails closed instead of being snapped.
+   unique-rounding radius), otherwise the scorer refuses.  The residual check
+   ``|c_hat - rint(c_hat)| <= bound`` is a nearest-integer sanity check only:
+   it measures distance to the *nearest* integer, not to the true count, so it
+   cannot by itself detect rounding to a wrong integer.  Correctness of the
+   rounded value rests on the declared bound (item 3) plus the parity check
+   ``c == L (mod 2)``, which catches an off-by-one but not an off-by-two
+   error.
 5. Ranking and tie-break.  Policy objectives are integer sums
    ``sum_l m_l c_l``; type scores are the integer maximum over shift and mask.
    Types tie iff their integer objectives are equal, and the frozen rule
@@ -870,6 +876,14 @@ def _exact_bipolar_correlation_counts(
     # A bipolar layer has squared norm exactly ``length``; sqrt/square round
     # trips stay within a few ulps, far inside the one-half integer guard.
     if not np.all(np.abs(reference_norms * reference_norms - length) <= 0.25):
+        raise CampaignValidationError(
+            "numerical-tie contract requires bipolar (+/-1) reference layers"
+        )
+    # The norm alone admits non-bipolar integer layers (e.g. [5, 2, 1, 1, 0...]
+    # at L = 31), so check the entries themselves from the cached spectrum.
+    reference_ffts = np.asarray(reference_ffts)
+    reconstructed = np.fft.irfft(reference_ffts, n=length, axis=-1)
+    if not np.all(np.abs(np.abs(reconstructed) - 1.0) <= 0.25):
         raise CampaignValidationError(
             "numerical-tie contract requires bipolar (+/-1) reference layers"
         )
@@ -1774,6 +1788,12 @@ def _payload_only_scores(
     payload_ffts: Optional[np.ndarray] = None,
     payload_norms: Optional[np.ndarray] = None,
 ) -> Tuple[np.ndarray, np.ndarray, Dict[str, Any], np.ndarray]:
+    """Raw float payload-only correlation scores.
+
+    NOT covered by PRW-NUMERICAL-TIE-CONTRACT-001: scores are raw float FFT
+    correlations divided by norms, so mathematically equal scores may differ
+    by float noise and the lowest-ID tie rule is not guaranteed on this route.
+    """
     query_fft = np.fft.rfft(query, axis=1)
     waypoints, layers, length = payload_type_bank.shape
     if payload_ffts is None:
@@ -1825,7 +1845,12 @@ def _payload_only_scores(
 
 
 def _rank_descending(scores: np.ndarray) -> np.ndarray:
-    # Stable sorting preserves the frozen lowest-canonical-ID exact-tie rule.
+    # Stable sorting applies the lowest-canonical-ID rule to scores that are
+    # bit-identical.  It is only exact when the scores are exact (lattice
+    # values from the dense carrier scorer).  The payload-only route feeds it
+    # raw float FFT correlations from ``_payload_only_scores``; that route is
+    # OUTSIDE PRW-NUMERICAL-TIE-CONTRACT-001 and mathematically tied payload
+    # scores can still be split by float noise there.
     return np.argsort(-scores, kind="stable")
 
 

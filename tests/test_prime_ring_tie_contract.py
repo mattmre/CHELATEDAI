@@ -134,6 +134,22 @@ class TestNumericalTieContract(unittest.TestCase):
         with self.assertRaises(CampaignValidationError):
             _correlation_bank(np.ones((8, 11)), reference_ffts, reference_norms * 1.1, 11)
 
+    def test_non_bipolar_reference_with_bipolar_norm_fails_closed(self):
+        # [5, 2, 1, 1, 0, ...] has squared norm 25 + 4 + 1 + 1 = 31 = L, so the
+        # norm check alone admits it; the entrywise check must refuse it.
+        length = 31
+        templates, _masks = _bank(length)
+        bad = np.zeros(length)
+        bad[:4] = [5.0, 2.0, 1.0, 1.0]
+        self.assertEqual(float(bad @ bad), float(length))
+        references = templates.astype(np.float64).copy()
+        references[0, 0] = bad
+        reference_ffts = np.fft.rfft(references, axis=2)
+        reference_norms = np.linalg.norm(references, axis=2)
+        np.testing.assert_allclose(reference_norms[0, 0] ** 2, length)
+        with self.assertRaisesRegex(CampaignValidationError, "bipolar"):
+            _correlation_bank(np.ones((8, length)), reference_ffts, reference_norms, length)
+
     def test_off_lattice_correlations_fail_closed(self):
         correlations = np.full((2, 8, 11), 1.0 / 11.0)
         correlations[0, 0, 0] += 1e-12
@@ -146,7 +162,9 @@ class TestNumericalTieContract(unittest.TestCase):
         templates, _masks = _bank(11)
         reference_ffts = np.fft.rfft(templates, axis=2).copy()
         reference_norms = np.linalg.norm(templates, axis=2)
-        reference_ffts[0, 0, 0] += 3.3  # shifts every count by 0.3
+        # +2.2 on the DC bin moves each reference entry by 0.2 (still within the
+        # entrywise +/-1 guard) and each all-ones count by 2.2 (residual 0.2).
+        reference_ffts[0, 0, 0] += 2.2
         with self.assertRaisesRegex(CampaignValidationError, "residual"):
             _correlation_bank(np.ones((8, 11)), reference_ffts, reference_norms, 11)
 
