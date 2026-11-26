@@ -181,6 +181,28 @@ class TestAntigravityEngine(unittest.TestCase):
             mask = engine._chelate_toxicity(cluster)
             np.testing.assert_array_equal(mask, np.ones(768))
 
+    def test_spectral_rerank_isotropic_cluster_uses_identity_mask(self):
+        """D-07 also changes the run_inference CHELATE rerank path.
+
+        On main an isotropic cluster produced an all-zero mask, every rerank
+        score was 0 and the stable sort returned the input order.  With the
+        identity fallback the rerank is plain centred cosine.  This pins both
+        the mask and the resulting order.
+        """
+        engine = self._make_engine()
+        patterns = np.array([[1, 1, 1, 1], [-1, -1, -1, -1], [1, -1, 1, -1], [-1, 1, -1, 1]], dtype=float)
+        local_vectors = np.tile(patterns, (1, 768 // 4))
+        query_vec = np.tile(np.array([0.9, -1.1, 0.8, -1.2]), 768 // 4)
+        local_ids = ["a", "b", "c", "d"]
+        sorted_ids, center = engine._spectral_chelation_ranking(query_vec, list(local_vectors), local_ids)
+        np.testing.assert_array_equal(engine._last_chelation_mask, np.ones(768))
+        centred_q = query_vec - center
+        centred_c = local_vectors - center
+        cos = centred_c @ centred_q / (np.linalg.norm(centred_c, axis=1) * np.linalg.norm(centred_q))
+        expected = [local_ids[i] for i in sorted(range(4), key=lambda i: -cos[i])]
+        self.assertEqual(sorted_ids, expected)
+        self.assertEqual(sorted_ids, ["c", "b", "a", "d"])
+
     def test_chelate_toxicity_nondegenerate_mask_unchanged(self):
         """The fallback must not alter the normal percentile mask."""
         engine = self._make_engine()

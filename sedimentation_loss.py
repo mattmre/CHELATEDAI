@@ -246,8 +246,10 @@ class OPSDJSDSimilarityDistillLoss(nn.Module):
         super().__init__()
         if temperature <= 0:
             raise ValueError("temperature must be positive")
-        if not 0.0 <= beta <= 1.0:
-            raise ValueError("beta must be in [0, 1]")
+        # At beta = 0 or 1 the generalized JSD is identically zero, so the
+        # distillation term would silently vanish; only the open interval is valid.
+        if not 0.0 < beta < 1.0:
+            raise ValueError("beta must be in the open interval (0, 1)")
         self.temperature = temperature
         self.beta = beta
         self.lambda_ret = lambda_ret
@@ -273,7 +275,9 @@ class OPSDJSDSimilarityDistillLoss(nn.Module):
         ret_loss = F.mse_loss(student_norm, base_norm)
 
         batch_size = student_norm.size(0)
-        if batch_size < 2:
+        if batch_size == 0:
+            raise ValueError("OPSDJSDSimilarityDistillLoss requires a non-empty batch")
+        if batch_size == 1:
             # No off-diagonal neighbours: the similarity distribution is undefined.
             return self.lambda_ret * ret_loss
 

@@ -510,6 +510,16 @@ class TestOPSDJSDSimilarityDistillLossMath(unittest.TestCase):
             OPSDJSDSimilarityDistillLoss(temperature=0.0)
         with self.assertRaises(ValueError):
             OPSDJSDSimilarityDistillLoss(beta=1.5)
+        # The endpoints make the JSD term identically zero, so they are refused.
+        for beta in (0.0, 1.0):
+            with self.assertRaises(ValueError):
+                OPSDJSDSimilarityDistillLoss(beta=beta)
+
+    def test_rejects_empty_batch(self):
+        loss_fn = OPSDJSDSimilarityDistillLoss()
+        empty = torch.zeros(0, 8)
+        with self.assertRaises(ValueError):
+            loss_fn(empty, empty, empty)
 
 
 class TestOPSDAymmetricPrivilegedLossMath(unittest.TestCase):
