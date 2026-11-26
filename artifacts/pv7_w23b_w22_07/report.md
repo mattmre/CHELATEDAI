@@ -14,7 +14,16 @@ depends on.
 The implementer sub-agent's harness blocked it from writing this file, so the orchestrator transcribed it from the
 sub-agent's final report. Every number below comes from `w22_07_results.json`.
 
-## Verdict: `KILL_T_D` (PROPOSED, pending Tier B)
+## Verdict: `KILL_T_D` (PROPOSED; Tier B round 1 scored 88, important)
+
+**Scope of the kill (Tier B round 1).** The verdict holds only where public evidence carries **zero provenance
+signal**. At λ=0 the text likelihood is uninformative (P(bin | copy) ≈ P(bin | indep) ≈ 0.8 in the top bin). At the
+primary price c=0.10 the pricing never binds: A6 checks exactly 1.0 witness per family and never abstains. So the
+primary cell could not exercise either of A6's distinguishing mechanisms (targeting and priced stopping). A KILL was
+close to guaranteed by construction, and ADVANCE was reachable only through noise. The preregistration expected this,
+but it bounds what the kill means. Under mild signal (λ=0.25, where the classifier scores only 0.57–0.61), A6 beats
+every conventional arm in all 18 B=1 cells. Do **not** cite this as a general kill of T-D. W22-10 and W22-12 should
+read it as "no T-D premium without provenance signal".
 
 ### The fixture gate is valid
 
@@ -54,6 +63,16 @@ and 0.5.
 - The bootstrap difference H_A6(0.5) − best conventional H is +0.0042, with 95% CI [−0.021, +0.028]. A6 is no better.
 - Per seed, A5 vs A6 at π=0.5 is 0.154/0.171, 0.183/0.163 and 0.179/0.196. The sign flips between seeds, which fits
   noise.
+- **The verdict is a pooled coin-flip (Tier B round 1).**
+  - Under the frozen rule, seed 20261127 on its own gives **ADVANCE_T_D**, with no conventional arm matching it.
+    Seeds 20261126 and 20261128 give KILL.
+  - A5 and A6 decide differently on 77 of 720 families, all I members: 40 go one way and 37 the other, a net of 3.
+  - Which witness A6 checks follows noise in the dev-fitted prior. For seed 26, m=2, the prior puts '01' at 0.105
+    and '10' at 0.068, so A6 checks the *later* witness (`w22_07_copy_twins.py:536, 596-608`).
+  - The true difference is about 0, so KILL is the right answer in expectation. It is not robust evidence.
+- **The bootstrap CI is slightly too narrow.** The 360 pairs pool 3 seeds over the same 240 roots, so roots recur.
+  Resampling clusters by `seed:pair` (`scripts/run_pv7_w23b_w22_07_copy_twins.py:52`), not by root. This does not
+  change the decision.
 
 ### H2: only a check separates the twins
 
@@ -86,8 +105,14 @@ A text-only classifier scores 1.000 on each legacy fixture:
 ### Sensitivity grid
 
 - The kill condition holds in 20 of the 36 λ=0 cells.
-- In all 16 cells where it fails, A6 is worse than the no-check ledger at π=0.05.
-- At c=0.25, A6's win at π=0.5 comes from not checking at all. That is a stopping rule, not provenance targeting.
+- In 13 of the 16 cells where it fails, A6 is worse than the no-check ledger at π=0.05. (Corrected after Tier B
+  round 1. An earlier version said all 16, which was a transcription error.) The other 3 cells are λ=0, B=2, c=0.02,
+  w_FR=1.0, at all three w_A values:
+  - A6 scores 0.042 against A3's 0.050, so A6 beats the no-check ledger and loses only to A4 (0.0304).
+  - The kill fails there by a floating-point margin: A5 at π=0.05 is 0.047 against a bound of 0.047.
+- At c=0.25 and w_A=0.20 (4 cells), A6's win at π=0.5 comes from not checking at all (0.00 checks). That is a
+  stopping rule, not provenance targeting. In the other failing c=0.25 cells, A6 still checks (0.08, 0.88 or 0.99
+  witnesses on average) and still beats A5, for example 0.314 vs 0.322.
 
 | λ | Kill cells, B=1 (of 18) | Kill cells, B=2 (of 18) |
 |---|---|---|
@@ -123,8 +148,26 @@ A text-only classifier scores 1.000 on each legacy fixture:
   - It passes edge envelopes to `append`, which raises on them.
   - #55 never had edges, so the bug never fired there.
   - This module routes edges correctly. The shared script is left unfixed.
+- **D9 (undeclared; found by Tier B round 1):** `CHECK_EDGE_TICK = 35` (`w22_07_copy_twins.py:74`), the timestamp on
+  the DERIVES edge A4 adds after a check. It is not in the preregistration. Tier B judged it harmless.
 
-## Brutal Honesty (BHS_SELF_DRAFT 92; Tier B pending)
+## Tier B round 1
+
+A fresh adversarial agent, `add5b29e07181830c`, scored this **88** (important). It could not disprove KILL_T_D:
+- The preregistration came first.
+- The arms and prices match it.
+- A re-run into `scratch/tierb/` reproduced every key.
+- The λ=0 twins are identical apart from blinded hashes.
+- A5 gets no information A6 lacks, and the budget is equal: 1.0 check per family each.
+
+It found:
+- the false "all 16 cells" sentence and the over-broad c=0.25 sentence (both corrected above);
+- that seed robustness was under-disclosed, and that the verdict needs scoping to zero provenance signal (both added
+  above);
+- the undeclared D9;
+- the bootstrap clustering issue.
+
+## Brutal Honesty (BHS_SELF_DRAFT 92; BHS_TIER_B 88; BHS_OFFICIAL 88)
 
 - **L4:**
   - There is one generic twin fixture, built from #55 roots, rather than a replacement for each of #20/#35/#38/#46/#55.
