@@ -1,0 +1,51 @@
+{
+  "arms": {
+    "hf_eager_bf16_unrouted_30cases": {
+      "max_ms": 1270.27,
+      "mean_ms": 1176.75,
+      "median_ms": 1257.78,
+      "p95_ms": 1266.18,
+      "stance_accuracy": 0.1429
+    },
+    "vllm_plus_deterministic_prefilter_120cases": {
+      "batched_throughput_ms_per_case": 1.11,
+      "fast_passed_docs": 322,
+      "llm_docs_invoked": 128,
+      "max_ms": 60.41,
+      "mean_ms": 29.07,
+      "median_ms": 54.83,
+      "p95_ms": 58.34,
+      "stance_accuracy": 0.9822,
+      "trigger_rate": 0.2844
+    },
+    "vllm_unrouted_120cases": {
+      "max_ms": 73.58,
+      "mean_ms": 59.3,
+      "median_ms": 58.18,
+      "p95_ms": 67.18,
+      "stance_accuracy": 0.2667
+    }
+  },
+  "generated_utc": "2026-11-26T13:34:03.719765+00:00",
+  "n_cases": 120,
+  "n_docs": 450,
+  "provenance": {
+    "git_commit_sha": "unknown",
+    "gpu_name": "NVIDIA GB10",
+    "hardware_cohort": "spark2_gb10:NVIDIA GB10",
+    "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+    "python_version": "3.12.13",
+    "source_archive_sha256": "unknown",
+    "spine_claim_registry_sha256": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+    "torch_version": "2.13.0+cu130",
+    "wall_seconds_total": 260.35
+  },
+  "schema_version": "colab_l4_w24_06_vllm_fastpath_v1",
+  "verdict": {
+    "g1_stretch_250ms_pass": true,
+    "g1_target_1500ms_pass": true,
+    "speedup_routed_vllm_vs_hf_eager": 40.48,
+    "speedup_routing_over_unrouted_vllm": 2.04
+  },
+  "wave_item_id": "W24-06"
+}

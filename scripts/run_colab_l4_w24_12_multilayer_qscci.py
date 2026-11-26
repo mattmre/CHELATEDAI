@@ -88,7 +88,7 @@ def eval_model_multilayer(model_id: str) -> Dict[str, Any]:
 
     print(f"[w24-12] Loading {model_id} in bfloat16 ...", flush=True)
     tok = AutoTokenizer.from_pretrained(model_id)
-    model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype=torch.bfloat16, device_map="cuda")
+    model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype=torch.bfloat16).to("cuda")
     model.eval()
     device = next(model.parameters()).device
     dtype = next(model.parameters()).dtype

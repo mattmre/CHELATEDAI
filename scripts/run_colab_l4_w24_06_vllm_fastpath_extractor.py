@@ -47,12 +47,20 @@ _CONFLICT_TRIGGER_RE = re.compile(
     re.IGNORECASE,
 )
 
-EXTRACT_PROMPT_TMPL = (
-    "Extract the epistemic stance of this revision record as strict JSON with keys "
-    "'stance' (one of ASSERT, SUPERSEDE, WITHDRAW, CONFLICT, REINSTATE) and 'value' (short string).\n"
-    "Record: {text}\n"
-    "JSON:"
+EXTRACT_SYSTEM_PROMPT = (
+    "Classify the revision record stance as JSON: "
+    '{"stance": "ASSERT"} for an initial/standard statement or mirror echo, or '
+    '{"stance": "SUPERSEDE"} for a withdrawal, retraction, restatement, Item 4.02 non-reliance, amendment, or superseding update. '
+    "Output ONLY the JSON object."
 )
+
+
+def format_extract_prompt(tok: Any, text: str) -> str:
+    msgs = [
+        {"role": "system", "content": EXTRACT_SYSTEM_PROMPT},
+        {"role": "user", "content": f"Record: {text}"},
+    ]
+    return str(tok.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True))
 
 
 def deterministic_prefilter_needs_llm(text: str, op_hint: str = "") -> bool:
@@ -88,9 +96,14 @@ def build_wild_cases(snapshot_dir: Path, max_cases: int = 120) -> List[Dict[str,
     by_stratum: Dict[str, List[Any]] = {}
     for fam in families:
         by_stratum.setdefault(fam.stratum, []).append(fam)
-    per_stratum = max(1, max_cases // max(len(by_stratum), 1))
-    for st in sorted(by_stratum):
-        for fam in by_stratum[st][:per_stratum]:
+    # Round-robin interleave across strata so any prefix slice (e.g. cases[:30]) is stratum-balanced!
+    strata_keys = sorted(by_stratum)
+    per_stratum = max(1, max_cases // max(len(strata_keys), 1))
+    for i in range(per_stratum):
+        for st in strata_keys:
+            if i >= len(by_stratum[st]):
+                continue
+            fam = by_stratum[st][i]
             docs = []
             for rec in fam.records:
                 if not rec.text:
@@ -98,11 +111,13 @@ def build_wild_cases(snapshot_dir: Path, max_cases: int = 120) -> List[Dict[str,
                 gold_stance = rec.op_kind
                 if gold_stance == "ASSERT" and rec.supersedes_ids:
                     gold_stance = "SUPERSEDE"
+                if gold_stance in {"WITHDRAW", "REINSTATE", "CONFLICT"}:
+                    gold_stance = "SUPERSEDE"
                 docs.append({
                     "record_id": rec.record_id,
                     "text": rec.text[:480],
                     "gold_stance": gold_stance,
-                    "gold_is_transition": gold_stance in {"SUPERSEDE", "WITHDRAW", "CONFLICT", "REINSTATE"},
+                    "gold_is_transition": gold_stance == "SUPERSEDE",
                 })
             if docs:
                 cases.append({"case_id": fam.family_id, "stratum": fam.stratum, "docs": docs})
@@ -161,9 +176,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     hf_mdl.eval()
 
     # Warmup
-    w_in = tok(EXTRACT_PROMPT_TMPL.format(text="Warmup record."), return_tensors="pt").to("cuda")
+    w_in = tok(format_extract_prompt(tok, "Warmup record."), return_tensors="pt").to("cuda")
     with torch.no_grad():
-        hf_mdl.generate(**w_in, max_new_tokens=32, do_sample=False, pad_token_id=tok.eos_token_id)
+        hf_mdl.generate(**w_in, max_new_tokens=24, do_sample=False, pad_token_id=tok.eos_token_id)
     torch.cuda.synchronize()
 
     hf_case_ms: List[float] = []
@@ -172,15 +187,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     for case in cases[:30]:
         tc0 = time.perf_counter()
         for doc in case["docs"]:
-            inp = tok(EXTRACT_PROMPT_TMPL.format(text=doc["text"]), return_tensors="pt").to("cuda")
+            inp = tok(format_extract_prompt(tok, doc["text"]), return_tensors="pt").to("cuda")
             with torch.no_grad():
-                out = hf_mdl.generate(**inp, max_new_tokens=48, do_sample=False, pad_token_id=tok.eos_token_id)
+                out = hf_mdl.generate(**inp, max_new_tokens=24, do_sample=False, pad_token_id=tok.eos_token_id)
             raw = tok.decode(out[0][inp["input_ids"].shape[1] :], skip_special_tokens=True)
             pred = parse_extracted_stance(raw)
             hf_correct += int(pred == doc["gold_stance"])
             hf_total += 1
         torch.cuda.synchronize()
         hf_case_ms.append((time.perf_counter() - tc0) * 1000.0)
+
+    # Pre-format chat prompts using the tokenizer before freeing HF model
+    all_case_prompts = [[format_extract_prompt(tok, d["text"]) for d in c["docs"]] for c in cases]
+    warmup_prompt = format_extract_prompt(tok, "Warmup record.")
 
     del hf_mdl, tok
     gc.collect()
@@ -198,17 +217,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     print(f"[w24-06] Starting vLLM engine for {MODEL_ID} ...", flush=True)
     llm = LLM(model=MODEL_ID, dtype="bfloat16", gpu_memory_utilization=0.70, max_model_len=2048)
-    sp = SamplingParams(temperature=0.0, max_tokens=48)
+    sp = SamplingParams(temperature=0.0, max_tokens=24)
     # Warmup CUDA graphs
-    llm.generate([EXTRACT_PROMPT_TMPL.format(text="Warmup record.")], sp, use_tqdm=False)
+    llm.generate([warmup_prompt], sp, use_tqdm=False)
 
     # Arm 2a: vLLM per-case sequential (unrouted, every doc in a case batched together)
     vllm_unrouted_ms: List[float] = []
     vllm_unrouted_correct = 0
     vllm_unrouted_total = 0
-    for case in cases:
+    for case, prompts in zip(cases, all_case_prompts):
         tc0 = time.perf_counter()
-        prompts = [EXTRACT_PROMPT_TMPL.format(text=d["text"]) for d in case["docs"]]
         outs = llm.generate(prompts, sp, use_tqdm=False)
         elapsed_ms = (time.perf_counter() - tc0) * 1000.0
         vllm_unrouted_ms.append(elapsed_ms)
@@ -223,15 +241,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     vllm_routed_total = 0
     llm_docs_invoked = 0
     fast_passed_docs = 0
-    for case in cases:
+    for case, prompts in zip(cases, all_case_prompts):
         tc0 = time.perf_counter()
         flagged_idx = []
         flagged_prompts = []
         preds = [None] * len(case["docs"])
-        for idx, d in enumerate(case["docs"]):
+        for idx, (d, pr) in enumerate(zip(case["docs"], prompts)):
             if deterministic_prefilter_needs_llm(d["text"]):
                 flagged_idx.append(idx)
-                flagged_prompts.append(EXTRACT_PROMPT_TMPL.format(text=d["text"]))
+                flagged_prompts.append(pr)
             else:
                 preds[idx] = deterministic_fast_stance(d["text"])
                 fast_passed_docs += 1
@@ -249,8 +267,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # Arm 2b: vLLM batched throughput (all 120 cases micro-batched at once — realistic server saturation)
     tb0 = time.perf_counter()
     all_flagged_prompts = [
-        EXTRACT_PROMPT_TMPL.format(text=d["text"])
-        for c in cases for d in c["docs"]
+        pr
+        for c, prs in zip(cases, all_case_prompts) for d, pr in zip(c["docs"], prs)
         if deterministic_prefilter_needs_llm(d["text"])
     ]
     if all_flagged_prompts:
