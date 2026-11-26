@@ -1243,6 +1243,50 @@ class TestBoundedAdapter(unittest.TestCase):
                         "BoundedAdapter should have base params + dim_scale")
 
 
+class _RoundingIdentityAdapter(torch.nn.Module):
+    """Exact identity map whose output differs from F.normalize(x) only by float32
+    rounding (normalizes in float64, casts back)."""
+
+    def __init__(self, input_dim):
+        super().__init__()
+        self.input_dim = input_dim
+
+    def forward(self, x):
+        xd = x.double()
+        return (xd / xd.norm(dim=-1, keepdim=True)).to(x.dtype)
+
+    def regularization_loss(self):
+        return torch.tensor(0.0)
+
+
+class TestBoundedAdapterNullAction(unittest.TestCase):
+    """D-06: min_correction=0.0 is the null-action-preserving configuration.
+
+    The default floor (0.01) amplifies any nonzero residual, including float
+    rounding dust; that default is intentionally left unchanged here because the
+    C3/C3b drift-recovery arms (test_run_drift_recovery_experiment golden
+    trajectories) depend on it."""
+
+    def test_identity_base_adapter_stays_identity_without_floor(self):
+        torch.manual_seed(0)
+        x = torch.randn(8, 384)
+        x_norm = torch.nn.functional.normalize(x, p=2, dim=1)
+        base = _RoundingIdentityAdapter(384)
+        self.assertLess((base(x) - x_norm).norm(dim=1).max().item(), 1e-6)
+        bounded = BoundedAdapter(base, min_correction=0.0)
+        with torch.no_grad():
+            shift = (bounded(x) - x_norm).norm(dim=1)
+        self.assertLess(shift.max().item(), 1e-6)
+
+    def test_min_correction_zero_preserves_tiny_corrections(self):
+        torch.manual_seed(0)
+        base = ChelationAdapter(input_dim=384)
+        x = torch.randn(4, 384)
+        with torch.no_grad():
+            self.assertTrue(torch.allclose(
+                BoundedAdapter(base, min_correction=0.0)(x), base(x), atol=1e-6))
+
+
 if __name__ == "__main__":
     # Run tests with verbose output
     unittest.main(verbosity=2)

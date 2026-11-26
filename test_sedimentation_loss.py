@@ -5,6 +5,7 @@ Validates InfoNCE, hybrid, and factory for sedimentation training losses.
 
 from __future__ import annotations
 
+import math
 import unittest
 from unittest.mock import patch, MagicMock
 from collections import defaultdict
@@ -17,6 +18,9 @@ from sedimentation_loss import (
     SedimentationHybridLoss,
     HardNegativeMiner,
     create_sedimentation_loss,
+    OPSDAymmetricPrivilegedLoss,
+    OPSDJSDSimilarityDistillLoss,
+    FilteredClippedDistillLoss,
 )
 
 
@@ -440,6 +444,161 @@ class TestConfigPresets(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             ChelationConfig.get_preset("nonexistent", "sedimentation_loss")
+
+
+class TestOPSDJSDSimilarityDistillLossMath(unittest.TestCase):
+    """D-03: JSD over in-batch similarity distributions must be a true JSD."""
+
+    def _unit(self, b=6, d=16, seed=0):
+        g = torch.Generator().manual_seed(seed)
+        return torch.nn.functional.normalize(torch.randn(b, d, generator=g), dim=1)
+
+    def test_loss_is_zero_at_identity(self):
+        """student == teacher == base must give exactly zero loss (JSD(P||P) = 0)."""
+        x = self._unit()
+        loss = OPSDJSDSimilarityDistillLoss()(x.clone(), x.clone(), x.clone())
+        self.assertAlmostEqual(loss.item(), 0.0, places=6)
+
+    def test_jsd_term_bounded_by_ln2_for_equal_weights(self):
+        """With beta=0.5 and no retention term the loss is a JSD, bounded by ln 2."""
+        loss_fn = OPSDJSDSimilarityDistillLoss(beta=0.5, lambda_ret=0.0)
+        for seed in range(5):
+            s = self._unit(seed=seed)
+            t = self._unit(seed=seed + 100)
+            loss = loss_fn(s, t, s)
+            self.assertGreaterEqual(loss.item(), -1e-7)
+            self.assertLessEqual(loss.item(), math.log(2.0) + 1e-6)
+
+    def test_matches_reference_jsd_on_off_diagonal_distributions(self):
+        """Loss equals beta*KL(Pt||M) + (1-beta)*KL(Ps||M) with T applied once, diagonal excluded."""
+        temperature, beta = 0.1, 0.3
+        s = self._unit(b=4, d=8, seed=1).double()
+        t = self._unit(b=4, d=8, seed=2).double()
+        loss = OPSDJSDSimilarityDistillLoss(temperature=temperature, beta=beta, lambda_ret=0.0)(s, t, s)
+
+        def probs(x):
+            sim = (x @ x.t()) / temperature
+            rows = []
+            for i in range(x.shape[0]):
+                row = torch.cat([sim[i, :i], sim[i, i + 1:]])
+                rows.append(torch.softmax(row, dim=0))
+            return torch.stack(rows)
+
+        ps, pt = probs(s), probs(t)
+        m = beta * pt + (1 - beta) * ps
+        kl_t = (pt * (pt.log() - m.log())).sum(dim=1).mean()
+        kl_s = (ps * (ps.log() - m.log())).sum(dim=1).mean()
+        expected = beta * kl_t + (1 - beta) * kl_s
+        self.assertAlmostEqual(loss.item(), expected.item(), places=6)
+
+    def test_singleton_batch_is_finite_and_retention_only(self):
+        x = self._unit(b=1)
+        loss = OPSDJSDSimilarityDistillLoss()(x, x, x)
+        self.assertTrue(torch.isfinite(loss))
+        self.assertAlmostEqual(loss.item(), 0.0, places=6)
+
+    def test_gradients_are_finite(self):
+        s = self._unit(seed=3).clone().requires_grad_(True)
+        t = self._unit(seed=4)
+        loss = OPSDJSDSimilarityDistillLoss()(s, t, t)
+        loss.backward()
+        self.assertTrue(torch.isfinite(s.grad).all())
+        self.assertGreater(s.grad.abs().sum().item(), 0.0)
+
+    def test_rejects_invalid_hyperparameters(self):
+        with self.assertRaises(ValueError):
+            OPSDJSDSimilarityDistillLoss(temperature=0.0)
+        with self.assertRaises(ValueError):
+            OPSDJSDSimilarityDistillLoss(beta=1.5)
+        # The endpoints make the JSD term identically zero, so they are refused.
+        for beta in (0.0, 1.0):
+            with self.assertRaises(ValueError):
+                OPSDJSDSimilarityDistillLoss(beta=beta)
+
+    def test_rejects_empty_batch(self):
+        loss_fn = OPSDJSDSimilarityDistillLoss()
+        empty = torch.zeros(0, 8)
+        with self.assertRaises(ValueError):
+            loss_fn(empty, empty, empty)
+
+
+class TestOPSDAymmetricPrivilegedLossMath(unittest.TestCase):
+    """D-04a: the delta penalty must restore large moves, not saturate above clip_delta."""
+
+    def test_nonzero_gradient_from_delta_penalty_above_clip_delta(self):
+        base = torch.nn.functional.normalize(torch.tensor([[1.0, 0.0, 0.0]]), dim=1)
+        # student is ~1.41 away from base (> clip_delta = 0.5); teacher == student
+        student = torch.tensor([[0.0, 1.0, 0.0]], requires_grad=True)
+        loss_fn = OPSDAymmetricPrivilegedLoss(lambda_ret=0.0, lambda_reg=0.0, clip_delta=0.5)
+        loss = loss_fn(student, base, student.detach().clone())
+        loss.backward()
+        self.assertGreater(student.grad.abs().sum().item(), 1e-6)
+
+    def test_no_delta_penalty_inside_clip_delta(self):
+        base = torch.tensor([[1.0, 0.0]])
+        student = torch.nn.functional.normalize(torch.tensor([[1.0, 0.1]]), dim=1)  # ~0.1 move
+        loss_fn = OPSDAymmetricPrivilegedLoss(lambda_ret=0.0, lambda_reg=0.0, clip_delta=0.5)
+        loss = loss_fn(student, base, student.clone())
+        self.assertAlmostEqual(loss.item(), 0.0, places=7)
+
+    def test_delta_penalty_is_squared_excess(self):
+        base = torch.tensor([[1.0, 0.0]])
+        student = torch.tensor([[0.0, 1.0]])  # |delta| = sqrt(2)
+        loss_fn = OPSDAymmetricPrivilegedLoss(lambda_ret=0.0, lambda_reg=0.0, clip_delta=0.5)
+        loss = loss_fn(student, base, student.clone())
+        self.assertAlmostEqual(loss.item(), 0.1 * (math.sqrt(2.0) - 0.5) ** 2, places=6)
+
+
+class TestFilteredClippedDistillLossMath(unittest.TestCase):
+    """D-04b: r_min/r_max must filter the raw gain/displacement ratio; loss must not
+    be rescaled by the acceptance rate."""
+
+    def _inputs(self, gains, norms):
+        b = len(gains)
+        g = torch.Generator().manual_seed(0)
+        student = torch.randn(b, 8, generator=g)
+        teacher = torch.randn(b, 8, generator=g)
+        return dict(
+            student_embs=student,
+            teacher_targets=teacher,
+            fitness_gains=torch.tensor(gains),
+            delta_norms=torch.tensor(norms),
+            quant_survivals=torch.ones(b),
+            base_embs=student.clone(),  # retention term = 0
+        )
+
+    def _per_sample(self, kw, tau=2.0):
+        div = (torch.nn.functional.normalize(kw["student_embs"], dim=1)
+               - torch.nn.functional.normalize(kw["teacher_targets"], dim=1)) ** 2
+        return torch.clamp(div, max=tau).mean(dim=1)
+
+    def test_r_max_is_not_vacuous(self):
+        # ratio = 2.0 > r_max = 1.4 must be rejected
+        kw = self._inputs([2.0], [1.0])
+        loss = FilteredClippedDistillLoss()(**kw)
+        self.assertAlmostEqual(loss.item(), 0.0, places=7)
+
+    def test_ratio_inside_band_is_accepted(self):
+        # ratio = 1.0 in (0.7, 1.4); under the old sigmoid this was sigmoid(1)=0.731 (accepted
+        # by accident) -- use 0.8 instead: sigmoid(0.8)=0.69 < 0.7 was wrongly rejected.
+        kw = self._inputs([0.8], [1.0])
+        loss = FilteredClippedDistillLoss()(**kw)
+        self.assertAlmostEqual(loss.item(), self._per_sample(kw)[0].item(), places=6)
+
+    def test_loss_is_mean_over_accepted_not_whole_batch(self):
+        kw = self._inputs([1.0, 5.0, 5.0, 5.0], [1.0, 1.0, 1.0, 1.0])  # only sample 0 accepted
+        loss = FilteredClippedDistillLoss()(**kw)
+        self.assertAlmostEqual(loss.item(), self._per_sample(kw)[0].item(), places=6)
+
+    def test_zero_accepted_batch_is_finite_zero(self):
+        kw = self._inputs([5.0, -1.0], [1.0, 1.0])
+        loss = FilteredClippedDistillLoss()(**kw)
+        self.assertTrue(torch.isfinite(loss))
+        self.assertAlmostEqual(loss.item(), 0.0, places=7)
+
+    def test_rejects_inverted_bounds(self):
+        with self.assertRaises(ValueError):
+            FilteredClippedDistillLoss(r_min=1.4, r_max=0.7)
 
 
 if __name__ == "__main__":

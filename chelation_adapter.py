@@ -358,7 +358,11 @@ class BoundedAdapter(nn.Module):
     Args:
         base_adapter: Any adapter nn.Module with .input_dim and .forward()
         min_correction: Minimum L2 norm for correction delta (default 0.01,
-            above INT8 noise floor of ~0.0078)
+            above INT8 noise floor of ~0.0078). Any nonzero residual below it
+            -- including float rounding dust from an exact-identity base
+            adapter -- is scaled UP to this norm, so the default wrapper has
+            no null action. Pass 0.0 to disable the floor and keep tiny
+            residuals unchanged (only max_correction is then enforced).
         max_correction: Maximum L2 norm for correction delta (default 0.5,
             prevents divergence)
     """
