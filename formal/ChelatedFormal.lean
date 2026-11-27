@@ -5,4 +5,5 @@ import ChelatedFormal.Theorem2_AdjointZeroMuPerturbation
 import ChelatedFormal.Theorem3_EK5_CyclicWFS
 import ChelatedFormal.Theorem4_AnchoredClippedEMA
 import ChelatedFormal.Theorem5_IncrementalWFS_CW1
+import ChelatedFormal.Theorem6_VerifiedConeAndPCC
 import ChelatedFormal.Statement

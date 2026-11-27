@@ -1,0 +1,420 @@
+{
+  "claim_registry_sha256": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "clean_cone_per_layer_state_l2": [
+    {
+      "kv_only_l2": 0.057074,
+      "layer_idx": 0,
+      "ls_gamma_l2": 0.041415,
+      "mean_retention": 0.43169,
+      "op_exact_l2": 0.006084,
+      "scalar_decay_l2": 0.085213
+    },
+    {
+      "kv_only_l2": 0.078076,
+      "layer_idx": 1,
+      "ls_gamma_l2": 0.058288,
+      "mean_retention": 0.27348,
+      "op_exact_l2": 0.036343,
+      "scalar_decay_l2": 0.100993
+    },
+    {
+      "kv_only_l2": 0.064058,
+      "layer_idx": 2,
+      "ls_gamma_l2": 0.057003,
+      "mean_retention": 0.15753,
+      "op_exact_l2": 0.053446,
+      "scalar_decay_l2": 0.071551
+    },
+    {
+      "kv_only_l2": 0.104818,
+      "layer_idx": 4,
+      "ls_gamma_l2": 0.072314,
+      "mean_retention": 0.59362,
+      "op_exact_l2": 0.050638,
+      "scalar_decay_l2": 0.104204
+    },
+    {
+      "kv_only_l2": 0.065074,
+      "layer_idx": 5,
+      "ls_gamma_l2": 0.060185,
+      "mean_retention": 0.31383,
+      "op_exact_l2": 0.050922,
+      "scalar_decay_l2": 0.093304
+    },
+    {
+      "kv_only_l2": 0.076832,
+      "layer_idx": 6,
+      "ls_gamma_l2": 0.071731,
+      "mean_retention": 0.12496,
+      "op_exact_l2": 0.063184,
+      "scalar_decay_l2": 0.106915
+    },
+    {
+      "kv_only_l2": 0.098544,
+      "layer_idx": 8,
+      "ls_gamma_l2": 0.085825,
+      "mean_retention": 0.23751,
+      "op_exact_l2": 0.069556,
+      "scalar_decay_l2": 0.114666
+    },
+    {
+      "kv_only_l2": 0.091958,
+      "layer_idx": 9,
+      "ls_gamma_l2": 0.085608,
+      "mean_retention": 0.13117,
+      "op_exact_l2": 0.085444,
+      "scalar_decay_l2": 0.104351
+    },
+    {
+      "kv_only_l2": 0.067326,
+      "layer_idx": 10,
+      "ls_gamma_l2": 0.0658,
+      "mean_retention": 0.04776,
+      "op_exact_l2": 0.064825,
+      "scalar_decay_l2": 0.075006
+    },
+    {
+      "kv_only_l2": 0.123379,
+      "layer_idx": 12,
+      "ls_gamma_l2": 0.094663,
+      "mean_retention": 0.37372,
+      "op_exact_l2": 0.072221,
+      "scalar_decay_l2": 0.121343
+    },
+    {
+      "kv_only_l2": 0.067802,
+      "layer_idx": 13,
+      "ls_gamma_l2": 0.066789,
+      "mean_retention": 0.03844,
+      "op_exact_l2": 0.065706,
+      "scalar_decay_l2": 0.072849
+    },
+    {
+      "kv_only_l2": 0.066805,
+      "layer_idx": 14,
+      "ls_gamma_l2": 0.064225,
+      "mean_retention": 0.06336,
+      "op_exact_l2": 0.059719,
+      "scalar_decay_l2": 0.074801
+    },
+    {
+      "kv_only_l2": 0.141598,
+      "layer_idx": 16,
+      "ls_gamma_l2": 0.124598,
+      "mean_retention": 0.36024,
+      "op_exact_l2": 0.097991,
+      "scalar_decay_l2": 0.170109
+    },
+    {
+      "kv_only_l2": 0.09121,
+      "layer_idx": 17,
+      "ls_gamma_l2": 0.083033,
+      "mean_retention": 0.20821,
+      "op_exact_l2": 0.074187,
+      "scalar_decay_l2": 0.101593
+    },
+    {
+      "kv_only_l2": 0.101067,
+      "layer_idx": 18,
+      "ls_gamma_l2": 0.086499,
+      "mean_retention": 0.37657,
+      "op_exact_l2": 0.068447,
+      "scalar_decay_l2": 0.122069
+    },
+    {
+      "kv_only_l2": 0.102149,
+      "layer_idx": 20,
+      "ls_gamma_l2": 0.084224,
+      "mean_retention": 0.37494,
+      "op_exact_l2": 0.063377,
+      "scalar_decay_l2": 0.124196
+    },
+    {
+      "kv_only_l2": 0.088613,
+      "layer_idx": 21,
+      "ls_gamma_l2": 0.081133,
+      "mean_retention": 0.36909,
+      "op_exact_l2": 0.074078,
+      "scalar_decay_l2": 0.126358
+    },
+    {
+      "kv_only_l2": 0.061661,
+      "layer_idx": 22,
+      "ls_gamma_l2": 0.05961,
+      "mean_retention": 0.21949,
+      "op_exact_l2": 0.054253,
+      "scalar_decay_l2": 0.117138
+    }
+  ],
+  "elapsed_seconds": 356.8,
+  "experiment_id": "pv7_w26_01_operator_exact_deltanet_and_router",
+  "hardware_cohort": "spark2_gb10:NVIDIA GB10",
+  "long_context_half_life_scaling": [
+    {
+      "all_layers_kv_only_state_rel_l2": 0.075727,
+      "all_layers_op_exact_state_rel_l2": 0.057629,
+      "kv_only_mean_kl": 0.01824,
+      "layer0_op_exact_state_rel_l2": 0.004783,
+      "mean_op_exact_ms": 1308.55,
+      "mean_operator_retention": 0.20555,
+      "mean_replay_ms": 155.41,
+      "op_exact_mean_kl": 0.00674,
+      "suffix_tokens": 408
+    },
+    {
+      "all_layers_kv_only_state_rel_l2": 0.066892,
+      "all_layers_op_exact_state_rel_l2": 0.055883,
+      "kv_only_mean_kl": 0.016308,
+      "layer0_op_exact_state_rel_l2": 0.0033,
+      "mean_op_exact_ms": 3900.52,
+      "mean_operator_retention": 0.14592,
+      "mean_replay_ms": 284.29,
+      "op_exact_mean_kl": 0.008589,
+      "suffix_tokens": 1222
+    },
+    {
+      "all_layers_kv_only_state_rel_l2": 0.058448,
+      "all_layers_op_exact_state_rel_l2": 0.050984,
+      "kv_only_mean_kl": 0.009643,
+      "layer0_op_exact_state_rel_l2": 0.001824,
+      "mean_op_exact_ms": 8609.15,
+      "mean_operator_retention": 0.11351,
+      "mean_replay_ms": 747.33,
+      "op_exact_mean_kl": 0.005889,
+      "suffix_tokens": 4071
+    },
+    {
+      "all_layers_kv_only_state_rel_l2": 0.0532,
+      "all_layers_op_exact_state_rel_l2": 0.047086,
+      "kv_only_mean_kl": 0.010152,
+      "layer0_op_exact_state_rel_l2": 0.001138,
+      "mean_op_exact_ms": 25965.18,
+      "mean_operator_retention": 0.09779,
+      "mean_replay_ms": 1637.08,
+      "op_exact_mean_kl": 0.006823,
+      "suffix_tokens": 8141
+    }
+  ],
+  "model_id": "Qwen/Qwen3.5-2B-Base",
+  "report_clean_cone": {
+    "arms": {
+      "kv_excise_only": {
+        "kl_ci95": [
+          0.018912,
+          0.0333
+        ],
+        "l2_ci95": [
+          0.083905,
+          0.088198
+        ],
+        "mean_kl": 0.025721,
+        "mean_op_ms": 9.79,
+        "mean_state_rel_l2": 0.086002
+      },
+      "operator_exact_deltanet_plus_kv": {
+        "kl_ci95": [
+          0.007548,
+          0.011022
+        ],
+        "l2_ci95": [
+          0.059257,
+          0.064284
+        ],
+        "mean_kl": 0.009206,
+        "mean_op_ms": 662.38,
+        "mean_state_rel_l2": 0.06169
+      },
+      "scalar_exact_decay_plus_kv": {
+        "kl_ci95": [
+          0.024886,
+          0.04473
+        ],
+        "l2_ci95": [
+          0.102738,
+          0.106863
+        ],
+        "mean_kl": 0.033983,
+        "mean_op_ms": 9.98,
+        "mean_state_rel_l2": 0.104814
+      },
+      "select_ls_gamma_lh_plus_kv": {
+        "kl_ci95": [
+          0.015607,
+          0.025245
+        ],
+        "l2_ci95": [
+          0.072504,
+          0.076879
+        ],
+        "mean_kl": 0.020237,
+        "mean_op_ms": 9.68,
+        "mean_state_rel_l2": 0.074608
+      }
+    },
+    "n": 40,
+    "op_exact_minus_kv_only_kl": [
+      -0.016515,
+      -0.023717,
+      -0.010413
+    ],
+    "op_exact_minus_kv_only_l2": [
+      -0.024312,
+      -0.024788,
+      -0.0238
+    ]
+  },
+  "report_dirty_cone": {
+    "arms": {
+      "kv_excise_only": {
+        "kl_ci95": [
+          0.100026,
+          0.216528
+        ],
+        "l2_ci95": [
+          0.075123,
+          0.077567
+        ],
+        "mean_kl": 0.154977,
+        "mean_op_ms": 8.86,
+        "mean_state_rel_l2": 0.076397
+      },
+      "operator_exact_deltanet_plus_kv": {
+        "kl_ci95": [
+          0.174289,
+          0.382642
+        ],
+        "l2_ci95": [
+          0.064035,
+          0.066225
+        ],
+        "mean_kl": 0.272376,
+        "mean_op_ms": 836.07,
+        "mean_state_rel_l2": 0.065175
+      },
+      "scalar_exact_decay_plus_kv": {
+        "kl_ci95": [
+          0.207169,
+          0.458592
+        ],
+        "l2_ci95": [
+          0.112168,
+          0.115514
+        ],
+        "mean_kl": 0.325803,
+        "mean_op_ms": 9.89,
+        "mean_state_rel_l2": 0.113894
+      },
+      "select_ls_gamma_lh_plus_kv": {
+        "kl_ci95": [
+          0.118487,
+          0.25441
+        ],
+        "l2_ci95": [
+          0.07022,
+          0.072386
+        ],
+        "mean_kl": 0.18245,
+        "mean_op_ms": 9.65,
+        "mean_state_rel_l2": 0.071358
+      }
+    },
+    "n": 40,
+    "op_exact_minus_kv_only_kl": [
+      0.117398,
+      0.073417,
+      0.16742
+    ],
+    "op_exact_minus_kv_only_l2": [
+      -0.011222,
+      -0.011526,
+      -0.0109
+    ]
+  },
+  "report_overall": {
+    "arms": {
+      "kv_excise_only": {
+        "kl_ci95": [
+          0.059856,
+          0.124637
+        ],
+        "l2_ci95": [
+          0.079599,
+          0.082915
+        ],
+        "mean_kl": 0.090349,
+        "mean_op_ms": 9.32,
+        "mean_state_rel_l2": 0.0812
+      },
+      "operator_exact_deltanet_plus_kv": {
+        "kl_ci95": [
+          0.08544,
+          0.20421
+        ],
+        "l2_ci95": [
+          0.061999,
+          0.064885
+        ],
+        "mean_kl": 0.140791,
+        "mean_op_ms": 749.22,
+        "mean_state_rel_l2": 0.063433
+      },
+      "scalar_exact_decay_plus_kv": {
+        "kl_ci95": [
+          0.114294,
+          0.253848
+        ],
+        "l2_ci95": [
+          0.107688,
+          0.110983
+        ],
+        "mean_kl": 0.179893,
+        "mean_op_ms": 9.93,
+        "mean_state_rel_l2": 0.109354
+      },
+      "select_ls_gamma_lh_plus_kv": {
+        "kl_ci95": [
+          0.065414,
+          0.141366
+        ],
+        "l2_ci95": [
+          0.071719,
+          0.07435
+        ],
+        "mean_kl": 0.101343,
+        "mean_op_ms": 9.67,
+        "mean_state_rel_l2": 0.072983
+      }
+    },
+    "n": 80,
+    "op_exact_minus_kv_only_kl": [
+      0.050442,
+      0.024854,
+      0.079797
+    ],
+    "op_exact_minus_kv_only_l2": [
+      -0.017767,
+      -0.019181,
+      -0.016324
+    ]
+  },
+  "retained_bits_analysis": {
+    "all_18_layers_delta_s_bytes_bf16": 9437184,
+    "note": "Storing exact (k_t, beta_t, g_t) for operator replay scales O(L) in bytes (still ~4x smaller than full hidden states), whereas checkpointing every sqrt(L) tokens achieves O(sqrt(L)) storage & replay.",
+    "per_suffix_token_operator_bytes_bf16_k_beta_g": 19584,
+    "single_layer_state_bytes_bf16": 524288
+  },
+  "router_comparison": {
+    "auroc_ek5_plus_operator_cert": 0.8935,
+    "auroc_gain_over_lexical": 0.0545,
+    "auroc_lexical_heuristic": 0.839,
+    "unsafe_kl_gt_005_rate": 0.2625
+  },
+  "timestamp_utc": "2026-11-27T01:37:11.434233+00:00",
+  "verdict": {
+    "clean_cone_op_exact_beats_kv_only_kl_strict": true,
+    "clean_cone_op_exact_beats_kv_only_state_l2_strict": true,
+    "layer0_machine_precision_confirmed": true,
+    "status": "ADVANCE_OPERATOR_EXACT_CLEAN_CONE"
+  },
+  "wave_item_id": "W26-01"
+}
