@@ -2,8 +2,8 @@
   "schema_version": "chelated_wave_queue_v2_0",
   "queue_id": "wave25-plus-master-queue-2026-11-26",
   "created_date": "2026-11-26",
-  "updated_utc": "2026-11-27T01:48:00Z",
-  "status": "WAVE_26_AUTOMATED_COMPLETE_4_OF_4__WAVE_27_IN_PROGRESS",
+  "updated_utc": "2026-11-27T02:00:00Z",
+  "status": "WAVE_25_TO_27_AUTOMATED_COMPLETE__WAVE_28_HUMAN_ONLY",
   "release_status": "PRE-RELEASE / HUMAN AUDIT & CLEAN-RERUN GATES PENDING",
   "source_doc": "docs/research/wave25_plus_master_queue_2026-11-26.md",
   "baseline_heads": {
@@ -198,12 +198,14 @@
       "priority": "P2",
       "title": "RetractBench: Dependency-Routed Neuro-Symbolic Retraction Under 5 Adversarial Leakage Probes",
       "connects_to": ["EK5", "W26-01", "W25-03", "#51", "W24-06"],
-      "compute_node": ["spark1_gb10", "spark2_gb10", "spark3_gb10"],
+      "compute_node": ["spark2_gb10"],
       "depends_on": ["W25-02", "W26-01"],
-      "status": "QUEUED_CONDITIONAL",
+      "status": "COMPLETED_REGIME_QUALIFIED",
+      "artifact": "artifacts/pv7_w27_01_retractbench_spark2/w27_01_retractbench_manifest.json",
+      "verdict": "REGIME_QUALIFIED_OR_HOLD_W27_01 (QSCCI excluded per W25-03; chunked-WY err=6.5e-9; drops P4 hidden-probe AUROC 1.000->0.566 vs LEACE 0.915 / KV-only 0.775 / correction 1.000; exact 0.00pp gap on P1/P2/P5 & 1.67pp on P3; clean-cone p95 0.727x gold; BUT pooled p95=1.018x gold due to dirty-cone replay and volatile_tail_prefix_cache matches gold at 74.1ms p50 when prompt reordering is allowed)",
       "strongest_conventional_baseline": "Volatile-tail prompt layout + automatic prefix caching, appended correction notice, delete-and-rebuild, LEACE erasure",
       "kill_advance_criterion": "Score direct, paraphrase, multi-hop, hidden-state linear-probe, and extraction-prompt leakage; run paired 2x2 QSCCI x T-Rn factorial only if W25-03 passes (requiring positive interaction LCB). Kill if volatile-tail matches gold leakage at <=2x surgery latency or LEACE matches probe-AUROC drop within 0.02 at equal collateral KL. Advance if within 1 pp of gold on all 5 probes at <=0.5x p95 latency.",
-      "honest_tier": "Publishable Paper + Product Moat"
+      "honest_tier": "Publishable Paper"
     },
     {
       "id": "W27-02",
@@ -213,10 +215,11 @@
       "connects_to": ["EK5", "#48", "#62", "PM-6"],
       "compute_node": ["spark1_gb10", "spark2_gb10", "spark3_gb10", "desktop_checker"],
       "depends_on": ["W25-04"],
-      "status": "QUEUED_CONDITIONAL",
+      "status": "PROPERLY_GATED_BY_W25_04_HOLD",
+      "verdict": "GATED (W25-04 held at 7/8 gates due to raw vLLM sham-reopen SLA 1,618ms > 560ms)",
       "strongest_conventional_baseline": "Transactional version ledger + retrieval/commit epoch fence + ordinary cache invalidation + cancel/restart",
       "kill_advance_criterion": "Freeze contract for emitted bytes and concurrent requests; test delay/restart/partition schedules. One linearizability-violating post-ack emission kills consistency. Advance on 0 violations AND >=20% more correct on-time completions than fenced baseline at equal resources.",
-      "honest_tier": "Product Moat"
+      "honest_tier": "Gated / Parked"
     },
     {
       "id": "W27-03",
@@ -224,12 +227,14 @@
       "priority": "P2",
       "title": "PM-6 Adaptive Exfiltration Benchmark vs. Conventional Floor",
       "connects_to": ["W24-10b", "W25-06", "W25-03"],
-      "compute_node": ["spark1_gb10", "spark2_gb10"],
+      "compute_node": ["desktop_rtx3090"],
       "depends_on": ["W25-06"],
-      "status": "QUEUED_CONDITIONAL",
+      "status": "COMPLETED_CONV_FLOOR_DOMINATES_RETIRES_LEARNED_ARMS",
+      "artifact": "artifacts/pv7_w27_03_pm6_adaptive_exfil_rtx3090/w27_03_pm6_adaptive_exfil_manifest.json",
+      "verdict": "CONVENTIONAL_FLOOR_DOMINATES_OR_CHUNKING_GAP (QSCCI excluded per W25-03; zero-ML conv floor gets 0.167% FPR on 2,400 benigns, 0% bypass on verbatim/R2b/encodings, 7.0% on <5-tok chunking, 40.5% mean adaptive bypass; ZeroMu adds only +0.5pp -> RETIRE_ZEROMU; Qwen2.5-1.5B residual probe adds only +0.2pp -> RETIRE_PROBE; chunking 6.5% > 5% reopens PM-6 gates)",
       "strongest_conventional_baseline": "Aho-Corasick over NFKC + UTS #39 confusable skeleton + fuzzy n-gram matcher; residual-stream linear probe",
       "kill_advance_criterion": "Test <5-token chunking, encodings, translation, and paraphrase on >=2,000 fresh benigns. Retire any learned/white-box arm failing to cut adaptive bypass by >=10 pp at FPR <=1% over conventional stack; chunking bypass >5% reopens gates.",
-      "honest_tier": "Product Moat"
+      "honest_tier": "Closed / Negative Falsification Paper Result"
     },
     {
       "id": "W28-01",
