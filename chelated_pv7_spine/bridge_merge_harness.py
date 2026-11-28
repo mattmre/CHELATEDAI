@@ -764,12 +764,66 @@ class CSLSMerge(BaseMerge):
         return out
 
 
+DEFAULT_RRF_K = 60
+
+
+def _within_shard_ranks(scores: np.ndarray) -> np.ndarray:
+    """1-based per-row ranks by descending score; ties broken by ascending column index."""
+    mat = np.asarray(scores, dtype=np.float64)
+    ranks = np.empty(mat.shape, dtype=np.float64)
+    if mat.size == 0:
+        return ranks
+    order = np.argsort(-mat, axis=1, kind="stable")
+    rows = np.arange(mat.shape[0])[:, None]
+    ranks[rows, order] = np.arange(1, mat.shape[1] + 1, dtype=np.float64)[None, :]
+    return ranks
+
+
+@dataclass(frozen=True)
+class RRFMerge(BaseMerge):
+    """Reciprocal-rank fusion of the two shards: `1 / (rrf_k + within-shard rank)`.
+
+    Uses no DEV reference; `bridged_ref` / `native_ref` are accepted for interface
+    compatibility and ignored. Equal-rank documents from the two shards tie and are
+    ordered by the canonical `(-score, doc_id)` tie-break downstream.
+    """
+
+    rrf_k: int = DEFAULT_RRF_K
+    name: str = "RRFMerge"
+
+    def merge(
+        self,
+        bridged_scores: np.ndarray,
+        native_scores: np.ndarray,
+        backfill_mask: np.ndarray,
+        *,
+        bridged_ref: Optional[np.ndarray] = None,
+        native_ref: Optional[np.ndarray] = None,
+    ) -> np.ndarray:
+        bridged = np.asarray(bridged_scores, dtype=np.float64)
+        native = np.asarray(native_scores, dtype=np.float64)
+        mask = np.asarray(backfill_mask, dtype=bool)
+        if bridged.shape != native.shape or mask.shape != (bridged.shape[1],):
+            raise ValueError("Score matrices and backfill_mask shapes must align")
+        if int(self.rrf_k) < 0:
+            raise ValueError("rrf_k must be non-negative")
+        out = np.empty_like(bridged)
+        if (~mask).any():
+            out[:, ~mask] = 1.0 / (float(self.rrf_k) + _within_shard_ranks(bridged[:, ~mask]))
+        if mask.any():
+            out[:, mask] = 1.0 / (float(self.rrf_k) + _within_shard_ranks(native[:, mask]))
+        return out
+
+
 MERGE_REGISTRY: Dict[str, Type[BaseMerge]] = {
     "RawCosineMerge": RawCosineMerge,
     "CalibratedZScoreMerge": CalibratedZScoreMerge,
     "CSLSMerge": CSLSMerge,
+    "RRFMerge": RRFMerge,
 }
-MERGE_NAMES: Tuple[str, ...] = tuple(MERGE_REGISTRY.keys())
+# Default factorial merges stay the original three so existing 5x3 callers keep
+# their cell counts; RRFMerge is opt-in via an explicit `merge_names`.
+MERGE_NAMES: Tuple[str, ...] = ("RawCosineMerge", "CalibratedZScoreMerge", "CSLSMerge")
 
 
 # ---------------------------------------------------------------------------
@@ -2146,6 +2200,7 @@ __all__ = [
     "DEFAULT_CONTAMINATION_RATES",
     "DEFAULT_CSLS_K",
     "DEFAULT_EMA_ALPHA",
+    "DEFAULT_RRF_K",
     "DomainAnchorVarianceSummary",
     "FactorialCellResult",
     "ITEM6B_RETIREMENT_FLOOR",
@@ -2156,6 +2211,7 @@ __all__ = [
     "MultiHopChainReport",
     "MultiHopTransitionMetrics",
     "Rank1QueryResidual",
+    "RRFMerge",
     "RawCosineMerge",
     "RequestSpanProfiler",
     "RequestSpanRecord",
