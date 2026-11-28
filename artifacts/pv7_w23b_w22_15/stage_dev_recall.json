@@ -1,0 +1,28 @@
+{
+  "assert_trigger_rate": 0.2667,
+  "by_target_stance": {
+    "ASSERT": {
+      "n": 30,
+      "triggered": 8
+    },
+    "DEBUNK_RUMOR": {
+      "n": 30,
+      "triggered": 30
+    },
+    "REFUTE": {
+      "n": 30,
+      "triggered": 30
+    },
+    "SUPERSEDE": {
+      "n": 30,
+      "triggered": 30
+    }
+  },
+  "generated_utc": "2026-11-26T09:39:54.815197+00:00",
+  "n_dev": 120,
+  "non_assert_n": 90,
+  "non_assert_triggered": 90,
+  "overall_trigger_rate": 0.8167,
+  "recall_non_assert": 1.0,
+  "stage": "dev-recall"
+}

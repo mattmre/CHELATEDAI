@@ -1,0 +1,110 @@
+{
+  "baseline_recorded_replay": {
+    "full_manifest_scratch_sha256": "a7ba738446f62d27928d6c56f24f1955266f8d0ad7aa91609ea0b30e26d77f8f",
+    "full_restart_comparator": {
+      "event_regime": "both",
+      "full_restart_late_or_timed_out_jobs": 192,
+      "full_restart_rebuild_pooled_jpm": 0.0,
+      "full_restart_stale_commits": 0,
+      "jpm_advantage_over_full_restart": 763.2567,
+      "pool_size": 4,
+      "zeromu_ek5_late_or_timed_out_jobs": 0,
+      "zeromu_ek5_pooled_jpm": 763.2567
+    },
+    "gates": {
+      "all_eligible_jobs_accounted": true,
+      "beats_full_restart_rebuild_jpm": true,
+      "conventional_migration_stall_equalized": true,
+      "ek5_incremental_equals_full_parity": true,
+      "primary_metric_is_ontime_cited_correct_rate": true,
+      "sham_reopen_control_valid": true,
+      "sqlite_reopen_symmetric_with_ek5": true,
+      "zero_stale_commits_on_zeromu_ek5": true
+    },
+    "live_model_calls": 0,
+    "mode": "stage1-controlled-replay",
+    "router_stats": null,
+    "sham_reopen_isolation": {
+      "control_name": "KEEP_2_sham_subtask_reopen_interrupt",
+      "control_valid": true,
+      "isolated_checkpoint_reopen_overhead_ms": 71.994,
+      "net_ek5_lineage_invalidation_delta_ms": 5.102,
+      "no_change_mean_latency_ms": 199.013,
+      "pool_size": 4,
+      "sham_eligible_jobs": 192,
+      "sham_mean_subtasks_reopened": 1.0,
+      "sham_on_time_cited_correct_jobs": 192,
+      "sham_reopen_mean_latency_ms": 271.007,
+      "sham_stale_commits": 0,
+      "system_id": "ZeroMu+EK5_v3",
+      "withdrawal_mean_subtasks_reopened": 1.0,
+      "withdrawal_only_mean_latency_ms": 276.109
+    },
+    "status": "stage1-replay-pass",
+    "total_cells_executed": 1120,
+    "total_eligible_jobs_executed": 26880,
+    "wall_seconds": 24.983,
+    "worker_backend": "stage1-controlled-replay",
+    "zeromu_ek5_stale_commits_total": 0
+  },
+  "generated_utc": "2026-11-26T09:38:40.313589+00:00",
+  "grid": "full default grid",
+  "selective_recorded_replay": {
+    "full_manifest_scratch_sha256": "fd5f8870a86f9b93b228b282e566ba2f73814da908276a5d4e03adad6b887d22",
+    "full_restart_comparator": {
+      "event_regime": "both",
+      "full_restart_late_or_timed_out_jobs": 156,
+      "full_restart_rebuild_pooled_jpm": 90.1281,
+      "full_restart_stale_commits": 0,
+      "jpm_advantage_over_full_restart": 673.1286,
+      "pool_size": 4,
+      "zeromu_ek5_late_or_timed_out_jobs": 0,
+      "zeromu_ek5_pooled_jpm": 763.2567
+    },
+    "gates": {
+      "all_eligible_jobs_accounted": true,
+      "beats_full_restart_rebuild_jpm": true,
+      "conventional_migration_stall_equalized": true,
+      "ek5_incremental_equals_full_parity": true,
+      "primary_metric_is_ontime_cited_correct_rate": true,
+      "sham_reopen_control_valid": true,
+      "sqlite_reopen_symmetric_with_ek5": true,
+      "zero_stale_commits_on_zeromu_ek5": true
+    },
+    "live_model_calls": 0,
+    "mode": "stage1-controlled-replay",
+    "router_stats": {
+      "initial_calls": 107520,
+      "reasons": {
+        "cited_source_not_admissible": 10752,
+        "reused_no_amendment": 13056
+      },
+      "reopen_calls": 23808,
+      "reopen_reextracted": 10752,
+      "reopen_reused": 13056
+    },
+    "sham_reopen_isolation": {
+      "control_name": "KEEP_2_sham_subtask_reopen_interrupt",
+      "control_valid": true,
+      "isolated_checkpoint_reopen_overhead_ms": 36.837,
+      "net_ek5_lineage_invalidation_delta_ms": 40.259,
+      "no_change_mean_latency_ms": 199.013,
+      "pool_size": 4,
+      "sham_eligible_jobs": 192,
+      "sham_mean_subtasks_reopened": 1.0,
+      "sham_on_time_cited_correct_jobs": 192,
+      "sham_reopen_mean_latency_ms": 235.85,
+      "sham_stale_commits": 0,
+      "system_id": "ZeroMu+EK5_v3",
+      "withdrawal_mean_subtasks_reopened": 1.0,
+      "withdrawal_only_mean_latency_ms": 276.109
+    },
+    "status": "stage1-replay-pass",
+    "total_cells_executed": 1120,
+    "total_eligible_jobs_executed": 26880,
+    "wall_seconds": 25.597,
+    "worker_backend": "stage1-controlled-replay+selective-trigger",
+    "zeromu_ek5_stale_commits_total": 0
+  },
+  "stage": "cpu-replay"
+}
