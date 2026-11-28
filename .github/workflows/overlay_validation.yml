@@ -19,11 +19,13 @@ jobs:
           CUDA_VISIBLE_DEVICES: ""
         run: |
           mkdir -p "$HOME/.cache"
-          VENV_DIR="$HOME/.cache/chelated-ci-py312"
-          flock "$HOME/.cache/chelated-ci-py312.lock" bash -ec '
-            VENV_DIR="$HOME/.cache/chelated-ci-py312"
+          VENV_DIR="$HOME/.cache/chelated-ci-uv-py312"
+          flock "$HOME/.cache/chelated-ci-uv-py312.lock" bash -ec '
+            PY_BIN="${HOME}/.local/bin/python3.12"
+            [ -x "$PY_BIN" ] || PY_BIN="python3"
+            VENV_DIR="$HOME/.cache/chelated-ci-uv-py312"
             if [ ! -x "$VENV_DIR/bin/python" ]; then
-              python3 -m venv "$VENV_DIR"
+              "$PY_BIN" -m venv "$VENV_DIR"
               "$VENV_DIR/bin/pip" install --upgrade pip
             fi
             if [ ! -f "$VENV_DIR/.cpu_torch_ok" ]; then
