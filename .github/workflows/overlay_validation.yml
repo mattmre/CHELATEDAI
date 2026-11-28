@@ -17,6 +17,7 @@ jobs:
       - name: Run overlay Model-Scope validation bundle
         env:
           CUDA_VISIBLE_DEVICES: ""
+          HF_HOME: ${{ runner.temp }}/chelated-hf-cache
         run: |
           mkdir -p "$HOME/.cache"
           VENV_DIR="$HOME/.cache/chelated-ci-uv-py312"

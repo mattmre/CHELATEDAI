@@ -33,6 +33,7 @@ jobs:
       - name: Install dependencies & run unit tests (Spark 2 ARM64 Python 3.12)
         env:
           CUDA_VISIBLE_DEVICES: ""
+          HF_HOME: ${{ runner.temp }}/chelated-hf-cache
         run: |
           mkdir -p "$HOME/.cache"
           VENV_DIR="$HOME/.cache/chelated-ci-uv-py312"
@@ -59,6 +60,7 @@ jobs:
       - name: Run computational-storage checks
         env:
           CUDA_VISIBLE_DEVICES: ""
+          HF_HOME: ${{ runner.temp }}/chelated-hf-cache
         run: |
           mkdir -p "$HOME/.cache"
           VENV_DIR="$HOME/.cache/chelated-ci-uv-py312"

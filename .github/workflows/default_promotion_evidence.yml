@@ -53,6 +53,7 @@ jobs:
       - name: Run default-promotion evidence chain & index audit
         env:
           CUDA_VISIBLE_DEVICES: ""
+          HF_HOME: ${{ runner.temp }}/chelated-hf-cache
         run: |
           python run_default_promotion_evidence_chain.py \
             --output-dir experiment_runs/default-promotion-evidence-chain/ci \
