@@ -28,10 +28,12 @@ jobs:
           CUDA_VISIBLE_DEVICES: ""
         run: |
           mkdir -p "$HOME/.cache"
-          flock "$HOME/.cache/chelated-ci-py312.lock" bash -ec '
-            BASE_VENV="$HOME/.cache/chelated-ci-py312"
+          flock "$HOME/.cache/chelated-ci-uv-py312.lock" bash -ec '
+            PY_BIN="${HOME}/.local/bin/python3.12"
+            [ -x "$PY_BIN" ] || PY_BIN="python3"
+            BASE_VENV="$HOME/.cache/chelated-ci-uv-py312"
             if [ ! -x "$BASE_VENV/bin/python" ]; then
-              python3 -m venv "$BASE_VENV"
+              "$PY_BIN" -m venv "$BASE_VENV"
               "$BASE_VENV/bin/pip" install --upgrade pip
             fi
             if [ ! -f "$BASE_VENV/.cpu_torch_ok" ]; then
@@ -39,9 +41,11 @@ jobs:
               touch "$BASE_VENV/.cpu_torch_ok"
             fi
           '
+          PY_BIN="${HOME}/.local/bin/python3.12"
+          [ -x "$PY_BIN" ] || PY_BIN="python3"
           JOB_VENV="$RUNNER_TEMP/ev-chain-venv"
-          python3 -m venv --system-site-packages "$JOB_VENV"
-          SITE_PKGS=$("$HOME/.cache/chelated-ci-py312/bin/python" -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')
+          "$PY_BIN" -m venv --system-site-packages "$JOB_VENV"
+          SITE_PKGS=$("$HOME/.cache/chelated-ci-uv-py312/bin/python" -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')
           echo "PYTHONPATH=$SITE_PKGS" >> "$GITHUB_ENV"
           "$JOB_VENV/bin/pip" install -q --no-build-isolation --no-deps -e .
           echo "$JOB_VENV/bin" >> "$GITHUB_PATH"
