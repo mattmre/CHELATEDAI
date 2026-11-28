@@ -18,35 +18,49 @@ on:
 
 jobs:
   evidence-chain:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, arm64, spark2]
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install dependencies
+      - name: Prepare ephemeral venv (preserving shared Spark 2 cache cleanliness)
+        env:
+          CUDA_VISIBLE_DEVICES: ""
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
-          python -m pip install -e .[dev]
+          mkdir -p "$HOME/.cache"
+          flock "$HOME/.cache/chelated-ci-uv-py312.lock" bash -ec '
+            PY_BIN="${HOME}/.local/bin/python3.12"
+            [ -x "$PY_BIN" ] || PY_BIN="python3"
+            BASE_VENV="$HOME/.cache/chelated-ci-uv-py312"
+            if [ ! -x "$BASE_VENV/bin/python" ]; then
+              "$PY_BIN" -m venv "$BASE_VENV"
+              "$BASE_VENV/bin/pip" install --upgrade pip
+            fi
+            if [ ! -f "$BASE_VENV/.cpu_torch_ok" ]; then
+              "$BASE_VENV/bin/pip" install torch --index-url https://download.pytorch.org/whl/cpu
+              touch "$BASE_VENV/.cpu_torch_ok"
+            fi
+          '
+          PY_BIN="${HOME}/.local/bin/python3.12"
+          [ -x "$PY_BIN" ] || PY_BIN="python3"
+          JOB_VENV="$RUNNER_TEMP/ev-chain-venv"
+          "$PY_BIN" -m venv --system-site-packages "$JOB_VENV"
+          SITE_PKGS=$("$HOME/.cache/chelated-ci-uv-py312/bin/python" -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')
+          echo "PYTHONPATH=$SITE_PKGS" >> "$GITHUB_ENV"
+          "$JOB_VENV/bin/pip" install -q --no-build-isolation --no-deps -e .
+          echo "$JOB_VENV/bin" >> "$GITHUB_PATH"
 
-      - name: Run default-promotion evidence chain
+      - name: Run default-promotion evidence chain & index audit
+        env:
+          CUDA_VISIBLE_DEVICES: ""
+          HF_HOME: ${{ runner.temp }}/chelated-hf-cache
         run: |
           python run_default_promotion_evidence_chain.py \
             --output-dir experiment_runs/default-promotion-evidence-chain/ci \
             --timeout-seconds "${{ inputs.timeout-seconds }}"
-
-      - name: Generate evidence index
-        run: |
           python generate_evidence_index.py \
             --root experiment_runs \
             --output experiment_runs/evidence-index/ci/evidence_index.json
-
-      - name: Audit evidence index freshness
-        run: |
           python audit_evidence_index_freshness.py \
             --index experiment_runs/evidence-index/ci/evidence_index.json \
             --output experiment_runs/evidence-index/ci/freshness_audit.json

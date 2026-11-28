@@ -8,63 +8,95 @@ on:
 
 jobs:
   lint:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, arm64, spark2]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: "pip"
-      - run: pip install ruff>=0.4
-      - run: ruff check .
+      - name: Run ruff lint in locked Spark 2 venv
+        run: |
+          mkdir -p "$HOME/.cache"
+          VENV_DIR="$HOME/.cache/chelated-ci-uv-py312"
+          flock "$HOME/.cache/chelated-ci-uv-py312.lock" bash -ec '
+            PY_BIN="${HOME}/.local/bin/python3.12"
+            [ -x "$PY_BIN" ] || PY_BIN="python3"
+            VENV_DIR="$HOME/.cache/chelated-ci-uv-py312"
+            if [ ! -x "$VENV_DIR/bin/python" ]; then
+              "$PY_BIN" -m venv "$VENV_DIR"
+            fi
+            "$VENV_DIR/bin/pip" install -q "ruff>=0.4"
+          '
+          "$VENV_DIR/bin/ruff" check .
 
   test:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    runs-on: [self-hosted, linux, arm64, spark2]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: "pip"
-      - name: Install PyTorch CPU
-        run: pip install torch --index-url https://download.pytorch.org/whl/cpu
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-      - name: Run tests
-        run: python -m unittest discover -s . -p "test_*.py" -v
+      - name: Install dependencies & run unit tests (Spark 2 ARM64 Python 3.12)
+        env:
+          CUDA_VISIBLE_DEVICES: ""
+          HF_HOME: ${{ runner.temp }}/chelated-hf-cache
+        run: |
+          mkdir -p "$HOME/.cache"
+          VENV_DIR="$HOME/.cache/chelated-ci-uv-py312"
+          flock "$HOME/.cache/chelated-ci-uv-py312.lock" bash -ec '
+            PY_BIN="${HOME}/.local/bin/python3.12"
+            [ -x "$PY_BIN" ] || PY_BIN="python3"
+            VENV_DIR="$HOME/.cache/chelated-ci-uv-py312"
+            if [ ! -x "$VENV_DIR/bin/python" ]; then
+              "$PY_BIN" -m venv "$VENV_DIR"
+              "$VENV_DIR/bin/pip" install --upgrade pip
+            fi
+            if [ ! -f "$VENV_DIR/.cpu_torch_ok" ]; then
+              "$VENV_DIR/bin/pip" install torch --index-url https://download.pytorch.org/whl/cpu
+              touch "$VENV_DIR/.cpu_torch_ok"
+            fi
+            "$VENV_DIR/bin/pip" install -q -r requirements.txt
+          '
+          "$VENV_DIR/bin/python" -m unittest discover -s . -p "test_*.py" -v
 
   computational-storage-fundamentals:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, arm64, spark2]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: "pip"
-      - name: Install PyTorch CPU
-        run: pip install torch --index-url https://download.pytorch.org/whl/cpu
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-      - name: Run computational-storage unit checks
-        run: python -m unittest test_computational_storage_poc.py -v
-      - name: Run computational-storage script harness
-        run: python computational_storage_poc/run_all_tests.py
+      - name: Run computational-storage checks
+        env:
+          CUDA_VISIBLE_DEVICES: ""
+          HF_HOME: ${{ runner.temp }}/chelated-hf-cache
+        run: |
+          mkdir -p "$HOME/.cache"
+          VENV_DIR="$HOME/.cache/chelated-ci-uv-py312"
+          flock "$HOME/.cache/chelated-ci-uv-py312.lock" bash -ec '
+            PY_BIN="${HOME}/.local/bin/python3.12"
+            [ -x "$PY_BIN" ] || PY_BIN="python3"
+            VENV_DIR="$HOME/.cache/chelated-ci-uv-py312"
+            if [ ! -x "$VENV_DIR/bin/python" ]; then
+              "$PY_BIN" -m venv "$VENV_DIR"
+              "$VENV_DIR/bin/pip" install --upgrade pip
+            fi
+            if [ ! -f "$VENV_DIR/.cpu_torch_ok" ]; then
+              "$VENV_DIR/bin/pip" install torch --index-url https://download.pytorch.org/whl/cpu
+              touch "$VENV_DIR/.cpu_torch_ok"
+            fi
+            "$VENV_DIR/bin/pip" install -q -r requirements.txt
+          '
+          "$VENV_DIR/bin/python" -m unittest test_computational_storage_poc.py -v
+          "$VENV_DIR/bin/python" computational_storage_poc/run_all_tests.py
 
   computational-storage-emulation:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, arm64, spark2]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: "pip"
-      - name: Install emulation test dependency
-        run: pip install numpy
-      - name: Run emulation unit checks
-        run: python -m unittest test_computational_storage_emulation.py -v
-      - name: Run emulation path validation
-        run: python computational_storage_poc/emulation/validate_emulation_path.py
+      - name: Run emulation validation
+        run: |
+          mkdir -p "$HOME/.cache"
+          VENV_DIR="$HOME/.cache/chelated-ci-uv-py312"
+          flock "$HOME/.cache/chelated-ci-uv-py312.lock" bash -ec '
+            PY_BIN="${HOME}/.local/bin/python3.12"
+            [ -x "$PY_BIN" ] || PY_BIN="python3"
+            VENV_DIR="$HOME/.cache/chelated-ci-uv-py312"
+            if [ ! -x "$VENV_DIR/bin/python" ]; then
+              "$PY_BIN" -m venv "$VENV_DIR"
+            fi
+            "$VENV_DIR/bin/pip" install -q numpy
+          '
+          "$VENV_DIR/bin/python" -m unittest test_computational_storage_emulation.py -v
+          "$VENV_DIR/bin/python" computational_storage_poc/emulation/validate_emulation_path.py
