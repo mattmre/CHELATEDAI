@@ -52,20 +52,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Activate cached Spark 2 Python venv & run floor smoke
+      - name: Activate locked Spark 2 Python venv & run smoke
         env:
           PYTHONIOENCODING: utf-8
           CUDA_VISIBLE_DEVICES: ""
         run: |
+          mkdir -p "$HOME/.cache"
           VENV_DIR="$HOME/.cache/chelated-ci-py312"
-          if [ ! -x "$VENV_DIR/bin/python" ]; then
-            python3 -m venv "$VENV_DIR"
-            "$VENV_DIR/bin/pip" install --upgrade pip
-            "$VENV_DIR/bin/pip" install torch --index-url https://download.pytorch.org/whl/cpu
-          fi
-          if [ -f requirements.txt ]; then
-            "$VENV_DIR/bin/pip" install -q -r requirements.txt
-          fi
+          flock "$HOME/.cache/chelated-ci-py312.lock" bash -ec '
+            VENV_DIR="$HOME/.cache/chelated-ci-py312"
+            if [ ! -x "$VENV_DIR/bin/python" ]; then
+              python3 -m venv "$VENV_DIR"
+              "$VENV_DIR/bin/pip" install --upgrade pip
+            fi
+            if [ ! -f "$VENV_DIR/.cpu_torch_ok" ]; then
+              "$VENV_DIR/bin/pip" install torch --index-url https://download.pytorch.org/whl/cpu
+              touch "$VENV_DIR/.cpu_torch_ok"
+            fi
+            if [ -f requirements.txt ]; then
+              "$VENV_DIR/bin/pip" install -q -r requirements.txt
+            fi
+          '
           "$VENV_DIR/bin/python" scripts/smoke_pipeline.py
 
   schema-drift-gate:
@@ -79,10 +86,14 @@ jobs:
         env:
           PYTHONIOENCODING: utf-8
         run: |
+          mkdir -p "$HOME/.cache"
           VENV_DIR="$HOME/.cache/chelated-ci-py312"
-          if [ ! -x "$VENV_DIR/bin/python" ]; then
-            python3 -m venv "$VENV_DIR"
-          fi
-          "$VENV_DIR/bin/pip" install -q jsonschema pyyaml
+          flock "$HOME/.cache/chelated-ci-py312.lock" bash -ec '
+            VENV_DIR="$HOME/.cache/chelated-ci-py312"
+            if [ ! -x "$VENV_DIR/bin/python" ]; then
+              python3 -m venv "$VENV_DIR"
+            fi
+            "$VENV_DIR/bin/pip" install -q jsonschema pyyaml
+          '
           mkdir -p tmp
           "$VENV_DIR/bin/python" scripts/validate_v33_schema_drift.py --json-report tmp/v33-report.json
