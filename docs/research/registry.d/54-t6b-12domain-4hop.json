@@ -1,0 +1,76 @@
+{
+  "id": 54,
+  "wave": 18,
+  "item": "6B",
+  "tier": "T1",
+  "track": "Zero-Retune 12-Domain + 4-Hop + Prompt-Shift & Anchor-Poisoning Gauntlet",
+  "branch": "pv7/t6b-12domain-4hop",
+  "status": "protocol-ready",
+  "spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "depends_on": [],
+  "module_file": "chelated_12domain_4hop_gauntlet.py",
+  "runner_file": "scripts/run_pv7_w18_6b_12domain_4hop.py",
+  "verifier_file": "scripts/verifiers.d/54_verifier.py",
+  "test_file": "tests/test_pv7_w18_3a_3b_6b_generalization.py",
+  "primary_endpoint": "Zero-retune 12-domain 5x3 factorial testing H6B_merge (CSLS > CalibratedZScore, LCB > 0 and >=10/12 positive), H6B_bridge_static (ZeroMu+CSLS NI LCB > -0.010 vs UncenteredProcrustes+CSLS with -0.005 tight equivalence and CenteredProcrustes+CSLS contrast), and H6B_bridge_shift_and_4hop (prompt shift + 5-encoder/4-hop v1->v5)",
+  "design": {
+    "retuned_on_eval": false,
+    "locked_12_domains": [
+      "TREC-COVID",
+      "BioASQ-TaskB",
+      "LitSearch",
+      "MIRACL-en/multi",
+      "CoIR-Apps",
+      "Touche-2020",
+      "TREC-CAR",
+      "DBPedia-Entity-v2",
+      "Robust04",
+      "Signal-1M",
+      "CQADupStack-Android",
+      "FEVER"
+    ],
+    "encoder_chain_v1_to_v5": [
+      "MiniLM-384",
+      "bge-small-384",
+      "mpnet-768",
+      "bge-m3-1024",
+      "Qwen3-4096"
+    ],
+    "factorial_bridges": [
+      "UncenteredProcrustes",
+      "CenteredProcrustes",
+      "RidgeDriftAdapter",
+      "Rank1QueryResidual",
+      "ZeroMuPolarBridge"
+    ],
+    "factorial_merges": [
+      "RawCosineMerge",
+      "CalibratedZScoreMerge",
+      "CSLSMerge"
+    ],
+    "anchor_draws_per_domain": 20,
+    "anchors_per_draw": 500,
+    "poisoning_rates": [
+      0.0,
+      0.01,
+      0.05,
+      0.1,
+      0.2
+    ],
+    "static_retirement_floor": -0.01,
+    "static_tight_equivalence_floor": -0.005,
+    "modes": [
+      "local-drycheck",
+      "run-live-gpu"
+    ]
+  },
+  "evidence_tier": "verified-mixed",
+  "evidence_disclosure": {
+    "scope": "Local synthetic drycheck retains H6B_merge.passed=false (6/12 positive, LCB95=-0.0090). Wave 22 live Colab L4 5-real-encoder (MiniLM-384, bge-small-384, mpnet-768, bge-m3-1024, Qwen3-Embedding-8B 4096-d) evaluation across ALL 12/12 unburned public MTEB/BEIR domains (artifacts/pv7_colab_l4_closure_20261125/colab_l4_closure_manifest.json [04e7543bdbbc] + artifacts/pv7_w22a_b54_12dom_complete/w22a_b54_12dom_manifest.json [a12d2457a0bd], N=2,549 real queries, hardware_cohort=colab:NVIDIA L4) CLOSED H6B_merge and H6B_bridge_static.",
+    "live_12domain_outcomes": "H6B_merge (CSLSMerge > CalibratedZScoreMerge): PASSED at 11/12 domains positive (mean=+2.45 pp, LCB95=+0.92 pp > 0, exact_binomial_p=0.00317). H6B_bridge_static (ZeroMu+CSLS vs UncenteredProcrustes+CSLS): PASSED at 11/12 positive (mean=+5.28 pp, LCB95=+3.35 pp, clearing -0.010 & -0.005 floors; statistical tie vs CenteredProcrustes+CSLS at -0.32 pp [-1.57,+0.68]). 20x500 anchor draws: within-domain SD=0.56 pp vs cross-domain SD=26.34 pp. Contamination sweep (0/1/5/10/20%): TRA-1 detects 100% of 5-20% duplicate & mismatched poisoning (0% FP at 0-1%, 60% on off_domain).",
+    "live_honest_misses": "H6B_4hop upward chain (384->384->768->1024->4096) is MIXED across 12/12 domains (7/12 positive, mean=-2.48 pp, LCB95=-5.95 pp); real prompt-wrapper shift (5-domain subset, prefix displacement norm=0.504) is positive point-estimate (4/5, +2.03 pp) but underpowered (LCB95=-1.95 pp).",
+    "hardware_cohort": "colab:NVIDIA L4 (NOT local DGX Spark GB10 evidence).",
+    "tuning": "Zero eval-set retuning; all 12 domains verified against BURNED_CORPORA.",
+    "sla": "No latency or SLA claim."
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": 49,
+  "wave": 17,
+  "item": "6D",
+  "tier": "T1",
+  "track": "Standalone Zero-Services chelated-kernel Wheel + Cold-Start Isolation Gate",
+  "branch": "pv7/t6d-sdk-coldstart",
+  "status": "protocol-ready",
+  "spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "depends_on": [47],
+  "runner_file": "scripts/run_pv7_w17_6d_sdk_coldstart_gate.py",
+  "verifier_file": "scripts/verifiers.d/49_verifier.py",
+  "test_file": "tests/test_pv7_w17_6d_chelated_kernel_sdk.py",
+  "evidence_tier": "verified-mixed",
+  "evidence_disclosure": {
+    "scope": "Local deterministic smoke passes (36/36, live_model_calls=0). Wave 22D live Colab L4 3-family cold-start benchmark (artifacts/pv7_w22d_b49_sdk_3family_live/w22d_b49_sdk_3family_manifest.json, sha256=e00975c01b98, hardware_cohort=colab:NVIDIA L4, live_model_calls=36) FAILED the strict >=30/36 gate: 16/36 strict pass (28/36 functional), wheel_deterministic=true (694bcec0e222), 0/36 private import violations.",
+    "per_family_live_breakdown": "microsoft/Phi-3.5-mini-instruct: 12/12 strict PASS (100%, 0 leaks, 0 private imports); Qwen/Qwen2.5-3B-Instruct: 0/12 strict PASS (10/12 functional, 0 leaks, omitted canary_blocked key in return dict); ibm-granite/granite-3.1-2b-instruct: 4/12 strict PASS (6/12 functional, 2 leak-check flags on stream_suppression_holdback, 4 uncaught UnsupportedCapabilityError blocks).",
+    "hardware_cohort": "colab:NVIDIA L4 (NOT local DGX Spark GB10 evidence).",
+    "tuning": "Pass rule is preregistered (>=30/36 overall, >=8/12 per family, 0 private imports, 100% canary, 0 leaks); small 2B-3.8B open models failed overall gate (gate_pass=false, Wilson UB95 failure rate=0.7046).",
+    "sla": "No latency or SLA claim."
+  }
+}

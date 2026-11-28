@@ -1,0 +1,57 @@
+{
+  "id": 56,
+  "wave": 19,
+  "item": "2A",
+  "tier": "T2",
+  "track": "Qwen3-30B-A3B CPU Disk-MoE + 0.6B Speculative Draft",
+  "status": "protocol-ready",
+  "spine_bundle_id": 47,
+  "spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "runner_path": "scripts/run_pv7_w19_2a_disk_moe.py",
+  "runtime_path": "chelated_disk_moe_runtime.py",
+  "verifier_path": "scripts/verifiers.d/56_verifier.py",
+  "test_path": "tests/test_pv7_w19_2a_2c_storage.py",
+  "protocol": {
+    "modes": ["local-drycheck", "run-live-spark2"],
+    "memory_max_bytes": 8589934592,
+    "memory_swap_max_bytes": 0,
+    "cuda_visible_devices": "",
+    "resident_request_delta": 0,
+    "rungs": [
+      "R1_mmap_random",
+      "R2_direct_pread_lru",
+      "R3_extent_coalesced",
+      "R4_speculative_draft_prefetch",
+      "R5_iq2_reap_compressed_separate_quality",
+      "R6_chelated_cylinder_ordered_pinned_moe"
+    ],
+    "live": {
+      "human_eval_prompts": 164,
+      "suite_a_prompts": 60,
+      "cold_warm_pairs_per_prompt": 3,
+      "comparator": "DEV-best of R1-R4 by pooled tokens per second, frozen before holdout",
+      "speedup_lcb95_min": 3.0,
+      "require_exact_greedy_q4_token_parity": true,
+      "require_strictly_fewer_block_read_bytes_per_token": true,
+      "bootstrap_unit": "prompt clustered within suite",
+      "r5_quality": "Separate reference continuation exact match and token similarity",
+      "dm_delay_label": "emulated_rotational_delay",
+      "physical_ordering": "FIEMAP LBA order on a measured physical ROTA=1 block device",
+      "inputs": {
+        "target": "Local Qwen3-30B-A3B GGUF with Q4 expert tensors and matching Hugging Face tokenizer",
+        "compressed": "Local Qwen3-30B-A3B GGUF with IQ2 expert tensors and JSON layer-to-retained-ID REAP mask",
+        "draft": "Locally staged Qwen3-0.6B Hugging Face checkpoint with matching vocabulary",
+        "dev": "JSONL objects with id, suite and prompt",
+        "holdout": "JSONL objects with id, suite, prompt and reference"
+      }
+    }
+  },
+  "evidence_tier": "local-drycheck-pass",
+  "evidence_disclosure": {
+    "scope": "Local drycheck of the disk-resident MoE appliance.",
+    "ledger_admission": "The drycheck performs NO ledger admission: burn_clean_scope is local_drycheck_smoke_partial_inventory and nothing here is a confirmatory burn-ledger claim.",
+    "synthetic": "Synthetic fixtures only.",
+    "tuning": "Preregistered constants; no wild-corpus validation.",
+    "sla": "No latency or SLA claim."
+  }
+}

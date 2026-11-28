@@ -1,0 +1,22 @@
+{
+  "id": 64,
+  "wave": 21,
+  "item": "5.2",
+  "tier": "T4",
+  "track": "Partner Field Kit Trial 2: Records-Owner Natural-Base-Rate Charter, Independent SQL Challenger & Loss Scorer",
+  "branch": "pv7/t5b-partner-records",
+  "status": "protocol-ready",
+  "spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "depends_on": [47],
+  "kit_file": "partner_kits/trial2_records_governance_kit.py",
+  "charter_file": "docs/research/partner_charter_trial2_records_owner.md",
+  "verifier_file": "scripts/verifiers.d/64_verifier.py",
+  "test_file": "tests/test_pv7_challenger_ledger_and_trial2.py",
+  "evidence_tier": "protocol-ready",
+  "evidence_disclosure": {
+    "scope": "Partner records trial kit and charter are ready; no partner trial has been executed.",
+    "synthetic": "Open DEV fixture only; no partner data.",
+    "tuning": "None.",
+    "sla": "No latency or SLA claim."
+  }
+}

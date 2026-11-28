@@ -1,0 +1,409 @@
+{
+  "generated_utc": "2026-11-26T13:41:00.394739+00:00",
+  "models": [
+    {
+      "active_layers": [
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18
+      ],
+      "model_id": "Qwen/Qwen2.5-1.5B",
+      "restoration_arms": {
+        "multi_L11_18_caa_k1": {
+          "layers": [
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18
+          ],
+          "mean_clean_minus_corrupt_gap": 0.4062,
+          "mean_restoration_delta": -0.0781,
+          "rank_k": 1,
+          "restoration_lcb_95": -0.125,
+          "restoration_ratio": -0.1923,
+          "restoration_ucb_95": -0.0156,
+          "strictly_positive_lcb": false
+        },
+        "multi_L11_18_qscci_k1": {
+          "layers": [
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18
+          ],
+          "mean_clean_minus_corrupt_gap": 0.4062,
+          "mean_restoration_delta": 0.1406,
+          "rank_k": 1,
+          "restoration_lcb_95": 0.0625,
+          "restoration_ratio": 0.3462,
+          "restoration_ucb_95": 0.2188,
+          "strictly_positive_lcb": true
+        },
+        "multi_L11_18_qscci_k16": {
+          "layers": [
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18
+          ],
+          "mean_clean_minus_corrupt_gap": 0.4062,
+          "mean_restoration_delta": 0.1406,
+          "rank_k": 16,
+          "restoration_lcb_95": 0.0625,
+          "restoration_ratio": 0.3462,
+          "restoration_ucb_95": 0.2188,
+          "strictly_positive_lcb": true
+        },
+        "multi_L11_18_qscci_k4": {
+          "layers": [
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18
+          ],
+          "mean_clean_minus_corrupt_gap": 0.4062,
+          "mean_restoration_delta": 0.0938,
+          "rank_k": 4,
+          "restoration_lcb_95": 0.0156,
+          "restoration_ratio": 0.2308,
+          "restoration_ucb_95": 0.1719,
+          "strictly_positive_lcb": true
+        },
+        "multi_L11_18_qscci_k8": {
+          "layers": [
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18
+          ],
+          "mean_clean_minus_corrupt_gap": 0.4062,
+          "mean_restoration_delta": 0.0469,
+          "rank_k": 8,
+          "restoration_lcb_95": -0.0312,
+          "restoration_ratio": 0.1154,
+          "restoration_ucb_95": 0.125,
+          "strictly_positive_lcb": false
+        },
+        "multi_L11_18_sham_k1": {
+          "layers": [
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18
+          ],
+          "mean_clean_minus_corrupt_gap": 0.4062,
+          "mean_restoration_delta": -0.0312,
+          "rank_k": 1,
+          "restoration_lcb_95": -0.0938,
+          "restoration_ratio": -0.0769,
+          "restoration_ucb_95": 0.0,
+          "strictly_positive_lcb": false
+        },
+        "multi_L11_18_sham_k16": {
+          "layers": [
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18
+          ],
+          "mean_clean_minus_corrupt_gap": 0.4062,
+          "mean_restoration_delta": -0.0312,
+          "rank_k": 16,
+          "restoration_lcb_95": -0.0781,
+          "restoration_ratio": -0.0769,
+          "restoration_ucb_95": 0.0,
+          "strictly_positive_lcb": false
+        },
+        "single_L11_qscci_k1": {
+          "layers": [
+            11
+          ],
+          "mean_clean_minus_corrupt_gap": 0.4062,
+          "mean_restoration_delta": -0.0625,
+          "rank_k": 1,
+          "restoration_lcb_95": -0.1094,
+          "restoration_ratio": -0.1538,
+          "restoration_ucb_95": -0.0156,
+          "strictly_positive_lcb": false
+        },
+        "single_L11_qscci_k16": {
+          "layers": [
+            11
+          ],
+          "mean_clean_minus_corrupt_gap": 0.4062,
+          "mean_restoration_delta": -0.0156,
+          "rank_k": 16,
+          "restoration_lcb_95": -0.0941,
+          "restoration_ratio": -0.0385,
+          "restoration_ucb_95": 0.0625,
+          "strictly_positive_lcb": false
+        },
+        "single_L11_qscci_k4": {
+          "layers": [
+            11
+          ],
+          "mean_clean_minus_corrupt_gap": 0.4062,
+          "mean_restoration_delta": -0.0938,
+          "rank_k": 4,
+          "restoration_lcb_95": -0.1562,
+          "restoration_ratio": -0.2308,
+          "restoration_ucb_95": -0.0469,
+          "strictly_positive_lcb": false
+        },
+        "single_L11_qscci_k8": {
+          "layers": [
+            11
+          ],
+          "mean_clean_minus_corrupt_gap": 0.4062,
+          "mean_restoration_delta": 0.0,
+          "rank_k": 8,
+          "restoration_lcb_95": -0.0625,
+          "restoration_ratio": 0.0,
+          "restoration_ucb_95": 0.0625,
+          "strictly_positive_lcb": false
+        }
+      }
+    },
+    {
+      "active_layers": [
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18
+      ],
+      "model_id": "Qwen/Qwen3.5-2B-Base",
+      "restoration_arms": {
+        "multi_L11_18_caa_k1": {
+          "layers": [
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18
+          ],
+          "mean_clean_minus_corrupt_gap": 0.625,
+          "mean_restoration_delta": 0.1094,
+          "rank_k": 1,
+          "restoration_lcb_95": 0.0156,
+          "restoration_ratio": 0.175,
+          "restoration_ucb_95": 0.1875,
+          "strictly_positive_lcb": true
+        },
+        "multi_L11_18_qscci_k1": {
+          "layers": [
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18
+          ],
+          "mean_clean_minus_corrupt_gap": 0.625,
+          "mean_restoration_delta": 0.375,
+          "rank_k": 1,
+          "restoration_lcb_95": 0.2812,
+          "restoration_ratio": 0.6,
+          "restoration_ucb_95": 0.4688,
+          "strictly_positive_lcb": true
+        },
+        "multi_L11_18_qscci_k16": {
+          "layers": [
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18
+          ],
+          "mean_clean_minus_corrupt_gap": 0.625,
+          "mean_restoration_delta": 0.375,
+          "rank_k": 16,
+          "restoration_lcb_95": 0.2812,
+          "restoration_ratio": 0.6,
+          "restoration_ucb_95": 0.4688,
+          "strictly_positive_lcb": true
+        },
+        "multi_L11_18_qscci_k4": {
+          "layers": [
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18
+          ],
+          "mean_clean_minus_corrupt_gap": 0.625,
+          "mean_restoration_delta": 0.3906,
+          "rank_k": 4,
+          "restoration_lcb_95": 0.3125,
+          "restoration_ratio": 0.625,
+          "restoration_ucb_95": 0.4844,
+          "strictly_positive_lcb": true
+        },
+        "multi_L11_18_qscci_k8": {
+          "layers": [
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18
+          ],
+          "mean_clean_minus_corrupt_gap": 0.625,
+          "mean_restoration_delta": 0.3438,
+          "rank_k": 8,
+          "restoration_lcb_95": 0.2344,
+          "restoration_ratio": 0.55,
+          "restoration_ucb_95": 0.4531,
+          "strictly_positive_lcb": true
+        },
+        "multi_L11_18_sham_k1": {
+          "layers": [
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18
+          ],
+          "mean_clean_minus_corrupt_gap": 0.625,
+          "mean_restoration_delta": 0.0,
+          "rank_k": 1,
+          "restoration_lcb_95": -0.0469,
+          "restoration_ratio": 0.0,
+          "restoration_ucb_95": 0.0469,
+          "strictly_positive_lcb": false
+        },
+        "multi_L11_18_sham_k16": {
+          "layers": [
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18
+          ],
+          "mean_clean_minus_corrupt_gap": 0.625,
+          "mean_restoration_delta": -0.0156,
+          "rank_k": 16,
+          "restoration_lcb_95": -0.0625,
+          "restoration_ratio": -0.025,
+          "restoration_ucb_95": 0.0312,
+          "strictly_positive_lcb": false
+        },
+        "single_L11_qscci_k1": {
+          "layers": [
+            11
+          ],
+          "mean_clean_minus_corrupt_gap": 0.625,
+          "mean_restoration_delta": -0.0469,
+          "rank_k": 1,
+          "restoration_lcb_95": -0.0938,
+          "restoration_ratio": -0.075,
+          "restoration_ucb_95": -0.0156,
+          "strictly_positive_lcb": false
+        },
+        "single_L11_qscci_k16": {
+          "layers": [
+            11
+          ],
+          "mean_clean_minus_corrupt_gap": 0.625,
+          "mean_restoration_delta": 0.0,
+          "rank_k": 16,
+          "restoration_lcb_95": -0.0469,
+          "restoration_ratio": 0.0,
+          "restoration_ucb_95": 0.0469,
+          "strictly_positive_lcb": false
+        },
+        "single_L11_qscci_k4": {
+          "layers": [
+            11
+          ],
+          "mean_clean_minus_corrupt_gap": 0.625,
+          "mean_restoration_delta": -0.0156,
+          "rank_k": 4,
+          "restoration_lcb_95": -0.0625,
+          "restoration_ratio": -0.025,
+          "restoration_ucb_95": 0.0312,
+          "strictly_positive_lcb": false
+        },
+        "single_L11_qscci_k8": {
+          "layers": [
+            11
+          ],
+          "mean_clean_minus_corrupt_gap": 0.625,
+          "mean_restoration_delta": -0.0312,
+          "rank_k": 8,
+          "restoration_lcb_95": -0.0938,
+          "restoration_ratio": -0.05,
+          "restoration_ucb_95": 0.0312,
+          "strictly_positive_lcb": false
+        }
+      }
+    }
+  ],
+  "provenance": {
+    "git_commit_sha": "11a8c06edbd42586a4e12b525c06ea99385f1c0d",
+    "gpu_name": "NVIDIA GB10",
+    "hardware_cohort": "spark1_gb10:NVIDIA GB10",
+    "python_version": "3.12.3",
+    "source_archive_sha256": "unknown",
+    "spine_claim_registry_sha256": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+    "torch_version": "2.14.1+cu130",
+    "wall_seconds_total": 425.04
+  },
+  "schema_version": "colab_l4_w24_12_multilayer_qscci_v1",
+  "wave_item_id": "W24-12"
+}

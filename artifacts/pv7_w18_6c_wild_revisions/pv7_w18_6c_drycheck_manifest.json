@@ -1,0 +1,1511 @@
+{
+  "authored_prompts": 0,
+  "bundle_id": 55,
+  "burn": {
+    "burn_inventory_scope": "local_drycheck_smoke",
+    "drycheck_texts_admitted": true,
+    "osv_cve_seeds_rejected": true,
+    "scored_cohort_texts_checked": 16,
+    "wild_inventory_verified": false
+  },
+  "cohort_source": "deterministic_schema_drycheck",
+  "confirmatory_n": false,
+  "descriptive_family_count": 0,
+  "duplicate_family_ids_dropped": 0,
+  "echo": {
+    "tenant_aware": {
+      "cross_tenant_collapse_leaks": 0,
+      "false_negative": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "true_negative": 16,
+      "true_positive": 8
+    },
+    "unsigned_correlation": {
+      "cross_tenant_collapse_leaks": 4,
+      "false_negative": 0,
+      "false_positive": 4,
+      "precision": 0.6666666666666666,
+      "recall": 1.0,
+      "true_negative": 12,
+      "true_positive": 8
+    }
+  },
+  "ek5_audit_digest": "36f70372de9291da46740ecc8929068cfe1ed2f0076a4c4402a7c82f92c43d5f",
+  "engines": {
+    "ek5_v3": {
+      "accuracy": 1.0,
+      "as_of_p95_seconds": 0.0014375000027939677,
+      "audit_digest": "36f70372de9291da46740ecc8929068cfe1ed2f0076a4c4402a7c82f92c43d5f",
+      "combined_cost_seconds": 0.0014375000027939677,
+      "hits": 16,
+      "name": "ek5_v3",
+      "per_withdrawal_mean_seconds": 5.418333845833937e-05,
+      "rows": [
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_initial",
+          "elapsed_seconds": 0.0011633000103756785,
+          "family_id": "dry-echo",
+          "hit": 1,
+          "oracle_disposition": "affected",
+          "oracle_lineage": [
+            "echo-origin"
+          ],
+          "predicted_disposition": "affected",
+          "predicted_lineage": [
+            "echo-origin"
+          ],
+          "stratum": "unlinked_cross_mirror_echo"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_mirror_echo_or_conflict",
+          "elapsed_seconds": 0.0012845000019297004,
+          "family_id": "dry-echo",
+          "hit": 1,
+          "oracle_disposition": "affected",
+          "oracle_lineage": [
+            "echo-origin"
+          ],
+          "predicted_disposition": "affected",
+          "predicted_lineage": [
+            "echo-origin"
+          ],
+          "stratum": "unlinked_cross_mirror_echo"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_withdrawal_or_402",
+          "elapsed_seconds": 0.001369300007354468,
+          "family_id": "dry-echo",
+          "hit": 1,
+          "oracle_disposition": "retracted",
+          "oracle_lineage": [],
+          "predicted_disposition": "retracted",
+          "predicted_lineage": [],
+          "stratum": "unlinked_cross_mirror_echo"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_reinstatement_or_restated_10ka",
+          "elapsed_seconds": 0.001437300001271069,
+          "family_id": "dry-echo",
+          "hit": 1,
+          "oracle_disposition": "affected",
+          "oracle_lineage": [
+            "echo-reinstated"
+          ],
+          "predicted_disposition": "affected",
+          "predicted_lineage": [
+            "echo-reinstated"
+          ],
+          "stratum": "unlinked_cross_mirror_echo"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_initial",
+          "elapsed_seconds": 0.0006155000301077962,
+          "family_id": "dry-conflict",
+          "hit": 1,
+          "oracle_disposition": "affected",
+          "oracle_lineage": [
+            "conflict-ghsa"
+          ],
+          "predicted_disposition": "affected",
+          "predicted_lineage": [
+            "conflict-ghsa"
+          ],
+          "stratum": "equal_authority_vex_ghsa"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_mirror_echo_or_conflict",
+          "elapsed_seconds": 0.0008196000126190484,
+          "family_id": "dry-conflict",
+          "hit": 1,
+          "oracle_disposition": "disputed",
+          "oracle_lineage": [
+            "conflict-ghsa",
+            "conflict-vex"
+          ],
+          "predicted_disposition": "disputed",
+          "predicted_lineage": [
+            "conflict-ghsa",
+            "conflict-vex"
+          ],
+          "stratum": "equal_authority_vex_ghsa"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_withdrawal_or_402",
+          "elapsed_seconds": 0.000859099964145571,
+          "family_id": "dry-conflict",
+          "hit": 1,
+          "oracle_disposition": "not_affected",
+          "oracle_lineage": [
+            "conflict-vex"
+          ],
+          "predicted_disposition": "not_affected",
+          "predicted_lineage": [
+            "conflict-vex"
+          ],
+          "stratum": "equal_authority_vex_ghsa"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_reinstatement_or_restated_10ka",
+          "elapsed_seconds": 0.0009355000220239162,
+          "family_id": "dry-conflict",
+          "hit": 1,
+          "oracle_disposition": "disputed",
+          "oracle_lineage": [
+            "conflict-ghsa-restored",
+            "conflict-vex"
+          ],
+          "predicted_disposition": "disputed",
+          "predicted_lineage": [
+            "conflict-ghsa-restored",
+            "conflict-vex"
+          ],
+          "stratum": "equal_authority_vex_ghsa"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_initial",
+          "elapsed_seconds": 0.001097199972718954,
+          "family_id": "dry-402",
+          "hit": 1,
+          "oracle_disposition": "reliance_unchanged",
+          "oracle_lineage": [
+            "sec-10k"
+          ],
+          "predicted_disposition": "reliance_unchanged",
+          "predicted_lineage": [
+            "sec-10k"
+          ],
+          "stratum": "sec_item_402_nonreliance"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_mirror_echo_or_conflict",
+          "elapsed_seconds": 0.0012285999837331474,
+          "family_id": "dry-402",
+          "hit": 1,
+          "oracle_disposition": "reliance_unchanged",
+          "oracle_lineage": [
+            "sec-10k"
+          ],
+          "predicted_disposition": "reliance_unchanged",
+          "predicted_lineage": [
+            "sec-10k"
+          ],
+          "stratum": "sec_item_402_nonreliance"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_withdrawal_or_402",
+          "elapsed_seconds": 0.0013423999771475792,
+          "family_id": "dry-402",
+          "hit": 1,
+          "oracle_disposition": "non_reliance",
+          "oracle_lineage": [
+            "sec-8k-402"
+          ],
+          "predicted_disposition": "non_reliance",
+          "predicted_lineage": [
+            "sec-8k-402"
+          ],
+          "stratum": "sec_item_402_nonreliance"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_reinstatement_or_restated_10ka",
+          "elapsed_seconds": 0.0013902999926358461,
+          "family_id": "dry-402",
+          "hit": 1,
+          "oracle_disposition": "restated_current",
+          "oracle_lineage": [
+            "sec-restated-10ka"
+          ],
+          "predicted_disposition": "restated_current",
+          "predicted_lineage": [
+            "sec-restated-10ka"
+          ],
+          "stratum": "sec_item_402_nonreliance"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_initial",
+          "elapsed_seconds": 0.001129399985074997,
+          "family_id": "dry-amend",
+          "hit": 1,
+          "oracle_disposition": "reliance_unchanged",
+          "oracle_lineage": [
+            "amend-10k"
+          ],
+          "predicted_disposition": "reliance_unchanged",
+          "predicted_lineage": [
+            "amend-10k"
+          ],
+          "stratum": "routine_amendment_control"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_mirror_echo_or_conflict",
+          "elapsed_seconds": 0.0012614000006578863,
+          "family_id": "dry-amend",
+          "hit": 1,
+          "oracle_disposition": "reliance_unchanged",
+          "oracle_lineage": [
+            "amend-10k"
+          ],
+          "predicted_disposition": "reliance_unchanged",
+          "predicted_lineage": [
+            "amend-10k"
+          ],
+          "stratum": "routine_amendment_control"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_withdrawal_or_402",
+          "elapsed_seconds": 0.0013801000313833356,
+          "family_id": "dry-amend",
+          "hit": 1,
+          "oracle_disposition": "reliance_unchanged",
+          "oracle_lineage": [
+            "amend-10ka"
+          ],
+          "predicted_disposition": "reliance_unchanged",
+          "predicted_lineage": [
+            "amend-10ka"
+          ],
+          "stratum": "routine_amendment_control"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_reinstatement_or_restated_10ka",
+          "elapsed_seconds": 0.0014375000027939677,
+          "family_id": "dry-amend",
+          "hit": 1,
+          "oracle_disposition": "reliance_unchanged",
+          "oracle_lineage": [
+            "amend-8ka"
+          ],
+          "predicted_disposition": "reliance_unchanged",
+          "predicted_lineage": [
+            "amend-8ka"
+          ],
+          "stratum": "routine_amendment_control"
+        }
+      ],
+      "trials": 16
+    },
+    "postgres17": {
+      "error": "",
+      "modes": {},
+      "status": "not_requested"
+    },
+    "sqlite": {
+      "closure_table": {
+        "accuracy": 0.4375,
+        "as_of_p95_seconds": 0.0007293999660760164,
+        "combined_cost_seconds": 0.0007293999660760164,
+        "hits": 7,
+        "name": "closure_table",
+        "per_withdrawal_mean_seconds": 1.196668017655611e-05,
+        "rows": [
+          {
+            "adjudication_source": "computed_oracle",
+            "cut": "t_initial",
+            "elapsed_seconds": 0.0007293999660760164,
+            "family_id": "dry-echo",
+            "hit": 1,
+            "oracle_disposition": "affected",
+            "oracle_lineage": [
+              "echo-origin"
+            ],
+            "predicted_disposition": "affected",
+            "predicted_lineage": [
+              "echo-origin"
+            ],
+            "stratum": "unlinked_cross_mirror_echo"
+          },
+          {
+            "adjudication_source": "computed_oracle",
+            "cut": "t_mirror_echo_or_conflict",
+            "elapsed_seconds": 0.00011740002082660794,
+            "family_id": "dry-echo",
+            "hit": 0,
+            "oracle_disposition": "affected",
+            "oracle_lineage": [
+              "echo-origin"
+            ],
+            "predicted_disposition": "affected",
+            "predicted_lineage": [
+              "echo-mirror-a",
+              "echo-mirror-b",
+              "echo-origin"
+            ],
+            "stratum": "unlinked_cross_mirror_echo"
+          },
+          {
+            "adjudication_source": "computed_oracle",
+            "cut": "t_withdrawal_or_402",
+            "elapsed_seconds": 0.00011960003757849336,
+            "family_id": "dry-echo",
+            "hit": 0,
+            "oracle_disposition": "retracted",
+            "oracle_lineage": [],
+            "predicted_disposition": "affected",
+            "predicted_lineage": [
+              "echo-mirror-a",
+              "echo-mirror-b"
+            ],
+            "stratum": "unlinked_cross_mirror_echo"
+          },
+          {
+            "adjudication_source": "computed_oracle",
+            "cut": "t_reinstatement_or_restated_10ka",
+            "elapsed_seconds": 0.00015670002903789282,
+            "family_id": "dry-echo",
+            "hit": 0,
+            "oracle_disposition": "affected",
+            "oracle_lineage": [
+              "echo-reinstated"
+            ],
+            "predicted_disposition": "affected",
+            "predicted_lineage": [
+              "echo-mirror-a",
+              "echo-mirror-b",
+              "echo-reinstated"
+            ],
+            "stratum": "unlinked_cross_mirror_echo"
+          },
+          {
+            "adjudication_source": "computed_oracle",
+            "cut": "t_initial",
+            "elapsed_seconds": 5.530001362785697e-05,
+            "family_id": "dry-conflict",
+            "hit": 1,
+            "oracle_disposition": "affected",
+            "oracle_lineage": [
+              "conflict-ghsa"
+            ],
+            "predicted_disposition": "affected",
+            "predicted_lineage": [
+              "conflict-ghsa"
+            ],
+            "stratum": "equal_authority_vex_ghsa"
+          },
+          {
+            "adjudication_source": "computed_oracle",
+            "cut": "t_mirror_echo_or_conflict",
+            "elapsed_seconds": 7.559999357908964e-05,
+            "family_id": "dry-conflict",
+            "hit": 1,
+            "oracle_disposition": "disputed",
+            "oracle_lineage": [
+              "conflict-ghsa",
+              "conflict-vex"
+            ],
+            "predicted_disposition": "disputed",
+            "predicted_lineage": [
+              "conflict-ghsa",
+              "conflict-vex"
+            ],
+            "stratum": "equal_authority_vex_ghsa"
+          },
+          {
+            "adjudication_source": "computed_oracle",
+            "cut": "t_withdrawal_or_402",
+            "elapsed_seconds": 7.540005026385188e-05,
+            "family_id": "dry-conflict",
+            "hit": 1,
+            "oracle_disposition": "not_affected",
+            "oracle_lineage": [
+              "conflict-vex"
+            ],
+            "predicted_disposition": "not_affected",
+            "predicted_lineage": [
+              "conflict-vex"
+            ],
+            "stratum": "equal_authority_vex_ghsa"
+          },
+          {
+            "adjudication_source": "computed_oracle",
+            "cut": "t_reinstatement_or_restated_10ka",
+            "elapsed_seconds": 0.00010679999832063913,
+            "family_id": "dry-conflict",
+            "hit": 1,
+            "oracle_disposition": "disputed",
+            "oracle_lineage": [
+              "conflict-ghsa-restored",
+              "conflict-vex"
+            ],
+            "predicted_disposition": "disputed",
+            "predicted_lineage": [
+              "conflict-ghsa-restored",
+              "conflict-vex"
+            ],
+            "stratum": "equal_authority_vex_ghsa"
+          },
+          {
+            "adjudication_source": "computed_oracle",
+            "cut": "t_initial",
+            "elapsed_seconds": 5.189998773857951e-05,
+            "family_id": "dry-402",
+            "hit": 1,
+            "oracle_disposition": "reliance_unchanged",
+            "oracle_lineage": [
+              "sec-10k"
+            ],
+            "predicted_disposition": "reliance_unchanged",
+            "predicted_lineage": [
+              "sec-10k"
+            ],
+            "stratum": "sec_item_402_nonreliance"
+          },
+          {
+            "adjudication_source": "computed_oracle",
+            "cut": "t_mirror_echo_or_conflict",
+            "elapsed_seconds": 7.41000403650105e-05,
+            "family_id": "dry-402",
+            "hit": 0,
+            "oracle_disposition": "reliance_unchanged",
+            "oracle_lineage": [
+              "sec-10k"
+            ],
+            "predicted_disposition": "reliance_unchanged",
+            "predicted_lineage": [
+              "sec-10k",
+              "sec-press"
+            ],
+            "stratum": "sec_item_402_nonreliance"
+          },
+          {
+            "adjudication_source": "computed_oracle",
+            "cut": "t_withdrawal_or_402",
+            "elapsed_seconds": 0.00010760000441223383,
+            "family_id": "dry-402",
+            "hit": 0,
+            "oracle_disposition": "non_reliance",
+            "oracle_lineage": [
+              "sec-8k-402"
+            ],
+            "predicted_disposition": "disputed",
+            "predicted_lineage": [
+              "sec-8k-402",
+              "sec-press"
+            ],
+            "stratum": "sec_item_402_nonreliance"
+          },
+          {
+            "adjudication_source": "computed_oracle",
+            "cut": "t_reinstatement_or_restated_10ka",
+            "elapsed_seconds": 0.00014840002404525876,
+            "family_id": "dry-402",
+            "hit": 0,
+            "oracle_disposition": "restated_current",
+            "oracle_lineage": [
+              "sec-restated-10ka"
+            ],
+            "predicted_disposition": "disputed",
+            "predicted_lineage": [
+              "sec-press",
+              "sec-restated-10ka"
+            ],
+            "stratum": "sec_item_402_nonreliance"
+          },
+          {
+            "adjudication_source": "computed_oracle",
+            "cut": "t_initial",
+            "elapsed_seconds": 5.250005051493645e-05,
+            "family_id": "dry-amend",
+            "hit": 1,
+            "oracle_disposition": "reliance_unchanged",
+            "oracle_lineage": [
+              "amend-10k"
+            ],
+            "predicted_disposition": "reliance_unchanged",
+            "predicted_lineage": [
+              "amend-10k"
+            ],
+            "stratum": "routine_amendment_control"
+          },
+          {
+            "adjudication_source": "computed_oracle",
+            "cut": "t_mirror_echo_or_conflict",
+            "elapsed_seconds": 7.6299998909235e-05,
+            "family_id": "dry-amend",
+            "hit": 0,
+            "oracle_disposition": "reliance_unchanged",
+            "oracle_lineage": [
+              "amend-10k"
+            ],
+            "predicted_disposition": "reliance_unchanged",
+            "predicted_lineage": [
+              "amend-10k",
+              "amend-press"
+            ],
+            "stratum": "routine_amendment_control"
+          },
+          {
+            "adjudication_source": "computed_oracle",
+            "cut": "t_withdrawal_or_402",
+            "elapsed_seconds": 0.00010800000745803118,
+            "family_id": "dry-amend",
+            "hit": 0,
+            "oracle_disposition": "reliance_unchanged",
+            "oracle_lineage": [
+              "amend-10ka"
+            ],
+            "predicted_disposition": "reliance_unchanged",
+            "predicted_lineage": [
+              "amend-10ka",
+              "amend-press"
+            ],
+            "stratum": "routine_amendment_control"
+          },
+          {
+            "adjudication_source": "computed_oracle",
+            "cut": "t_reinstatement_or_restated_10ka",
+            "elapsed_seconds": 0.00016449997201561928,
+            "family_id": "dry-amend",
+            "hit": 0,
+            "oracle_disposition": "reliance_unchanged",
+            "oracle_lineage": [
+              "amend-8ka"
+            ],
+            "predicted_disposition": "reliance_unchanged",
+            "predicted_lineage": [
+              "amend-8ka",
+              "amend-press"
+            ],
+            "stratum": "routine_amendment_control"
+          }
+        ],
+        "trials": 16
+      },
+      "recursive_cte": {
+        "accuracy": 0.4375,
+        "as_of_p95_seconds": 0.0006741000106558204,
+        "combined_cost_seconds": 0.0006741000106558204,
+        "hits": 7,
+        "name": "recursive_cte",
+        "per_withdrawal_mean_seconds": 1.196668017655611e-05,
+        "rows": [
+          {
+            "adjudication_source": "computed_oracle",
+            "cut": "t_initial",
+            "elapsed_seconds": 0.0006741000106558204,
+            "family_id": "dry-echo",
+            "hit": 1,
+            "oracle_disposition": "affected",
+            "oracle_lineage": [
+              "echo-origin"
+            ],
+            "predicted_disposition": "affected",
+            "predicted_lineage": [
+              "echo-origin"
+            ],
+            "stratum": "unlinked_cross_mirror_echo"
+          },
+          {
+            "adjudication_source": "computed_oracle",
+            "cut": "t_mirror_echo_or_conflict",
+            "elapsed_seconds": 0.00018480001017451286,
+            "family_id": "dry-echo",
+            "hit": 0,
+            "oracle_disposition": "affected",
+            "oracle_lineage": [
+              "echo-origin"
+            ],
+            "predicted_disposition": "affected",
+            "predicted_lineage": [
+              "echo-mirror-a",
+              "echo-mirror-b",
+              "echo-origin"
+            ],
+            "stratum": "unlinked_cross_mirror_echo"
+          },
+          {
+            "adjudication_source": "computed_oracle",
+            "cut": "t_withdrawal_or_402",
+            "elapsed_seconds": 0.00011239998275414109,
+            "family_id": "dry-echo",
+            "hit": 0,
+            "oracle_disposition": "retracted",
+            "oracle_lineage": [],
+            "predicted_disposition": "affected",
+            "predicted_lineage": [
+              "echo-mirror-a",
+              "echo-mirror-b"
+            ],
+            "stratum": "unlinked_cross_mirror_echo"
+          },
+          {
+            "adjudication_source": "computed_oracle",
+            "cut": "t_reinstatement_or_restated_10ka",
+            "elapsed_seconds": 0.00013259996194392443,
+            "family_id": "dry-echo",
+            "hit": 0,
+            "oracle_disposition": "affected",
+            "oracle_lineage": [
+              "echo-reinstated"
+            ],
+            "predicted_disposition": "affected",
+            "predicted_lineage": [
+              "echo-mirror-a",
+              "echo-mirror-b",
+              "echo-reinstated"
+            ],
+            "stratum": "unlinked_cross_mirror_echo"
+          },
+          {
+            "adjudication_source": "computed_oracle",
+            "cut": "t_initial",
+            "elapsed_seconds": 5.590001819655299e-05,
+            "family_id": "dry-conflict",
+            "hit": 1,
+            "oracle_disposition": "affected",
+            "oracle_lineage": [
+              "conflict-ghsa"
+            ],
+            "predicted_disposition": "affected",
+            "predicted_lineage": [
+              "conflict-ghsa"
+            ],
+            "stratum": "equal_authority_vex_ghsa"
+          },
+          {
+            "adjudication_source": "computed_oracle",
+            "cut": "t_mirror_echo_or_conflict",
+            "elapsed_seconds": 7.930002175271511e-05,
+            "family_id": "dry-conflict",
+            "hit": 1,
+            "oracle_disposition": "disputed",
+            "oracle_lineage": [
+              "conflict-ghsa",
+              "conflict-vex"
+            ],
+            "predicted_disposition": "disputed",
+            "predicted_lineage": [
+              "conflict-ghsa",
+              "conflict-vex"
+            ],
+            "stratum": "equal_authority_vex_ghsa"
+          },
+          {
+            "adjudication_source": "computed_oracle",
+            "cut": "t_withdrawal_or_402",
+            "elapsed_seconds": 7.49000464566052e-05,
+            "family_id": "dry-conflict",
+            "hit": 1,
+            "oracle_disposition": "not_affected",
+            "oracle_lineage": [
+              "conflict-vex"
+            ],
+            "predicted_disposition": "not_affected",
+            "predicted_lineage": [
+              "conflict-vex"
+            ],
+            "stratum": "equal_authority_vex_ghsa"
+          },
+          {
+            "adjudication_source": "computed_oracle",
+            "cut": "t_reinstatement_or_restated_10ka",
+            "elapsed_seconds": 0.00010390003444626927,
+            "family_id": "dry-conflict",
+            "hit": 1,
+            "oracle_disposition": "disputed",
+            "oracle_lineage": [
+              "conflict-ghsa-restored",
+              "conflict-vex"
+            ],
+            "predicted_disposition": "disputed",
+            "predicted_lineage": [
+              "conflict-ghsa-restored",
+              "conflict-vex"
+            ],
+            "stratum": "equal_authority_vex_ghsa"
+          },
+          {
+            "adjudication_source": "computed_oracle",
+            "cut": "t_initial",
+            "elapsed_seconds": 5.2799994591623545e-05,
+            "family_id": "dry-402",
+            "hit": 1,
+            "oracle_disposition": "reliance_unchanged",
+            "oracle_lineage": [
+              "sec-10k"
+            ],
+            "predicted_disposition": "reliance_unchanged",
+            "predicted_lineage": [
+              "sec-10k"
+            ],
+            "stratum": "sec_item_402_nonreliance"
+          },
+          {
+            "adjudication_source": "computed_oracle",
+            "cut": "t_mirror_echo_or_conflict",
+            "elapsed_seconds": 6.880000000819564e-05,
+            "family_id": "dry-402",
+            "hit": 0,
+            "oracle_disposition": "reliance_unchanged",
+            "oracle_lineage": [
+              "sec-10k"
+            ],
+            "predicted_disposition": "reliance_unchanged",
+            "predicted_lineage": [
+              "sec-10k",
+              "sec-press"
+            ],
+            "stratum": "sec_item_402_nonreliance"
+          },
+          {
+            "adjudication_source": "computed_oracle",
+            "cut": "t_withdrawal_or_402",
+            "elapsed_seconds": 9.550002869218588e-05,
+            "family_id": "dry-402",
+            "hit": 0,
+            "oracle_disposition": "non_reliance",
+            "oracle_lineage": [
+              "sec-8k-402"
+            ],
+            "predicted_disposition": "disputed",
+            "predicted_lineage": [
+              "sec-8k-402",
+              "sec-press"
+            ],
+            "stratum": "sec_item_402_nonreliance"
+          },
+          {
+            "adjudication_source": "computed_oracle",
+            "cut": "t_reinstatement_or_restated_10ka",
+            "elapsed_seconds": 0.00013489997945725918,
+            "family_id": "dry-402",
+            "hit": 0,
+            "oracle_disposition": "restated_current",
+            "oracle_lineage": [
+              "sec-restated-10ka"
+            ],
+            "predicted_disposition": "disputed",
+            "predicted_lineage": [
+              "sec-press",
+              "sec-restated-10ka"
+            ],
+            "stratum": "sec_item_402_nonreliance"
+          },
+          {
+            "adjudication_source": "computed_oracle",
+            "cut": "t_initial",
+            "elapsed_seconds": 5.229999078437686e-05,
+            "family_id": "dry-amend",
+            "hit": 1,
+            "oracle_disposition": "reliance_unchanged",
+            "oracle_lineage": [
+              "amend-10k"
+            ],
+            "predicted_disposition": "reliance_unchanged",
+            "predicted_lineage": [
+              "amend-10k"
+            ],
+            "stratum": "routine_amendment_control"
+          },
+          {
+            "adjudication_source": "computed_oracle",
+            "cut": "t_mirror_echo_or_conflict",
+            "elapsed_seconds": 7.000000914558768e-05,
+            "family_id": "dry-amend",
+            "hit": 0,
+            "oracle_disposition": "reliance_unchanged",
+            "oracle_lineage": [
+              "amend-10k"
+            ],
+            "predicted_disposition": "reliance_unchanged",
+            "predicted_lineage": [
+              "amend-10k",
+              "amend-press"
+            ],
+            "stratum": "routine_amendment_control"
+          },
+          {
+            "adjudication_source": "computed_oracle",
+            "cut": "t_withdrawal_or_402",
+            "elapsed_seconds": 0.00010210002074018121,
+            "family_id": "dry-amend",
+            "hit": 0,
+            "oracle_disposition": "reliance_unchanged",
+            "oracle_lineage": [
+              "amend-10ka"
+            ],
+            "predicted_disposition": "reliance_unchanged",
+            "predicted_lineage": [
+              "amend-10ka",
+              "amend-press"
+            ],
+            "stratum": "routine_amendment_control"
+          },
+          {
+            "adjudication_source": "computed_oracle",
+            "cut": "t_reinstatement_or_restated_10ka",
+            "elapsed_seconds": 0.00012989999959245324,
+            "family_id": "dry-amend",
+            "hit": 0,
+            "oracle_disposition": "reliance_unchanged",
+            "oracle_lineage": [
+              "amend-8ka"
+            ],
+            "predicted_disposition": "reliance_unchanged",
+            "predicted_lineage": [
+              "amend-8ka",
+              "amend-press"
+            ],
+            "stratum": "routine_amendment_control"
+          }
+        ],
+        "trials": 16
+      }
+    },
+    "sqlite_dev_best": "recursive_cte",
+    "temporal_recency_rag": {
+      "accuracy": 0.625,
+      "as_of_p95_seconds": 5.689996760338545e-05,
+      "combined_cost_seconds": 5.689996760338545e-05,
+      "hits": 10,
+      "name": "temporal_recency_rag",
+      "per_withdrawal_mean_seconds": 0.0,
+      "rows": [
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_initial",
+          "elapsed_seconds": 5.689996760338545e-05,
+          "family_id": "dry-echo",
+          "hit": 1,
+          "oracle_disposition": "affected",
+          "oracle_lineage": [
+            "echo-origin"
+          ],
+          "predicted_disposition": "affected",
+          "predicted_lineage": [
+            "echo-origin"
+          ],
+          "stratum": "unlinked_cross_mirror_echo"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_mirror_echo_or_conflict",
+          "elapsed_seconds": 5.1099981646984816e-05,
+          "family_id": "dry-echo",
+          "hit": 0,
+          "oracle_disposition": "affected",
+          "oracle_lineage": [
+            "echo-origin"
+          ],
+          "predicted_disposition": "affected",
+          "predicted_lineage": [
+            "echo-mirror-b"
+          ],
+          "stratum": "unlinked_cross_mirror_echo"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_withdrawal_or_402",
+          "elapsed_seconds": 4.9499969463795424e-05,
+          "family_id": "dry-echo",
+          "hit": 0,
+          "oracle_disposition": "retracted",
+          "oracle_lineage": [],
+          "predicted_disposition": "affected",
+          "predicted_lineage": [
+            "echo-mirror-b"
+          ],
+          "stratum": "unlinked_cross_mirror_echo"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_reinstatement_or_restated_10ka",
+          "elapsed_seconds": 4.870002157986164e-05,
+          "family_id": "dry-echo",
+          "hit": 1,
+          "oracle_disposition": "affected",
+          "oracle_lineage": [
+            "echo-reinstated"
+          ],
+          "predicted_disposition": "affected",
+          "predicted_lineage": [
+            "echo-reinstated"
+          ],
+          "stratum": "unlinked_cross_mirror_echo"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_initial",
+          "elapsed_seconds": 3.589998232200742e-05,
+          "family_id": "dry-conflict",
+          "hit": 1,
+          "oracle_disposition": "affected",
+          "oracle_lineage": [
+            "conflict-ghsa"
+          ],
+          "predicted_disposition": "affected",
+          "predicted_lineage": [
+            "conflict-ghsa"
+          ],
+          "stratum": "equal_authority_vex_ghsa"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_mirror_echo_or_conflict",
+          "elapsed_seconds": 3.5100034438073635e-05,
+          "family_id": "dry-conflict",
+          "hit": 0,
+          "oracle_disposition": "disputed",
+          "oracle_lineage": [
+            "conflict-ghsa",
+            "conflict-vex"
+          ],
+          "predicted_disposition": "not_affected",
+          "predicted_lineage": [
+            "conflict-vex"
+          ],
+          "stratum": "equal_authority_vex_ghsa"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_withdrawal_or_402",
+          "elapsed_seconds": 3.430002834647894e-05,
+          "family_id": "dry-conflict",
+          "hit": 1,
+          "oracle_disposition": "not_affected",
+          "oracle_lineage": [
+            "conflict-vex"
+          ],
+          "predicted_disposition": "not_affected",
+          "predicted_lineage": [
+            "conflict-vex"
+          ],
+          "stratum": "equal_authority_vex_ghsa"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_reinstatement_or_restated_10ka",
+          "elapsed_seconds": 3.509997623041272e-05,
+          "family_id": "dry-conflict",
+          "hit": 0,
+          "oracle_disposition": "disputed",
+          "oracle_lineage": [
+            "conflict-ghsa-restored",
+            "conflict-vex"
+          ],
+          "predicted_disposition": "affected",
+          "predicted_lineage": [
+            "conflict-ghsa-restored"
+          ],
+          "stratum": "equal_authority_vex_ghsa"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_initial",
+          "elapsed_seconds": 3.589998232200742e-05,
+          "family_id": "dry-402",
+          "hit": 1,
+          "oracle_disposition": "reliance_unchanged",
+          "oracle_lineage": [
+            "sec-10k"
+          ],
+          "predicted_disposition": "reliance_unchanged",
+          "predicted_lineage": [
+            "sec-10k"
+          ],
+          "stratum": "sec_item_402_nonreliance"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_mirror_echo_or_conflict",
+          "elapsed_seconds": 3.4299970138818026e-05,
+          "family_id": "dry-402",
+          "hit": 0,
+          "oracle_disposition": "reliance_unchanged",
+          "oracle_lineage": [
+            "sec-10k"
+          ],
+          "predicted_disposition": "reliance_unchanged",
+          "predicted_lineage": [
+            "sec-press"
+          ],
+          "stratum": "sec_item_402_nonreliance"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_withdrawal_or_402",
+          "elapsed_seconds": 3.419996937736869e-05,
+          "family_id": "dry-402",
+          "hit": 1,
+          "oracle_disposition": "non_reliance",
+          "oracle_lineage": [
+            "sec-8k-402"
+          ],
+          "predicted_disposition": "non_reliance",
+          "predicted_lineage": [
+            "sec-8k-402"
+          ],
+          "stratum": "sec_item_402_nonreliance"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_reinstatement_or_restated_10ka",
+          "elapsed_seconds": 3.3800024539232254e-05,
+          "family_id": "dry-402",
+          "hit": 1,
+          "oracle_disposition": "restated_current",
+          "oracle_lineage": [
+            "sec-restated-10ka"
+          ],
+          "predicted_disposition": "restated_current",
+          "predicted_lineage": [
+            "sec-restated-10ka"
+          ],
+          "stratum": "sec_item_402_nonreliance"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_initial",
+          "elapsed_seconds": 3.619998460635543e-05,
+          "family_id": "dry-amend",
+          "hit": 1,
+          "oracle_disposition": "reliance_unchanged",
+          "oracle_lineage": [
+            "amend-10k"
+          ],
+          "predicted_disposition": "reliance_unchanged",
+          "predicted_lineage": [
+            "amend-10k"
+          ],
+          "stratum": "routine_amendment_control"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_mirror_echo_or_conflict",
+          "elapsed_seconds": 3.439997090026736e-05,
+          "family_id": "dry-amend",
+          "hit": 0,
+          "oracle_disposition": "reliance_unchanged",
+          "oracle_lineage": [
+            "amend-10k"
+          ],
+          "predicted_disposition": "reliance_unchanged",
+          "predicted_lineage": [
+            "amend-press"
+          ],
+          "stratum": "routine_amendment_control"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_withdrawal_or_402",
+          "elapsed_seconds": 3.390002530068159e-05,
+          "family_id": "dry-amend",
+          "hit": 1,
+          "oracle_disposition": "reliance_unchanged",
+          "oracle_lineage": [
+            "amend-10ka"
+          ],
+          "predicted_disposition": "reliance_unchanged",
+          "predicted_lineage": [
+            "amend-10ka"
+          ],
+          "stratum": "routine_amendment_control"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_reinstatement_or_restated_10ka",
+          "elapsed_seconds": 3.389996709302068e-05,
+          "family_id": "dry-amend",
+          "hit": 1,
+          "oracle_disposition": "reliance_unchanged",
+          "oracle_lineage": [
+            "amend-8ka"
+          ],
+          "predicted_disposition": "reliance_unchanged",
+          "predicted_lineage": [
+            "amend-8ka"
+          ],
+          "stratum": "routine_amendment_control"
+        }
+      ],
+      "trials": 16
+    },
+    "unsigned_correlation_filter": {
+      "accuracy": 1.0,
+      "as_of_p95_seconds": 0.0017556000384502113,
+      "combined_cost_seconds": 0.0017556000384502113,
+      "cross_tenant_collapse_leaks": 4,
+      "hits": 16,
+      "name": "unsigned_correlation_filter",
+      "per_withdrawal_mean_seconds": 0.0,
+      "rows": [
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_initial",
+          "elapsed_seconds": 0.0017556000384502113,
+          "family_id": "dry-echo",
+          "hit": 1,
+          "oracle_disposition": "affected",
+          "oracle_lineage": [
+            "echo-origin"
+          ],
+          "predicted_disposition": "affected",
+          "predicted_lineage": [
+            "echo-origin"
+          ],
+          "stratum": "unlinked_cross_mirror_echo"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_mirror_echo_or_conflict",
+          "elapsed_seconds": 0.001728000002913177,
+          "family_id": "dry-echo",
+          "hit": 1,
+          "oracle_disposition": "affected",
+          "oracle_lineage": [
+            "echo-origin"
+          ],
+          "predicted_disposition": "affected",
+          "predicted_lineage": [
+            "echo-origin"
+          ],
+          "stratum": "unlinked_cross_mirror_echo"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_withdrawal_or_402",
+          "elapsed_seconds": 0.0017172999796457589,
+          "family_id": "dry-echo",
+          "hit": 1,
+          "oracle_disposition": "retracted",
+          "oracle_lineage": [],
+          "predicted_disposition": "retracted",
+          "predicted_lineage": [],
+          "stratum": "unlinked_cross_mirror_echo"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_reinstatement_or_restated_10ka",
+          "elapsed_seconds": 0.001732999982777983,
+          "family_id": "dry-echo",
+          "hit": 1,
+          "oracle_disposition": "affected",
+          "oracle_lineage": [
+            "echo-reinstated"
+          ],
+          "predicted_disposition": "affected",
+          "predicted_lineage": [
+            "echo-reinstated"
+          ],
+          "stratum": "unlinked_cross_mirror_echo"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_initial",
+          "elapsed_seconds": 0.0005724999937228858,
+          "family_id": "dry-conflict",
+          "hit": 1,
+          "oracle_disposition": "affected",
+          "oracle_lineage": [
+            "conflict-ghsa"
+          ],
+          "predicted_disposition": "affected",
+          "predicted_lineage": [
+            "conflict-ghsa"
+          ],
+          "stratum": "equal_authority_vex_ghsa"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_mirror_echo_or_conflict",
+          "elapsed_seconds": 0.000567799957934767,
+          "family_id": "dry-conflict",
+          "hit": 1,
+          "oracle_disposition": "disputed",
+          "oracle_lineage": [
+            "conflict-ghsa",
+            "conflict-vex"
+          ],
+          "predicted_disposition": "disputed",
+          "predicted_lineage": [
+            "conflict-ghsa",
+            "conflict-vex"
+          ],
+          "stratum": "equal_authority_vex_ghsa"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_withdrawal_or_402",
+          "elapsed_seconds": 0.0005581000004895031,
+          "family_id": "dry-conflict",
+          "hit": 1,
+          "oracle_disposition": "not_affected",
+          "oracle_lineage": [
+            "conflict-vex"
+          ],
+          "predicted_disposition": "not_affected",
+          "predicted_lineage": [
+            "conflict-vex"
+          ],
+          "stratum": "equal_authority_vex_ghsa"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_reinstatement_or_restated_10ka",
+          "elapsed_seconds": 0.0005607000202871859,
+          "family_id": "dry-conflict",
+          "hit": 1,
+          "oracle_disposition": "disputed",
+          "oracle_lineage": [
+            "conflict-ghsa-restored",
+            "conflict-vex"
+          ],
+          "predicted_disposition": "disputed",
+          "predicted_lineage": [
+            "conflict-ghsa-restored",
+            "conflict-vex"
+          ],
+          "stratum": "equal_authority_vex_ghsa"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_initial",
+          "elapsed_seconds": 0.0010636000079102814,
+          "family_id": "dry-402",
+          "hit": 1,
+          "oracle_disposition": "reliance_unchanged",
+          "oracle_lineage": [
+            "sec-10k"
+          ],
+          "predicted_disposition": "reliance_unchanged",
+          "predicted_lineage": [
+            "sec-10k"
+          ],
+          "stratum": "sec_item_402_nonreliance"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_mirror_echo_or_conflict",
+          "elapsed_seconds": 0.0010338000138290226,
+          "family_id": "dry-402",
+          "hit": 1,
+          "oracle_disposition": "reliance_unchanged",
+          "oracle_lineage": [
+            "sec-10k"
+          ],
+          "predicted_disposition": "reliance_unchanged",
+          "predicted_lineage": [
+            "sec-10k"
+          ],
+          "stratum": "sec_item_402_nonreliance"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_withdrawal_or_402",
+          "elapsed_seconds": 0.001034799963235855,
+          "family_id": "dry-402",
+          "hit": 1,
+          "oracle_disposition": "non_reliance",
+          "oracle_lineage": [
+            "sec-8k-402"
+          ],
+          "predicted_disposition": "non_reliance",
+          "predicted_lineage": [
+            "sec-8k-402"
+          ],
+          "stratum": "sec_item_402_nonreliance"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_reinstatement_or_restated_10ka",
+          "elapsed_seconds": 0.001069999998435378,
+          "family_id": "dry-402",
+          "hit": 1,
+          "oracle_disposition": "restated_current",
+          "oracle_lineage": [
+            "sec-restated-10ka"
+          ],
+          "predicted_disposition": "restated_current",
+          "predicted_lineage": [
+            "sec-restated-10ka"
+          ],
+          "stratum": "sec_item_402_nonreliance"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_initial",
+          "elapsed_seconds": 0.0010914999875240028,
+          "family_id": "dry-amend",
+          "hit": 1,
+          "oracle_disposition": "reliance_unchanged",
+          "oracle_lineage": [
+            "amend-10k"
+          ],
+          "predicted_disposition": "reliance_unchanged",
+          "predicted_lineage": [
+            "amend-10k"
+          ],
+          "stratum": "routine_amendment_control"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_mirror_echo_or_conflict",
+          "elapsed_seconds": 0.001148599956650287,
+          "family_id": "dry-amend",
+          "hit": 1,
+          "oracle_disposition": "reliance_unchanged",
+          "oracle_lineage": [
+            "amend-10k"
+          ],
+          "predicted_disposition": "reliance_unchanged",
+          "predicted_lineage": [
+            "amend-10k"
+          ],
+          "stratum": "routine_amendment_control"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_withdrawal_or_402",
+          "elapsed_seconds": 0.0010810000239871442,
+          "family_id": "dry-amend",
+          "hit": 1,
+          "oracle_disposition": "reliance_unchanged",
+          "oracle_lineage": [
+            "amend-10ka"
+          ],
+          "predicted_disposition": "reliance_unchanged",
+          "predicted_lineage": [
+            "amend-10ka"
+          ],
+          "stratum": "routine_amendment_control"
+        },
+        {
+          "adjudication_source": "computed_oracle",
+          "cut": "t_reinstatement_or_restated_10ka",
+          "elapsed_seconds": 0.0011016999487765133,
+          "family_id": "dry-amend",
+          "hit": 1,
+          "oracle_disposition": "reliance_unchanged",
+          "oracle_lineage": [
+            "amend-8ka"
+          ],
+          "predicted_disposition": "reliance_unchanged",
+          "predicted_lineage": [
+            "amend-8ka"
+          ],
+          "stratum": "routine_amendment_control"
+        }
+      ],
+      "trials": 16
+    }
+  },
+  "families_per_stratum": {
+    "equal_authority_vex_ghsa": 1,
+    "routine_amendment_control": 1,
+    "sec_item_402_nonreliance": 1,
+    "unlinked_cross_mirror_echo": 1
+  },
+  "family_count": 4,
+  "item": "6C",
+  "kernel": {
+    "error": "",
+    "ingested": 3,
+    "llm_write_tokens": 0,
+    "status": "ingested"
+  },
+  "llm_write_tokens": 0,
+  "mode": "local-drycheck",
+  "parsed_seed_advisories": 0,
+  "passed": true,
+  "registry_mutated": false,
+  "registry_sha256": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "retirement": {
+    "accuracy_superior_lcb_positive": true,
+    "bootstrap_lcb": 0.1875,
+    "bootstrap_mean": 0.5625,
+    "bootstrap_resamples": 2000,
+    "bootstrap_ucb": 0.75,
+    "cluster_losses": 0,
+    "cluster_ties": 1,
+    "cluster_wins": 3,
+    "comparison_engine": "sqlite",
+    "cost_limit": 1.25,
+    "ek5_accuracy": 1.0,
+    "ek5_cost_at_least_1_25x_lower": false,
+    "family_cluster_count": 4,
+    "family_deltas_ek5_minus_sql": [
+      0.75,
+      0.0,
+      0.75,
+      0.75
+    ],
+    "losses": 0,
+    "mcnemar_p": 0.25000000000000006,
+    "mirror_or_disputed_ek5_accuracy": 1.0,
+    "mirror_or_disputed_ek5_superior": true,
+    "mirror_or_disputed_sql_accuracy": 0.625,
+    "mirror_or_disputed_sql_trials": 8,
+    "mirror_or_disputed_trials": 8,
+    "noninferior_accuracy": true,
+    "paired_deltas_ek5_minus_sql": [
+      0.75,
+      0.0,
+      0.75,
+      0.75
+    ],
+    "preregistered_conjunction_met": true,
+    "retire_ek5_proprietary_superiority": false,
+    "sampling_unit": "family_id",
+    "sql_accuracy": 0.4375,
+    "sql_mode": "recursive_cte",
+    "sql_over_ek5_cost": 0.4689391369360832,
+    "sql_within_1_25x_cost": true,
+    "superiority_is_wild_evidence": false,
+    "ties": 1,
+    "wins": 3
+  },
+  "scored_families": [
+    {
+      "cohort_source": "deterministic_schema_drycheck",
+      "family_id": "dry-echo",
+      "stratum": "unlinked_cross_mirror_echo",
+      "synthetic": true
+    },
+    {
+      "cohort_source": "deterministic_schema_drycheck",
+      "family_id": "dry-conflict",
+      "stratum": "equal_authority_vex_ghsa",
+      "synthetic": true
+    },
+    {
+      "cohort_source": "deterministic_schema_drycheck",
+      "family_id": "dry-402",
+      "stratum": "sec_item_402_nonreliance",
+      "synthetic": true
+    },
+    {
+      "cohort_source": "deterministic_schema_drycheck",
+      "family_id": "dry-amend",
+      "stratum": "routine_amendment_control",
+      "synthetic": true
+    }
+  ],
+  "snapshot_sha256": "",
+  "status": "DRYCHECK",
+  "superiority_is_wild_evidence": false,
+  "synthetic_labeled_wild": 0,
+  "tra1_silent_state_reuses": 0,
+  "wild_adjudicated_count": 0,
+  "wild_gate": {
+    "families": 240,
+    "per_stratum": 60
+  },
+  "wild_gate_met": false
+}

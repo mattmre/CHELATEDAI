@@ -1,0 +1,22 @@
+{
+  "id": 63,
+  "wave": 21,
+  "item": "5.1",
+  "tier": "T4",
+  "track": "Partner Field Kit Trial 1: Search-Operator Migration Charter, Procrustes+CSLS Challenger & Offline Scorer",
+  "branch": "pv7/t5a-partner-search",
+  "status": "protocol-ready",
+  "spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "depends_on": [47],
+  "kit_file": "partner_kits/trial1_search_migration_kit.py",
+  "charter_file": "docs/research/partner_charter_trial1_search_operator.md",
+  "verifier_file": "scripts/verifiers.d/63_verifier.py",
+  "test_file": "tests/test_pv7_bridge_cage_and_trial1.py",
+  "evidence_tier": "protocol-ready",
+  "evidence_disclosure": {
+    "scope": "Partner search trial kit and charter are ready; no partner trial has been executed.",
+    "synthetic": "Open DEV fixture only; no partner data.",
+    "tuning": "None.",
+    "sla": "No latency or SLA claim."
+  }
+}

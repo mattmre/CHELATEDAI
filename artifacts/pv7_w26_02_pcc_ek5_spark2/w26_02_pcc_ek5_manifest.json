@@ -1,0 +1,61 @@
+{
+  "adversarial_forgeries_accepted": 0,
+  "adversarial_forgeries_tested": 492,
+  "claim_registry_sha256": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "elapsed_seconds": 4.19,
+  "experiment_id": "pv7_w26_02_pcc_ek5_million_stress",
+  "sqlite_5k_reach_count": 39,
+  "sqlite_5k_recursive_cte_ms": 0.093,
+  "tiers": [
+    {
+      "baseline_full_justification_bytes": 28000,
+      "cert_compression_ratio": 338.2,
+      "mean_cone_frac": 0.00492,
+      "mean_full_rebuild_ms": 1.482,
+      "mean_pcc_cert_bytes": 82.8,
+      "mean_pcc_emit_ms": 0.0241,
+      "mean_pcc_verify_ms": 0.017,
+      "n_batches": 120,
+      "n_nodes": 1000,
+      "node_checkpoints": 120000,
+      "p95_verify_ms": 0.0246,
+      "p95_verify_work_ratio_vs_full": 0.01712,
+      "passes_p95_work_le_10pct": true
+    },
+    {
+      "baseline_full_justification_bytes": 140000,
+      "cert_compression_ratio": 1487.6,
+      "mean_cone_frac": 0.00099,
+      "mean_full_rebuild_ms": 8.354,
+      "mean_pcc_cert_bytes": 94.1,
+      "mean_pcc_emit_ms": 0.0532,
+      "mean_pcc_verify_ms": 0.0198,
+      "n_batches": 100,
+      "n_nodes": 5000,
+      "node_checkpoints": 500000,
+      "p95_verify_ms": 0.0275,
+      "p95_verify_work_ratio_vs_full": 0.00339,
+      "passes_p95_work_le_10pct": true
+    },
+    {
+      "baseline_full_justification_bytes": 280000,
+      "cert_compression_ratio": 3151.0,
+      "mean_cone_frac": 0.00042,
+      "mean_full_rebuild_ms": 19.124,
+      "mean_pcc_cert_bytes": 88.9,
+      "mean_pcc_emit_ms": 0.0804,
+      "mean_pcc_verify_ms": 0.0237,
+      "n_batches": 65,
+      "n_nodes": 10000,
+      "node_checkpoints": 650000,
+      "p95_verify_ms": 0.0379,
+      "p95_verify_work_ratio_vs_full": 0.00197,
+      "passes_p95_work_le_10pct": true
+    }
+  ],
+  "timestamp_utc": "2026-11-27T01:31:41.830690+00:00",
+  "total_node_checkpoints": 1270000,
+  "total_semantic_mismatches": 0,
+  "verdict": "ADVANCE_W26_02_PCC",
+  "wave_item_id": "W26-02"
+}

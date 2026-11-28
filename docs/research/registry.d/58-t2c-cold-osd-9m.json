@@ -1,0 +1,49 @@
+{
+  "id": 58,
+  "wave": 19,
+  "item": "2C",
+  "tier": "T2",
+  "track": "9.47M Real Cold-OSD Zero-Rewrite RAG",
+  "status": "protocol-ready",
+  "spine_bundle_id": 47,
+  "spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "runner_path": "scripts/run_pv7_w19_2c_cold_osd_9m.py",
+  "runtime_path": "chelated_cold_osd_scanner.py",
+  "verifier_path": "scripts/verifiers.d/58_verifier.py",
+  "test_path": "tests/test_pv7_w19_2a_2c_storage.py",
+  "protocol": {
+    "modes": ["local-drycheck", "run-live-spark1"],
+    "memory_max_bytes": 4294967296,
+    "memory_swap_max_bytes": 0,
+    "cuda_visible_devices": "",
+    "extent_mib_range_inclusive": [2, 8],
+    "sidecar_bytes_per_doc": 8,
+    "visibility": "EK5 v3 admission published to an in-memory extent/slot denial bitset",
+    "immutable_candidate_extents": true,
+    "default_sq8_compaction_fraction": 0.2,
+    "withdrawal_trace_pairs": 30,
+    "layouts": ["clustered", "scattered"],
+    "challengers": ["matched_disk_ivf_sq8_tombstone_compaction", "live_qdrant_on_disk"],
+    "require_strictly_fewer_total_device_write_bytes": true,
+    "recall_at_10_absolute_tolerance": 0.01,
+    "stale_resurrection_max": 0.0,
+    "write_window": "Withdraw and reinstate through optimizer and measured device quiescence",
+    "live_inputs": {
+      "manifest_schema": "pv7-cold-osd-v1",
+      "manifest_keys": ["schema", "shards", "centroids", "dev_queries", "holdout_queries"],
+      "shards": "Ordered local float NPY matrices with a total document count that rounds to 9.47M",
+      "calibration": "Separate float NPY centroid, DEV query and holdout query matrices",
+      "qdrant": "Local Qdrant started in a separate dedicated 4 GiB cgroup with swap disabled",
+      "measurement": "Scratch and verified Qdrant collection storage on the same dedicated measured block device"
+    }
+  },
+  "evidence_tier": "verified-mixed",
+  "evidence_disclosure": {
+    "scope": "Cold-OSD 9M scanner with a symmetric WAL codec shared by the incumbent and challenger paths; mixed local-drycheck floor evidence ONLY — no live 9.47M hardware or live Qdrant measurement exists (live_measurement=false).",
+    "codec_symmetry": "Under the shared codec the clustered cases save +19,899 / +18,855 / +22,503 bytes; the scattered case is a 0-byte tie. Versus the floor row the scattered case is a verified -720 B loss; the as-built delta is +1,200 B.",
+    "sector": "Costs are modelled on 512 B sectors; other sector sizes are not measured.",
+    "statistics": "Zero-variance LCB is labelled as such: a zero-variance bound is not a confidence interval.",
+    "synthetic": "Synthetic cold-OSD workload.",
+    "sla": "No latency or SLA claim."
+  }
+}

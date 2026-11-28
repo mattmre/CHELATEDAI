@@ -52,6 +52,17 @@ Modes
     PASS_PARTIAL.  The external kernel must exit 0 AND print ``Checked N declarations with no
     typechecker errors`` with ``N > 0`` and ``N >= len(export_declarations)``.
 
+    g. Declarative PV7 fragments (Bundles #47-#64).  ``docs/research/registry.d/*.json`` is
+       auto-discovered next to ``bundle_registry_spec.json`` (spec bundles carry string ids,
+       fragment bundles integer ids; the union is the verified bundle set and an id collision is a
+       failure).  The whole drop-in tree (``registry.d`` + ``demo_workbench/routes.d`` +
+       ``scripts/verifiers.d``) must compile under the pinned spine digest, every ``*_path``
+       reference must exist, every fragment must carry an honest ``evidence_tier``, and each
+       ``scripts/verifiers.d/NN_verifier.py`` is executed in a subprocess (``CUDA_VISIBLE_DEVICES=""``,
+       per-verifier timeout).  Verifiers that own live receipts (#48, #57, #61, #62) check those
+       receipts cryptographically and structurally inside the same run.  ``--skip-verifiers``
+       skips only the subprocess runs (recorded as ``SKIPPED_BY_FLAG``), never the static checks.
+
 Exit codes: 0 = everything requested passed, 1 = at least one check failed, 2 = the
 requested formal tier could not run (and nothing else failed).
 """
@@ -80,6 +91,23 @@ DEFAULT_REPO_ROOT = Path(__file__).resolve().parent.parent
 
 SPEC_REL = "docs/research/bundle_registry_spec.json"
 REGISTRY_REL = "docs/research/verified_registry.json"
+
+# Declarative PV7 drop-in fragments (chelated_pv7_spine.fragment_compiler).
+PV7_SPINE_DIGEST = "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9"
+FRAGMENT_REGISTRY_REL = "docs/research/registry.d"
+FRAGMENT_VERIFIERS_REL = "scripts/verifiers.d"
+FRAGMENT_EVIDENCE_TIERS = frozenset(
+    {
+        "local-drycheck-pass",
+        "live-pass",
+        "live-shadow-pass",
+        "stage1-replay-pass",
+        "verified-mixed",
+        "protocol-ready",
+    }
+)
+VERIFIER_TIMEOUT_S = 1500
+VERIFIER_JOBS = 4
 
 FORMAL_TIER_SKIPPED = "SKIPPED_USE_FULL_FORMAL"
 FORMAL_TIER_NOT_RUN = "NOT_RUN"
@@ -397,6 +425,172 @@ def verify_spec_bundles(repo_root: Path, spec: Dict[str, Any], report: Report) -
                 f"sealed_unread={res['sealed_key_not_read']}",
             )
     return {"total": len(bundles), "verified": verified, "pending": pending, "failed": failed, "dirs": dirs}
+
+
+def bundle_key(raw: Any) -> Optional[str]:
+    """Normalise a bundle id (int for fragments, str for spec bundles) to its string key."""
+    if isinstance(raw, bool) or raw is None:
+        return None
+    if isinstance(raw, int):
+        return str(raw)
+    if isinstance(raw, str) and raw.strip():
+        return raw.strip()
+    return None
+
+
+def load_all_bundles(repo_root: Path, spec: Dict[str, Any]) -> Dict[str, Any]:
+    """Union of ``bundle_registry_spec.json`` bundles (string ids) and ``registry.d/*.json`` fragments (int ids)."""
+    bundles: Dict[str, Dict[str, Any]] = {}
+    errors: List[str] = []
+    for entry in spec.get("bundles", []) if isinstance(spec.get("bundles"), list) else []:
+        key = bundle_key(entry.get("id"))
+        if key is None:
+            errors.append(f"spec bundle without a usable id: {entry!r}")
+        elif key in bundles:
+            errors.append(f"duplicate bundle id {key!r} in spec")
+        else:
+            bundles[key] = {"id": key, "source": "spec", "path": SPEC_REL, "entry": entry}
+    fdir = repo_root / FRAGMENT_REGISTRY_REL
+    fragment_ids: List[int] = []
+    if fdir.is_dir():
+        for path in sorted(fdir.glob("*.json")):
+            rel = f"{FRAGMENT_REGISTRY_REL}/{path.name}"
+            try:
+                fragment = load_json(path)
+            except VerifyError as exc:
+                errors.append(str(exc))
+                continue
+            key = bundle_key(fragment.get("id")) if isinstance(fragment, dict) else None
+            if key is None:
+                errors.append(f"{rel}: fragment has no usable id")
+                continue
+            prefix = re.match(r"([0-9]+)-", path.name)
+            if prefix is None or prefix.group(1) != key:
+                errors.append(f"{rel}: id {key!r} does not match the filename prefix")
+                continue
+            if key in bundles:
+                errors.append(f"{rel}: bundle id {key!r} collides with {bundles[key]['path']}")
+                continue
+            bundles[key] = {"id": key, "source": "fragment", "path": rel, "entry": fragment}
+            if key.isdigit():
+                fragment_ids.append(int(key))
+    return {"bundles": bundles, "errors": errors, "fragment_ids": sorted(fragment_ids)}
+
+
+def _run_verifier(repo_root: Path, verifier_rel: str, timeout_s: int) -> Dict[str, Any]:
+    env = dict(os.environ)
+    env["CUDA_VISIBLE_DEVICES"] = ""
+    started = time.perf_counter()
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(repo_root / verifier_rel)],
+            cwd=str(repo_root),
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=timeout_s,
+        )
+        rc, out = proc.returncode, (proc.stdout or "") + (proc.stderr or "")
+    except subprocess.TimeoutExpired:
+        rc, out = 124, f"timeout after {timeout_s}s"
+    except OSError as exc:
+        rc, out = 127, f"cannot start verifier: {exc}"
+    tail = " ".join(out.strip().splitlines()[-1:])[:300]
+    return {"rc": rc, "seconds": round(time.perf_counter() - started, 1), "tail": tail}
+
+
+def verify_fragment_bundles(
+    repo_root: Path,
+    spec: Dict[str, Any],
+    report: Report,
+    run_verifiers: bool = True,
+    verifier_timeout_s: int = VERIFIER_TIMEOUT_S,
+    verifier_jobs: int = VERIFIER_JOBS,
+) -> Dict[str, Any]:
+    """Auto-discover and verify every ``registry.d`` fragment bundle (#47-#64) alongside the spec bundles."""
+    loaded = load_all_bundles(repo_root, spec)
+    summary: Dict[str, Any] = {
+        "bundles_total_all_sources": len(loaded["bundles"]),
+        "fragment_bundles": len(loaded["fragment_ids"]),
+        "fragment_verifiers_run": 0,
+        "fragment_verifiers_failed": 0,
+    }
+    for error in loaded["errors"]:
+        report.failed("fragments.load", error)
+    fragments = {k: v for k, v in loaded["bundles"].items() if v["source"] == "fragment"}
+    if not fragments:
+        return summary
+    # 1) the whole drop-in tree must compile under the pinned digest
+    try:
+        sys.path.insert(0, str(repo_root))
+        try:
+            from chelated_pv7_spine.fragment_compiler import FragmentCompileError, compile_repo_fragments
+
+            compiled = compile_repo_fragments(repo_root, PV7_SPINE_DIGEST)
+            report.passed(
+                "fragments.compile",
+                f"registry={len(compiled['registry'])} routes={len(compiled['routes'])} "
+                f"verifiers={len(compiled['verifiers'])} compiled_sha256={compiled['compiled_sha256'][:12]}",
+            )
+            summary["fragments_compiled_sha256"] = compiled["compiled_sha256"]
+            missing_verifiers = sorted(set(fragments) - {str(v["bundle_id"]) for v in compiled["verifiers"]})
+            for key in missing_verifiers:
+                report.failed(f"fragments.{key}.verifier_fragment", f"no scripts/verifiers.d/{key}_verifier.py")
+        finally:
+            sys.path.remove(str(repo_root))
+    except (ImportError, FragmentCompileError, OSError, ValueError) as exc:
+        report.failed("fragments.compile", f"{type(exc).__name__}: {exc}")
+    # 2) per-bundle structural checks: referenced files exist, honest evidence tier + disclosure present
+    for key, item in sorted(fragments.items(), key=lambda kv: int(kv[0])):
+        fragment = item["entry"]
+        problems: List[str] = []
+        for field, value in sorted(fragment.items()):
+            if field.endswith(("_path", "_file")) and isinstance(value, str) and not (repo_root / value).is_file():
+                problems.append(f"{field} {value!r} does not exist")
+        tier = fragment.get("evidence_tier")
+        if tier not in FRAGMENT_EVIDENCE_TIERS:
+            problems.append(f"evidence_tier {tier!r} not in {sorted(FRAGMENT_EVIDENCE_TIERS)}")
+        disclosure = fragment.get("evidence_disclosure")
+        if not isinstance(disclosure, dict) or not disclosure:
+            problems.append("evidence_disclosure object missing")
+        report.result(
+            f"fragments.{key}.static",
+            not problems,
+            f"{item['path']} tier={tier} status={fragment.get('status')}",
+            "; ".join(problems),
+        )
+    # 3) every verifier is executed (subprocess, CUDA hidden); live receipts are checked inside it
+    if not run_verifiers:
+        report.add("fragments.verifiers", "WARN", "SKIPPED_BY_FLAG (--skip-verifiers): verifier replays and live-receipt checks not run")
+        return summary
+    jobs = max(1, int(verifier_jobs))
+    order = sorted(fragments, key=int)
+    verifier_rels = {key: f"{FRAGMENT_VERIFIERS_REL}/{int(key):02d}_verifier.py" for key in order}
+    runnable = [key for key in order if (repo_root / verifier_rels[key]).is_file()]
+    results: Dict[str, Dict[str, Any]] = {}
+    from concurrent.futures import ThreadPoolExecutor
+
+    with ThreadPoolExecutor(max_workers=jobs) as pool:
+        futures = {key: pool.submit(_run_verifier, repo_root, verifier_rels[key], verifier_timeout_s) for key in runnable}
+        for key, future in futures.items():
+            results[key] = future.result()
+    for key in order:
+        if key not in results:
+            report.failed(f"fragments.{key}.verifier", f"{verifier_rels[key]} missing")
+            summary["fragment_verifiers_failed"] += 1
+            continue
+        res = results[key]
+        summary["fragment_verifiers_run"] += 1
+        if res["rc"] != 0:
+            summary["fragment_verifiers_failed"] += 1
+        report.result(
+            f"fragments.{key}.verifier",
+            res["rc"] == 0,
+            f"rc=0 {res['seconds']}s {res['tail']}",
+            f"rc={res['rc']} {res['seconds']}s {res['tail']}",
+            seconds=res["seconds"],
+        )
+    return summary
 
 
 def discover_part7_dirs(repo_root: Path, spec_dirs: Iterable[str]) -> Tuple[List[Path], List[str]]:
@@ -1756,7 +1950,14 @@ def run_formal_gates(repo_root: Path, report: Report, lake_timeout_s: int) -> Tu
 # --------------------------------------------------------------------------------------
 # Orchestration
 # --------------------------------------------------------------------------------------
-def run_fast_checks(repo_root: Path, report: Report, d8_replay: bool) -> Dict[str, Any]:
+def run_fast_checks(
+    repo_root: Path,
+    report: Report,
+    d8_replay: bool,
+    run_verifiers: bool = True,
+    verifier_timeout_s: int = VERIFIER_TIMEOUT_S,
+    verifier_jobs: int = VERIFIER_JOBS,
+) -> Dict[str, Any]:
     summary: Dict[str, Any] = {}
     spec_path = repo_root / SPEC_REL
     if not spec_path.is_file():
@@ -1781,6 +1982,9 @@ def run_fast_checks(repo_root: Path, report: Report, d8_replay: bool) -> Dict[st
     verify_headline_metrics(repo_root, report)
     verify_registry_file(repo_root, spec, report)
     verify_release_status(repo_root, spec, report)
+    summary["pv7_fragments"] = verify_fragment_bundles(
+        repo_root, spec, report, run_verifiers, verifier_timeout_s, verifier_jobs
+    )
     return summary
 
 
@@ -1797,6 +2001,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="skip the live D8 engine replay (reduced assurance; recorded as SKIPPED_BY_FLAG)",
     )
     parser.add_argument("--lake-timeout", type=int, default=7200, help="seconds allowed per formal subprocess")
+    parser.add_argument(
+        "--skip-verifiers",
+        action="store_true",
+        help="skip the scripts/verifiers.d subprocess replays (reduced assurance; recorded as SKIPPED_BY_FLAG)",
+    )
+    parser.add_argument("--verifier-timeout", type=int, default=VERIFIER_TIMEOUT_S, help="seconds allowed per verifier")
+    parser.add_argument("--verifier-jobs", type=int, default=VERIFIER_JOBS, help="verifier subprocesses run in parallel")
     return parser
 
 
@@ -1808,7 +2019,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     t0, cpu0 = time.perf_counter(), time.process_time()
 
     report = Report()
-    summary = run_fast_checks(repo_root, report, d8_replay=not args.no_d8_replay)
+    summary = run_fast_checks(
+        repo_root,
+        report,
+        d8_replay=not args.no_d8_replay,
+        run_verifiers=not args.skip_verifiers,
+        verifier_timeout_s=args.verifier_timeout,
+        verifier_jobs=args.verifier_jobs,
+    )
     fast_failed = bool(report.failures)
 
     formal_tier = FORMAL_TIER_SKIPPED

@@ -1,0 +1,12 @@
+{
+  "exit_code": 0,
+  "git_commit_sha": "cecb49ddb30bab0ca379857a80063534e9f3a419",
+  "hardware_cohort": "colab:NVIDIA L4",
+  "manifest_file": "w24_05_b49_sdk_7b_coders_manifest.json",
+  "manifest_sha256": "d24e176d257afe78276e881c8bb3889d81c974d779c6b1699a317f0fa164e98a",
+  "schema_version": "colab_l4_burst_receipt_v1",
+  "shard_id": "w24_05_b49_sdk_7b_coders",
+  "source_archive_sha256": "8a2d5da76e25bbf9c5c663f32538bfbe1c628f2381a6815b7b39f3775297ac14",
+  "wall_seconds_total": 750.92,
+  "wave_item_id": "W24-05"
+}

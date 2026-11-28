@@ -1,0 +1,36 @@
+{
+  "bundle_id": 62,
+  "demo_id": "D13",
+  "deterministic_sha256": "550bfe38c2a82070cb5c8de94d281974bc5d0db025e293ed923aeb6c626f64c2",
+  "gates": {
+    "all_eligible_jobs_accounted": true,
+    "beats_full_restart_rebuild_jpm": true,
+    "conventional_migration_stall_equalized": true,
+    "ek5_incremental_equals_full_parity": true,
+    "primary_metric_is_ontime_cited_correct_rate": true,
+    "sham_reopen_control_valid": false,
+    "sqlite_reopen_symmetric_with_ek5": true,
+    "zero_stale_commits_on_zeromu_ek5": true
+  },
+  "generated_utc": "2026-11-26T23:53:19.464254+00:00",
+  "item": "4",
+  "manifest_file": "pv7_w20_d13_manifest.json",
+  "manifest_sha256": "ac2f841c56506a8d91efc742c0e5beb85d82c74f3d4659c67115264b3acbfa1f",
+  "mode": "run-live-workers",
+  "overall_pass": false,
+  "requested_model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "runtime": {
+    "cuda_visible_devices": "",
+    "platform": "Linux-6.17.0-1029-nvidia-aarch64-with-glibc2.39",
+    "python_version": "3.12.3"
+  },
+  "schema_version": "pv7_report_receipt_v1",
+  "served_model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "source_file_sha256": {
+    "chelated_pooled_agent_runtime.py": "5a6ceced76259adbcc0dd8b1d9e03ee9a98f1725b6bf02d8dc00b71abdd819c6",
+    "scripts/run_pv7_w20_d13_pooled_agent_loops.py": "9c2ebc3381e81f8c4ef1b0145733241ebd6fe28419e344a6ec4675a3bd67dbcf"
+  },
+  "spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "status": "replay-fail",
+  "vllm_url": "http://127.0.0.1:8000/v1"
+}

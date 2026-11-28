@@ -1,0 +1,21 @@
+{
+  "id": 47,
+  "wave": 16,
+  "item": "W16-Core",
+  "tier": "T0",
+  "track": "Core Spine + Claim Registry + burn_ledger + Challenger Ledger + Bridge/Merge Harness + A/A Null Calibration",
+  "branch": "pv7/w16-core",
+  "status": "verified-pass",
+  "spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "depends_on": [],
+  "verifier_file": "scripts/verifiers.d/47_verifier.py",
+  "test_file": "tests/test_pv7_w16_spine_fragments_and_burn.py",
+  "evidence_tier": "local-drycheck-pass",
+  "evidence_disclosure": {
+    "scope": "Local deterministic drycheck of the W16 spine core (A/A calibration, synthetic identical-arm receipt).",
+    "synthetic": "Receipt host is pv7-w16-local-drycheck-synthetic-identical-arms: both arms are identical by construction, so nothing here is a measured effect.",
+    "tuning": "Rejection thresholds were calibrated on this synthetic A/A data; they are not independently validated on a wild corpus.",
+    "sla": "No latency or SLA claim; no wall-clock performance was measured on target hardware.",
+    "not_verified": "Live hardware, wild-corpus and cross-model behaviour are not exercised."
+  }
+}

@@ -39,7 +39,17 @@
     "ChelatedFormal.theorem3_witness_nonvacuous",
     "ChelatedFormal.theorem4_anchored_clipped_ema",
     "ChelatedFormal.theorem4_chordal_cosine_drift",
-    "ChelatedFormal.theorem4_witness_nonvacuous"
+    "ChelatedFormal.theorem4_witness_nonvacuous",
+    "ChelatedFormal.wfs_frame_isolation",
+    "ChelatedFormal.incrementalWfsSplice_sound",
+    "ChelatedFormal.unfounded_pos_cycle_false",
+    "ChelatedFormal.delete_refute_gamma_mono",
+    "ChelatedFormal.delete_dep_posClosure_mono",
+    "ChelatedFormal.theorem5_witness_nonvacuous",
+    "ChelatedFormal.computeAffectedCone_affectedClosed",
+    "ChelatedFormal.sparseConeWfs_sound",
+    "ChelatedFormal.verifyWfsCert_sound",
+    "ChelatedFormal.theorem6_witness_nonvacuous"
   ],
   "export_file": ".lake/nanoda/chelated_formal_all.export",
   "nanoda_config": {

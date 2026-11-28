@@ -1,0 +1,229 @@
+{
+  "accepted_draft_tokens": 8,
+  "compressed_fixture_sha256": "2263a0aa1f6b308d3bd5ac8c94c1ef308c07c4e24354d4cbf5ad4d5f8262b35f",
+  "exact_fixture_parity": true,
+  "extent_count": 12,
+  "fixture_sha256": "ef2ad848eb1cc0478c658a70c8ff08c2978c806fe61b8686f2944687eea5c3c5",
+  "io_method": "offset_readfile",
+  "mode": "local-drycheck",
+  "passed": true,
+  "rungs": {
+    "R1_mmap_random": {
+      "rows": [
+        {
+          "accepted": 0,
+          "proposed": 0,
+          "read_calls": 54,
+          "requested_read_bytes": 221184,
+          "seconds": 0.00024060002760961652
+        },
+        {
+          "accepted": 0,
+          "proposed": 0,
+          "read_calls": 54,
+          "requested_read_bytes": 221184,
+          "seconds": 0.00011920003453269601
+        },
+        {
+          "accepted": 0,
+          "proposed": 0,
+          "read_calls": 54,
+          "requested_read_bytes": 221184,
+          "seconds": 0.00010619999375194311
+        },
+        {
+          "accepted": 0,
+          "proposed": 0,
+          "read_calls": 54,
+          "requested_read_bytes": 221184,
+          "seconds": 0.00010330002987757325
+        }
+      ],
+      "sequence_sha256": "3e421f5a9bac4fb5738fb79ad13b8a5c5bb36175b4b92da28fda71a94754ce02"
+    },
+    "R2_direct_pread_lru": {
+      "rows": [
+        {
+          "accepted": 0,
+          "proposed": 0,
+          "read_calls": 46,
+          "requested_read_bytes": 188416,
+          "seconds": 0.003303700010292232
+        },
+        {
+          "accepted": 0,
+          "proposed": 0,
+          "read_calls": 42,
+          "requested_read_bytes": 172032,
+          "seconds": 0.0019703000434674323
+        },
+        {
+          "accepted": 0,
+          "proposed": 0,
+          "read_calls": 44,
+          "requested_read_bytes": 180224,
+          "seconds": 0.0019993999740108848
+        },
+        {
+          "accepted": 0,
+          "proposed": 0,
+          "read_calls": 42,
+          "requested_read_bytes": 172032,
+          "seconds": 0.001955999992787838
+        }
+      ],
+      "sequence_sha256": "3e421f5a9bac4fb5738fb79ad13b8a5c5bb36175b4b92da28fda71a94754ce02"
+    },
+    "R3_extent_coalesced": {
+      "rows": [
+        {
+          "accepted": 0,
+          "proposed": 0,
+          "read_calls": 21,
+          "requested_read_bytes": 188416,
+          "seconds": 0.0013098000199534
+        },
+        {
+          "accepted": 0,
+          "proposed": 0,
+          "read_calls": 18,
+          "requested_read_bytes": 172032,
+          "seconds": 0.0010218999814242125
+        },
+        {
+          "accepted": 0,
+          "proposed": 0,
+          "read_calls": 18,
+          "requested_read_bytes": 180224,
+          "seconds": 0.0011480999528430402
+        },
+        {
+          "accepted": 0,
+          "proposed": 0,
+          "read_calls": 19,
+          "requested_read_bytes": 172032,
+          "seconds": 0.0010643000132404268
+        }
+      ],
+      "sequence_sha256": "3e421f5a9bac4fb5738fb79ad13b8a5c5bb36175b4b92da28fda71a94754ce02"
+    },
+    "R4_speculative_draft_prefetch": {
+      "rows": [
+        {
+          "accepted": 1,
+          "proposed": 62,
+          "read_calls": 29,
+          "requested_read_bytes": 200704,
+          "seconds": 0.0016534000169485807
+        },
+        {
+          "accepted": 1,
+          "proposed": 62,
+          "read_calls": 35,
+          "requested_read_bytes": 258048,
+          "seconds": 0.001936200016643852
+        },
+        {
+          "accepted": 1,
+          "proposed": 62,
+          "read_calls": 36,
+          "requested_read_bytes": 266240,
+          "seconds": 0.0026134999934583902
+        },
+        {
+          "accepted": 1,
+          "proposed": 62,
+          "read_calls": 34,
+          "requested_read_bytes": 258048,
+          "seconds": 0.0018705000402405858
+        }
+      ],
+      "sequence_sha256": "3e421f5a9bac4fb5738fb79ad13b8a5c5bb36175b4b92da28fda71a94754ce02"
+    },
+    "R5_iq2_reap_compressed_separate_quality": {
+      "rows": [
+        {
+          "accepted": 0,
+          "proposed": 0,
+          "read_calls": 12,
+          "requested_read_bytes": 122880,
+          "seconds": 0.0008397999918088317
+        },
+        {
+          "accepted": 0,
+          "proposed": 0,
+          "read_calls": 13,
+          "requested_read_bytes": 122880,
+          "seconds": 0.0010569000151008368
+        },
+        {
+          "accepted": 0,
+          "proposed": 0,
+          "read_calls": 11,
+          "requested_read_bytes": 114688,
+          "seconds": 0.0009455999825149775
+        },
+        {
+          "accepted": 0,
+          "proposed": 0,
+          "read_calls": 16,
+          "requested_read_bytes": 167936,
+          "seconds": 0.0011945999576710165
+        }
+      ],
+      "separate_fixture_quality": [
+        {
+          "reference_exact_match": false,
+          "reference_token_similarity": 0.1111111111111111
+        },
+        {
+          "reference_exact_match": false,
+          "reference_token_similarity": 0.05555555555555555
+        },
+        {
+          "reference_exact_match": false,
+          "reference_token_similarity": 0.0
+        },
+        {
+          "reference_exact_match": false,
+          "reference_token_similarity": 0.05555555555555555
+        }
+      ],
+      "sequence_sha256": "33801159b1df52d662a056648c3aab7aefb2e3589bc5afa7b81368fbe522ed67"
+    },
+    "R6_chelated_cylinder_ordered_pinned_moe": {
+      "rows": [
+        {
+          "accepted": 1,
+          "proposed": 62,
+          "read_calls": 21,
+          "requested_read_bytes": 143360,
+          "seconds": 0.0018770999740809202
+        },
+        {
+          "accepted": 1,
+          "proposed": 62,
+          "read_calls": 31,
+          "requested_read_bytes": 204800,
+          "seconds": 0.00193060003221035
+        },
+        {
+          "accepted": 1,
+          "proposed": 62,
+          "read_calls": 30,
+          "requested_read_bytes": 212992,
+          "seconds": 0.0017092000343836844
+        },
+        {
+          "accepted": 1,
+          "proposed": 62,
+          "read_calls": 26,
+          "requested_read_bytes": 176128,
+          "seconds": 0.0016691000200808048
+        }
+      ],
+      "sequence_sha256": "3e421f5a9bac4fb5738fb79ad13b8a5c5bb36175b4b92da28fda71a94754ce02"
+    }
+  },
+  "unaccepted_draft_tokens": 488
+}

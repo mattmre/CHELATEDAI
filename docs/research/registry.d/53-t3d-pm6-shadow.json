@@ -1,0 +1,41 @@
+{
+  "id": 53,
+  "wave": 18,
+  "item": "3D",
+  "track": "Post-W14B PM-6 Observational Shadow Probe",
+  "branch": "pv7/t3d-pm6-shadow",
+  "tier": "T3",
+  "status": "protocol-ready",
+  "spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "depends_on": [],
+  "runtime_file": "chelated_pm6_shadow_probe.py",
+  "runner_file": "scripts/run_pv7_w18_3d_pm6_shadow.py",
+  "verifier_file": "scripts/verifiers.d/53_verifier.py",
+  "test_file": "tests/test_pv7_w18_3c_3d_probes.py",
+  "primary_endpoint": "Holm-adjusted false-alert upper bound <2% across the 1-unit and 4-unit one-way shadow probe, with separate sensitivity and lead time",
+  "named_comparator": "Benign family labels on the strict one-way shadow copy across both unit settings",
+  "sampling_unit": "At least 300 independent benign families",
+  "retirement_trigger": "Retire the false-alert claim if the adjusted upper bound ties or exceeds 2%, or the shadow design is breached.",
+  "design": {
+    "live_pm6_gateway_executed": false,
+    "report_families": 320,
+    "false_alert_upper_limit": 0.02,
+    "holm_confidence": 0.975,
+    "units": [1, 4],
+    "comparison": ["incumbent_pm6_alone", "incumbent_pm6_plus_shadow"],
+    "shadow_return": null,
+    "r3_confirmatory": false,
+    "modes": {
+      "local_drycheck": "CPU scratch benign families through ClosedLoopStreamGate with a one-way shadow copy.",
+      "run_live_shadow": "Requires a manifest path, refuses protected names before opening, and does not invent a live gateway result."
+    }
+  },
+  "evidence_tier": "live-shadow-pass",
+  "evidence_disclosure": {
+    "scope": "Observational run-live-shadow manifest (100 families, 100 byte-identical, 0 shadow flags) replayed from a committed public-domain shadow input; PLUS Wave 22 Colab L4 PM-6 RCPS benign FPR calibration closure (artifacts/pv7_colab_l4_closure_20261125/colab_l4_closure_manifest.json, sha256=04e7543bdbbc, hardware_cohort=colab:NVIDIA L4) across 10,009 real passages in 7 unburned domains (384-d MiniLM vault <- 4096-d Qwen3 stream, N_cal_neg=594, N_eval_neg=599).",
+    "rcps_calibration_closure": "Reproduced v7.0 D11's N=50 naive empirical quantile overshoot (3.51% FPR, 21/599, CP_UB95=5.01% FAIL; 26% of 50-draw trials >2%). Distribution-free Split-Conformal RCPS (Beta.ppf(0.95)<=0.02) CLOSED benign FPR below 2.0%: ZeroMu+RawCos+RCPS achieved 0.50% FPR (3/599, CP_UB95=1.29%<=2.0% PASS, 18.22% R3 TPR, 0.8233 AUROC) and ZeroMu+CSLS+RCPS achieved 0.67% FPR (4/599, CP_UB95=1.52%<=2.0% PASS, 12.71% R3 TPR, 0.8153 AUROC).",
+    "observational": "Shadow probe claim_level=observational-manifest with live_pm6_gateway_executed=false and report_emitted=false: the end-to-end streaming PM-6 gateway itself was NOT re-executed live, so RCPS closure is strictly offline cross-encoder calibration on Colab L4.",
+    "hardware_cohort": "colab:NVIDIA L4 (NOT local DGX Spark GB10 evidence).",
+    "sla": "No latency or SLA claim."
+  }
+}

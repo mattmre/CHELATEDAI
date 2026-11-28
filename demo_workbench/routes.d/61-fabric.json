@@ -1,0 +1,91 @@
+{
+  "id": 61,
+  "spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/fabric",
+      "bundle_id": 61
+    },
+    {
+      "method": "GET",
+      "path": "/fabric/",
+      "bundle_id": 61
+    },
+    {
+      "method": "GET",
+      "path": "/fabric/index.html",
+      "bundle_id": 61
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/fabric/health",
+      "bundle_id": 61
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/fabric/scenarios",
+      "bundle_id": 61
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/fabric/step",
+      "bundle_id": 61
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/fabric/scoreboard",
+      "bundle_id": 61
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/fabric/schedule",
+      "bundle_id": 61
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/fabric/tco",
+      "bundle_id": 61
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/fabric/pubkey",
+      "bundle_id": 61
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/fabric/ledger",
+      "bundle_id": 61
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/fabric/benchmark",
+      "bundle_id": 61
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/fabric/query",
+      "bundle_id": 61
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/fabric/inject",
+      "bundle_id": 61
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/fabric/undo",
+      "bundle_id": 61
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/fabric/receipt",
+      "bundle_id": 61
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/fabric/verify-receipt",
+      "bundle_id": 61
+    }
+  ]
+}

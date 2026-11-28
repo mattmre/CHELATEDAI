@@ -1,0 +1,71 @@
+{
+  "coder_role": "independent_blind_second_coder",
+  "subagent_conversation_id": "d4777657-97f5-41ec-9700-86a4fb04cccd",
+  "wave": "W24-14",
+  "verdict": "K2_KILL_CONFIRMED_NON_FRAGILE_BOTH_FAMILIES",
+  "summary": "Independent blind second coding of F-W8 and F-R5 confirms max pairwise overlap > 0.80 in both families across all scope slices (F-W8: 1.0000; F-R5 all-4: 0.8750; F-R5 r5_grok 7-manifest slice: 0.8462; F-R5 3 full-scope lists: 0.8750), closing W22-08's fragility concern.",
+  "families": {
+    "F-W8": {
+      "lists": ["w8_grok", "w8_neon", "w8_opus", "w8_sol"],
+      "captures_by_list": {
+        "w8_grok": ["B36:C05", "B36:C07", "B37:C03", "B37:C05", "B38:C04", "B38:C10", "B39:C03", "B39:C05", "B40:C03", "B40:C10", "XC:C07", "XC:C10", "XC:C13"],
+        "w8_neon": ["B36:C10", "B37:C03", "B37:C05", "B37:C10", "B38:C03", "B38:C10", "B39:C10", "B40:C03", "B40:C07", "B40:C10", "XC:C10", "XC:C11", "XC:C13"],
+        "w8_opus": ["B36:C03", "B36:C05", "B36:C08", "B36:C10", "B36:C14", "B37:C03", "B37:C05", "B37:C07", "B38:C03", "B38:C05", "B38:C10", "B39:C03", "B39:C05", "B39:C08", "B40:C03", "B40:C05", "B40:C07", "B40:C08", "XC:C07", "XC:C10", "XC:C11", "XC:C12", "XC:C13"],
+        "w8_sol": ["B36:C03", "B36:C08", "B36:C10", "B36:C14", "B37:C03", "B37:C05", "B37:C07", "B37:C10", "B38:C03", "B38:C05", "B38:C08", "B38:C10", "B39:C03", "B39:C05", "B39:C10", "B40:C03", "B40:C05", "B40:C07", "B40:C10", "XC:C01", "XC:C03", "XC:C07", "XC:C10", "XC:C11", "XC:C13"]
+      },
+      "list_counts": {"w8_grok": 13, "w8_neon": 13, "w8_opus": 23, "w8_sol": 25},
+      "frequencies": {"f1": 8, "f2": 9, "f3": 8, "f4": 6, "n_obs": 31},
+      "overlap_fraction": 0.741935,
+      "summary_pairwise": {
+        "max_overlap_min": 1.0,
+        "mean_overlap_min": 0.778707,
+        "max_jaccard": 0.655172,
+        "mean_jaccard": 0.444994,
+        "exceeds_k2_080_cutoff": true
+      },
+      "chao_estimates": {
+        "chao1_f0": 3.555556,
+        "chao1_n_hat": 34.555556,
+        "chao2_f0": 2.666667,
+        "chao2_n_hat": 33.666667
+      }
+    },
+    "F-R5": {
+      "lists": ["r5_astra", "r5_opus", "r5_grok", "r5_neon"],
+      "captures_by_list": {
+        "r5_astra": ["B20:C03", "B21:C06", "B21:C16", "B22:C03", "B22:C05", "B22:C08", "B23:C15", "B24:C03", "B24:C05", "B24:C15", "B26:C05", "B26:C08", "B26:C11", "B27:C16", "PM5:C03", "XC:C10"],
+        "r5_opus": ["B20:C03", "B20:C06", "B20:C08", "B21:C03", "B21:C05", "B21:C06", "B21:C16", "B22:C05", "B23:C05", "B24:C03", "B26:C05", "B26:C08", "B27:C03", "XC:C03", "XC:C07", "XC:C10"],
+        "r5_grok": ["B20:C03", "B20:C08", "B21:C05", "B21:C06", "B21:C16", "B22:C05", "B24:C03", "B24:C15", "B25:C03", "B26:C05", "B26:C08", "B26:C11", "XC:C07"],
+        "r5_neon": ["B20:C03", "B20:C10", "B20:C16", "B21:C03", "B21:C05", "B21:C06", "B21:C16", "B22:C03", "B22:C05", "B22:C08", "B23:C05", "B23:C11", "B23:C15", "B24:C03", "B24:C10", "B24:C15", "B26:C05", "B26:C08", "B26:C11", "B27:C03", "B27:C08", "PM5:C01", "PM5:C03", "PM5:C10", "XC:C03", "XC:C05", "XC:C10"]
+      },
+      "list_counts": {"r5_astra": 16, "r5_opus": 16, "r5_grok": 13, "r5_neon": 27},
+      "frequencies": {"f1": 12, "f2": 10, "f3": 4, "f4": 7, "n_obs": 33},
+      "overlap_fraction": 0.636364,
+      "summary_pairwise": {
+        "max_overlap_min": 0.875,
+        "mean_overlap_min": 0.736378,
+        "max_jaccard": 0.526316,
+        "mean_jaccard": 0.426512,
+        "exceeds_k2_080_cutoff": true
+      },
+      "chao_estimates": {
+        "chao1_f0": 7.2,
+        "chao1_n_hat": 40.2,
+        "chao2_f0": 5.4,
+        "chao2_n_hat": 38.4
+      },
+      "r5_grok_scope_sensitivity": {
+        "seven_part_iv_manifests_only_4_lists": {
+          "n_obs": 23, "f1": 8, "f2": 5, "f3": 3, "f4": 7,
+          "max_overlap_min": 0.846154, "mean_overlap_min": 0.749359,
+          "exceeds_k2_080_cutoff": true, "chao2_n_hat": 27.8
+        },
+        "three_full_scope_lists_excluding_r5_grok": {
+          "n_obs": 32, "f1": 13, "f2": 11, "f3": 8,
+          "max_overlap_min": 0.875, "mean_overlap_min": 0.729167,
+          "exceeds_k2_080_cutoff": true, "chao2_n_hat": 37.121212
+        }
+      }
+    }
+  }
+}

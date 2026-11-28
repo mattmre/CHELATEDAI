@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Colab NVIDIA L4 Burst GPU Closure Pass — PM-6 RCPS &amp; 7-Domain 5-Encoder Results</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --panel: #1e293b;
+    --border: #334155;
+    --text: #f8fafc;
+    --muted: #94a3b8;
+    --green: #10b981;
+    --blue: #38bdf8;
+    --amber: #f59e0b;
+    --red: #ef4444;
+    --purple: #a78bfa;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 20px;
+    line-height: 1.45;
+  }
+  .header {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 14px;
+    margin-bottom: 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .header h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+  .header .sub { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .badge {
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid var(--green);
+    color: #6ee7b7;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .card h2 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .card .desc {
+    font-size: 11.5px;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .bar-row {
+    margin-bottom: 11px;
+  }
+  .bar-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11.5px;
+    margin-bottom: 4px;
+  }
+  .bar-track {
+    position: relative;
+    height: 18px;
+    background: #0b1220;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid #1e293b;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 3px;
+  }
+  .target-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #f43f5e;
+    z-index: 3;
+  }
+  .kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .kpi {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 11px 13px;
+  }
+  .kpi .k-label { font-size: 11px; color: var(--muted); }
+  .kpi .k-val { font-size: 19px; font-weight: 700; margin-top: 2px; }
+  .kpi .k-note { font-size: 10.5px; color: var(--muted); margin-top: 2px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11.5px;
+    margin-top: 8px;
+  }
+  th, td {
+    text-align: left;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  th { color: var(--muted); font-weight: 600; font-size: 10.5px; text-transform: uppercase; }
+  .pos { color: #34d399; font-weight: 600; }
+  .neg { color: #f87171; font-weight: 600; }
+  .footer {
+    margin-top: 14px;
+    font-size: 10.5px;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>Google Colab Ultra (<code>NVIDIA L4</code>) Burst GPU Closure Pass</h1>
+      <div class="sub">Cohort: <code>colab:NVIDIA L4</code> (22.5 GiB VRAM, PyTorch 2.14.1+cu130) &middot; 5 Live Neural Encoders (384d&rarr;4096d) &middot; 7 Unburned Public Domains (10,009 texts, 1,249 Eval Queries)</div>
+    </div>
+    <div class="badge">Manifest SHA-256: 04e7543bdbbc &middot; 0.68 CU Used &middot; 0 Leaked VMs</div>
+  </div>
+
+  <div class="kpi-strip">
+    <div class="kpi">
+      <div class="k-label">PM-6 Benign FPR (RCPS, N=599)</div>
+      <div class="k-val" style="color: var(--green);">0.50% / 0.67%</div>
+      <div class="k-note">CP95 UB 1.29% / 1.52% &le; 2.0% PASS (vs 3.51% Naive N=50 FAIL)</div>
+    </div>
+    <div class="kpi">
+      <div class="k-label">Real-Encoder CSLS &gt; ZScore</div>
+      <div class="k-val" style="color: var(--blue);">7 / 7 Domains</div>
+      <div class="k-note">+2.96 pp vs ZScore &middot; +30.25 pp vs RawCosine</div>
+    </div>
+    <div class="kpi">
+      <div class="k-label">ZeroMu vs Uncentered Procrustes</div>
+      <div class="k-val" style="color: var(--green);">+5.71 pp nDCG@10</div>
+      <div class="k-note">7 / 7 domains positive (Mode B 4096&rarr;384, 20% backfill)</div>
+    </div>
+    <div class="kpi">
+      <div class="k-label">Tango NI (N=1,249 Paired Qs)</div>
+      <div class="k-val" style="color: var(--amber);">-2.99% LCB (PASS)</div>
+      <div class="k-note">20% backfill vs 384d (&gt; -5.0% gate); 0% write -5.71% (MISS)</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Track A: PM-6 Held-Out Benign False-Refusal Rate (N_neg = 599, Target &le; 2.0%)</h2>
+      <div class="desc">Red vertical line marks 2.0% benign FPR ceiling (scale: 0% to 6.0%). Split-conformal RCPS (N_cal=594) eliminates the N=50 finite-sample overshoot.</div>
+
+      <div class="bar-row">
+        <div class="bar-label">
+          <span><strong>D11 Naive N=50 Quantile</strong> (ZeroMu+CSLS)</span>
+          <span class="neg">3.51% FPR (CP95: 5.01%) — FAIL</span>
+        </div>
+        <div class="bar-track">
+          <div class="target-line" style="left: 33.33%;"></div>
+          <div class="bar-fill" style="width: 58.5%; background: var(--red);"></div>
+        </div>
+      </div>
+
+      <div class="bar-row">
+        <div class="bar-label">
+          <span><strong>ZeroMu + RawCosine + RCPS</strong> (Best Bridged: 18.2% R3 TPR, 0.823 AUROC)</span>
+          <span class="pos">0.50% FPR (CP95: 1.29%) — PASS</span>
+        </div>
+        <div class="bar-track">
+          <div class="target-line" style="left: 33.33%;"></div>
+          <div class="bar-fill" style="width: 8.35%; background: var(--green);"></div>
+        </div>
+      </div>
+
+      <div class="bar-row">
+        <div class="bar-label">
+          <span><strong>ZeroMu + CSLS + RCPS</strong> (12.7% R3 TPR, 0.815 AUROC)</span>
+          <span class="pos">0.67% FPR (CP95: 1.52%) — PASS</span>
+        </div>
+        <div class="bar-track">
+          <div class="target-line" style="left: 33.33%;"></div>
+          <div class="bar-fill" style="width: 11.13%; background: var(--green);"></div>
+        </div>
+      </div>
+
+      <div class="bar-row">
+        <div class="bar-label">
+          <span><strong>Uncentered Procrustes + CSLS + RCPS</strong> (11.9% R3 TPR, 0.752 AUROC)</span>
+          <span class="pos">0.83% FPR (CP95: 1.75%) — PASS</span>
+        </div>
+        <div class="bar-track">
+          <div class="target-line" style="left: 33.33%;"></div>
+          <div class="bar-fill" style="width: 13.9%; background: var(--blue);"></div>
+        </div>
+      </div>
+
+      <div class="bar-row" style="margin-bottom: 0;">
+        <div class="bar-label">
+          <span><strong>Native Qwen3-4096 Re-Index Oracle + RCPS</strong> (31.8% R3 TPR, 0.884 AUROC)</span>
+          <span class="pos">1.00% FPR (CP95: 1.97%) — PASS</span>
+        </div>
+        <div class="bar-track">
+          <div class="target-line" style="left: 33.33%;"></div>
+          <div class="bar-fill" style="width: 16.7%; background: var(--purple);"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Track B: 7 Unburned Public Domains (Mode B: Qwen3-4096 &rarr; MiniLM-384, 20% Backfill)</h2>
+      <div class="desc">Real neural embeddings confirm CSLS beats CalibratedZScore on 7/7 domains (reversing #54's synthetic Gaussian 6/12 artifact), while 4-hop upward composition stays mixed (3/7).</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Unburned Domain</th>
+            <th>ZeroMu+CSLS</th>
+            <th>&Delta; vs ZScore</th>
+            <th>&Delta; vs Unc.Proc</th>
+            <th>4-Hop &Delta;</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>trec-covid</code></td>
+            <td>0.4500</td>
+            <td class="pos">+7.00 pp</td>
+            <td class="pos">+1.06 pp</td>
+            <td class="neg">-13.06 pp</td>
+          </tr>
+          <tr>
+            <td><code>touche-2020</code></td>
+            <td>0.8274</td>
+            <td class="pos">+2.65 pp</td>
+            <td class="pos">+4.86 pp</td>
+            <td class="neg">-0.90 pp</td>
+          </tr>
+          <tr>
+            <td><code>cqadupstack-android</code></td>
+            <td>0.8039</td>
+            <td class="pos">+3.59 pp</td>
+            <td class="pos">+3.40 pp</td>
+            <td class="pos">+0.28 pp</td>
+          </tr>
+          <tr>
+            <td><code>cqadupstack-physics</code></td>
+            <td>0.7519</td>
+            <td class="pos">+2.66 pp</td>
+            <td class="pos">+6.58 pp</td>
+            <td class="neg">-0.12 pp</td>
+          </tr>
+          <tr>
+            <td><code>cqadupstack-programmers</code></td>
+            <td>0.6970</td>
+            <td class="pos">+0.91 pp</td>
+            <td class="pos">+7.33 pp</td>
+            <td class="pos">+0.55 pp</td>
+          </tr>
+          <tr>
+            <td><code>cqadupstack-stats</code></td>
+            <td>0.6869</td>
+            <td class="pos">+2.86 pp</td>
+            <td class="pos">+9.65 pp</td>
+            <td class="neg">-2.07 pp</td>
+          </tr>
+          <tr>
+            <td><code>cqadupstack-unix</code></td>
+            <td>0.7842</td>
+            <td class="pos">+1.04 pp</td>
+            <td class="pos">+7.09 pp</td>
+            <td class="pos">+0.18 pp</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>Pinned Git Commit: <code>b1e336074b4a7365790d03c5d1c3c141078fd73b</code> &middot; Source Tarball SHA-256: <code>438d6c52f844...</code></span>
+    <span>Brutal Honesty: Disclosed strictly as <code>colab:NVIDIA L4</code> burst cohort (0 blind fixtures touched; local Spark services undisturbed).</span>
+  </div>
+</body>
+</html>

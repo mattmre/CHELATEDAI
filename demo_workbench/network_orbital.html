@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Network and Orbital Fabric</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#15202b;--mut:#5b6b7a;--card:#fff;--line:#d7dde3;--ok:#1b7f4d;--bad:#b3261e;--warn:#9a6700;--acc:#1f5fbf;--chip:#eef2f6;--ban:#fff4d6}
+@media (prefers-color-scheme:dark){:root{--bg:#10151b;--fg:#e6ebf0;--mut:#9aa8b6;--card:#18202a;--line:#2b3744;--ok:#4cc38a;--bad:#ff8a80;--warn:#e3b341;--acc:#7ab0ff;--chip:#222c38;--ban:#3a3115}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,Segoe UI,Roboto,sans-serif}
+header{padding:16px 16px 8px}
+h1{margin:0 0 4px;font-size:21px}
+h2{margin:0 0 8px;font-size:16px}
+h3{margin:0 0 6px;font-size:14px}
+p{margin:4px 0}
+.mut{color:var(--mut)}
+main{padding:0 16px 40px;max-width:1320px;margin:0 auto}
+.banner{background:var(--ban);border:1px solid var(--warn);border-radius:10px;padding:10px 14px;margin:8px 16px;font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:10px 0}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button,select,input,textarea{font:inherit;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+button{cursor:pointer}
+button:hover{border-color:var(--acc)}
+button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+button:disabled{opacity:.5;cursor:default}
+button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{border-bottom:1px solid var(--line);padding:5px 6px;text-align:left;vertical-align:top}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+.chip{display:inline-block;background:var(--chip);border-radius:999px;padding:2px 9px;font-size:12px;margin:2px 4px 2px 0}
+.chip.bad{color:var(--bad)}.chip.good{color:var(--ok)}.chip.warn{color:var(--warn)}
+td.act{font-weight:600;white-space:nowrap}
+td.act.good{color:var(--ok)}td.act.bad{color:var(--bad)}
+th.ctl{border-bottom:3px solid var(--acc)}
+pre{white-space:pre-wrap;word-break:break-word;background:var(--chip);border-radius:8px;padding:8px;font-size:12px;max-height:300px;overflow:auto;margin:6px 0}
+textarea{width:100%;min-height:90px;font-family:ui-monospace,Consolas,monospace;font-size:12px}
+.err{color:var(--bad)}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media (max-width:900px){.two{grid-template-columns:1fr}}
+label.f{display:flex;flex-direction:column;gap:2px;font-size:12px}
+label.f input{width:150px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Network and Orbital Fabric</h1>
+  <p class="mut">A control-plane comparison for a switch or DPU fleet across three satellite tranches. Every figure on this page is computed by the server when you ask for it.</p>
+</header>
+<div class="banner" id="banner" role="note">Software emulation only. No ASIC, P4 or DPU silicon was in the loop and no flight hardware was used. Traffic and orbital elements are synthetic; propagation is two-body Keplerian.</div>
+<div class="banner" id="flags" role="note">hardware_asic_p4_silicon_in_loop_claimed: false &middot; orbital_flight_hardware_claimed: false</div>
+<main>
+  <section class="card" aria-label="Controls">
+    <div class="row">
+      <label>Scenario <select id="scenario"></select></label>
+      <label>Mode <select id="mode"><option value="non_nda">Public view</option><option value="nda">Internal view (token)</option></select></label>
+      <input id="token" type="password" placeholder="Internal token" autocomplete="off" hidden>
+    </div>
+    <p id="scDesc" class="mut"></p>
+    <div class="row" id="stepper" role="group" aria-label="Steps"></div>
+  </section>
+
+  <section class="card">
+    <h2 id="stepTitle">Step</h2>
+    <p id="stepMeta" class="mut"></p>
+    <div class="tw"><table><thead id="matHead"></thead><tbody id="matBody"></tbody></table></div>
+    <div class="row" style="margin-top:8px">
+      <span id="regChip" class="chip"></span>
+      <span id="truthChip" class="chip"></span>
+    </div>
+    <h3 style="margin-top:10px">Ask the fleet index</h3>
+    <div class="row">
+      <input id="custom" type="text" maxlength="400" placeholder="Describe a flow in plain text" size="48" aria-label="Flow description">
+      <button id="ask">Classify and decide</button>
+    </div>
+    <pre id="qout">No query yet.</pre>
+    <p id="status" class="mut" aria-live="polite"></p>
+  </section>
+
+  <section class="card">
+    <h2>Scoreboard</h2>
+    <p class="mut">Both scenarios combined. State accuracy is the share of class verdicts that match the authored truth; flow accuracy weighs each verdict by the indexed flows it governs.</p>
+    <div class="tw"><table><thead><tr><th>Arm</th><th>State acc. (ppm)</th><th>Flow acc. (ppm)</th><th>Derived hygiene A (ppm)</th><th>Stale served A</th><th>Wrongly suppressed A</th><th>Audit kept</th></tr></thead><tbody id="sbBody"></tbody></table></div>
+    <h3 style="margin-top:10px">Retrieval per hop (4096-d ground)</h3>
+    <div class="tw"><table><thead><tr><th>Hop</th><th>Source</th><th>Path</th><th>Recall@1 (ppm)</th><th>Recall@5 (ppm)</th><th>Class acc. (ppm)</th><th>Scale deviation (1e-9)</th></tr></thead><tbody id="hopBody"></tbody></table></div>
+    <p id="sbMeta" class="mut"></p>
+    <div id="sbChips"></div>
+    <h3 style="margin-top:10px">Disclosures</h3>
+    <ul id="disc"></ul>
+  </section>
+
+  <section class="card">
+    <h2>Checks and actions</h2>
+    <div class="row">
+      <button id="btnReceipt">Issue register receipt</button>
+      <button id="btnUndo">Reverse retractions</button>
+      <button id="btnBench">Time the warm path</button>
+      <button id="btnSched">Contact schedule</button>
+      <button id="btnLedger">Show ledger</button>
+      <button id="btnKey">Show public key</button>
+    </div>
+    <pre id="out" aria-live="polite">Nothing yet.</pre>
+    <h3>Verify a receipt</h3>
+    <textarea id="verifyIn" placeholder="Paste a receipt JSON here"></textarea>
+    <div class="row"><button id="btnVerify">Verify</button><button id="btnTamper">Paste last receipt with one field changed</button></div>
+  </section>
+
+  <section class="two">
+    <div class="card">
+      <h2>Inject a record</h2>
+      <p class="mut">Adds one record at the selected step on a state-only replay and shows which verdicts change. It is not part of the authored truth.</p>
+      <div class="row">
+        <label class="f">Class <select id="injClass"></select></label>
+        <label class="f">Claim <select id="injClaim"><option>FORWARD</option><option>DROP</option><option>DEFER_INSPECT</option></select></label>
+        <label class="f">Tier (1-3) <input id="injTier" type="number" min="1" max="3" value="2"></label>
+        <label class="f">Tranche (0-2) <input id="injTr" type="number" min="0" max="2" value="1"></label>
+        <label class="f">Ruling <select id="injRuling"><option value="0">no</option><option value="1">yes</option></select></label>
+        <button id="btnInject">Evaluate</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Link-budget and cost calculator</h2>
+      <p class="mut">Arithmetic on adjustable inputs. Inputs are sensitivity assumptions; the sidecar size and contact seconds are measured in this emulation.</p>
+      <div class="row">
+        <label class="f">Flows <input id="tcoN" type="number" min="1" value="1000000"></label>
+        <label class="f">Link Mbit/s <input id="tcoR" type="number" min="1" value="1000"></label>
+        <label class="f">Efficiency ppm <input id="tcoE" type="number" min="1" max="1000000" value="700000"></label>
+        <label class="f">Bytes per dim <input id="tcoB" type="number" min="1" max="8" value="2"></label>
+        <label class="f">Cents per GB <input id="tcoC" type="number" min="0" value="2000"></label>
+        <button id="btnTco">Calculate</button>
+      </div>
+      <div class="tw"><table><thead><tr><th>Output</th><th>Value</th><th>Unit</th><th>Label</th></tr></thead><tbody id="tcoBody"></tbody></table></div>
+    </div>
+  </section>
+</main>
+<script>
+(function(){
+"use strict";
+var API="/api/v2/fabric";
+var S={scen:[],classes:[],sid:null,step:1,lastReceipt:null,sb:null};
+var $=function(id){return document.getElementById(id);};
+function el(tag,cls,text){var e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined&&text!==null)e.textContent=String(text);return e;}
+function clear(n){while(n.firstChild)n.removeChild(n.firstChild);}
+function hdrs(){var h={"Content-Type":"application/json"};if($("mode").value==="nda"){h["X-Copilot-Nda-Token"]=$("token").value;}return h;}
+function setStatus(t,bad){var s=$("status");s.textContent=t||"";s.className=bad?"err":"mut";}
+function show(obj){$("out").textContent=typeof obj==="string"?obj:JSON.stringify(obj,null,2);}
+async function call(method,path,body){
+  var opt={method:method,headers:hdrs()};
+  if(body!==undefined){opt.body=JSON.stringify(body);}
+  var r=await fetch(API+path,opt);
+  var data=null;
+  try{data=await r.json();}catch(e){data={error:"bad_response",message:"The server returned a non-JSON response."};}
+  if(!r.ok){throw new Error((data&&data.message)||("Request failed ("+r.status+")"));}
+  return data;
+}
+function q(params){var p=[];Object.keys(params).forEach(function(k){if(params[k]!==null&&params[k]!==undefined&&params[k]!=="")p.push(encodeURIComponent(k)+"="+encodeURIComponent(params[k]));});return "?"+p.join("&");}
+function curScen(){return S.scen.filter(function(s){return s.id===S.sid;})[0];}
+function mode(){return $("mode").value;}
+function ppm(v){return (v/10000).toFixed(2)+"%";}
+
+function renderStepper(){
+  var sc=curScen(),box=$("stepper");clear(box);
+  sc.steps.forEach(function(st){
+    var b=el("button",st.index===S.step?"on":"",st.index+". "+st.title);
+    b.addEventListener("click",function(){S.step=st.index;load();});
+    box.appendChild(b);
+  });
+  $("btnUndo").disabled=!sc.steps.some(function(s){return s.index<=S.step&&s.has_retraction;});
+}
+function renderStep(d){
+  $("stepTitle").textContent="Step "+d.step+" of "+d.step_count+": "+d.title;
+  $("stepMeta").textContent="Policy epoch "+d.epoch+". Records ingested at this step: "+d.event_ids.length+". Register image: "+d.register.image_hex+".";
+  var head=$("matHead");clear(head);
+  var tr=el("tr");tr.appendChild(el("th","","Class"));tr.appendChild(el("th","","Authored truth"));
+  d.arms.forEach(function(a){var th=el("th",a.id==="fabric_control"?"ctl":"",a.label);tr.appendChild(th);});
+  head.appendChild(tr);
+  var body=$("matBody");clear(body);
+  S.classes.forEach(function(c){
+    var r=el("tr");r.appendChild(el("td","",c.label));
+    r.appendChild(el("td","act",d.truth[c.id]));
+    d.arms.forEach(function(a){
+      var ok=a.verdicts[c.id]===d.truth[c.id];
+      r.appendChild(el("td","act "+(ok?"good":"bad"),a.verdicts[c.id]));
+    });
+    body.appendChild(r);
+  });
+  var sum=el("tr");sum.appendChild(el("td","","Classes correct"));sum.appendChild(el("td","",""));
+  d.arms.forEach(function(a){sum.appendChild(el("td","num",a.state_correct+"/"+a.state_total));});
+  body.appendChild(sum);
+  var rc=$("regChip");rc.textContent="Register alarms: "+d.register.alarms;rc.className="chip "+(d.register.alarms?"warn":"good");
+  var fab=d.arms.filter(function(a){return a.id==="fabric_control";})[0];
+  var t=$("truthChip");t.textContent="Fabric control matches truth on "+fab.state_correct+" of "+fab.state_total+" classes";
+  t.className="chip "+(fab.state_correct===fab.state_total?"good":"bad");
+  renderStepper();
+}
+async function load(){
+  setStatus("Loading...");
+  try{
+    var d=await call("GET","/step"+q({scenario:S.sid,step:S.step,mode:mode()}));
+    renderStep(d);setStatus("");
+  }catch(e){setStatus(e.message,true);}
+}
+function renderScore(sb){
+  S.sb=sb;
+  var tb=$("sbBody");clear(tb);
+  sb.arms.forEach(function(a){
+    var r=el("tr");
+    r.appendChild(el("td","",a.label+(a.emulation_ours?" (emulation, ours)":"")));
+    r.appendChild(el("td","num",a.combined.state_acc_ppm));
+    r.appendChild(el("td","num",a.combined.flow_acc_ppm));
+    r.appendChild(el("td","num",a.scenario_a.derived_hygiene_ppm));
+    r.appendChild(el("td","num",a.scenario_a.stale_served));
+    r.appendChild(el("td","num",a.scenario_a.wrongly_suppressed));
+    r.appendChild(el("td","num",a.scenario_a.audit_survived+"/"+a.scenario_a.audit_total));
+    tb.appendChild(r);
+  });
+  var hb=$("hopBody");clear(hb);
+  sb.retrieval.per_hop.forEach(function(h){
+    Object.keys(h.families).forEach(function(f){
+      var x=h.families[f],r=el("tr");
+      r.appendChild(el("td","",h.hop));r.appendChild(el("td","",h.source_label));r.appendChild(el("td","",f));
+      r.appendChild(el("td","num",x.recall1_ppm));r.appendChild(el("td","num",x.recall5_ppm));r.appendChild(el("td","num",x.class_acc_ppm));
+      var k=el("td","num",x.kappa_dev_nano);if(x.kappa_within_tol===false)k.className="num err";r.appendChild(k);
+      hb.appendChild(r);
+    });
+  });
+  var o=sb.oracle;
+  $("sbMeta").textContent="Independent prefix oracle: "+o.traces+" traces, "+o.prefixes+" prefixes, "+o.oracle_disagreements+" disagreements; register checks "+o.register_checks+", disagreements "+o.register_disagreements+". Reserved register code injected "+o.reserved_code_injected+" times: forwarded by a naive reader "+o.reserved_forward_leaks_naive+" times, by the fenced reader "+o.reserved_forward_leaks_fenced+" times. Shared decision code with the engine: "+(o.shared_decision_code_with_engine?"yes":"none")+".";
+  var ch=$("sbChips");clear(ch);
+  var kk=sb.retrieval.kappa_within_tol_all_hops;
+  Object.keys(kk).forEach(function(k){ch.appendChild(el("span","chip "+(kk[k]?"good":"bad"),"scale within 1e-5 on all hops, "+k+": "+(kk[k]?"yes":"no")));});
+  var bh=sb.retrieval.bridge_health;
+  ch.appendChild(el("span","chip "+(bh.alarms.length?"warn":"good"),"Bridge alarms: "+(bh.alarms.join(", ")||"none")));
+  ch.appendChild(el("span","chip "+(bh.degenerate_anchor_refused?"good":"bad"),"Degenerate anchor set refused: "+(bh.degenerate_anchor_refused?"yes":"no")));
+  Object.keys(sb.retrieval.sidecar).forEach(function(h){var s=sb.retrieval.sidecar[h];ch.appendChild(el("span","chip","Hop "+h+" sidecar: "+s.bytes_per_flow+" B/flow, parity "+s.max_abs_parity_ppm+" ppm"));});
+  var ec=sb.echo_collapse;
+  ch.appendChild(el("span","chip","Echo clusters A: "+ec.scenario_a.echo_records+" records into "+ec.scenario_a.echo_clusters));
+  ch.appendChild(el("span","chip","Echo clusters B: "+ec.scenario_b.echo_records+" records into "+ec.scenario_b.echo_clusters));
+  var d=$("disc");clear(d);sb.disclosures.forEach(function(t){d.appendChild(el("li","",t));});
+}
+async function loadScore(){
+  try{renderScore(await call("GET","/scoreboard"+q({mode:mode()})));}catch(e){setStatus(e.message,true);}
+}
+function renderTco(t){
+  var b=$("tcoBody");clear(b);
+  Object.keys(t.outputs).forEach(function(k){
+    var o=t.outputs[k],r=el("tr");
+    r.appendChild(el("td","",k.replace(/_/g," ")));r.appendChild(el("td","num",String(o.value)));r.appendChild(el("td","",o.unit));
+    r.appendChild(el("td",o.label==="MEASURED"?"act good":"act",o.label));
+    b.appendChild(r);
+  });
+}
+async function act(fn){try{setStatus("Working...");await fn();setStatus("");}catch(e){setStatus(e.message,true);}}
+
+async function init(){
+  try{
+    var d=await call("GET","/scenarios"+q({mode:"non_nda"}));
+    S.scen=d.scenarios;S.classes=d.classes;
+    var sel=$("scenario");S.scen.forEach(function(s){var o=el("option","","Scenario "+s.id+": "+s.title);o.value=s.id;sel.appendChild(o);});
+    var ic=$("injClass");S.classes.forEach(function(c){var o=el("option","",c.label);o.value=c.id;ic.appendChild(o);});
+    S.sid=S.scen[0].id;sel.value=S.sid;
+    await load();
+    await loadScore();
+    renderTco(await call("GET","/tco"+q({mode:"non_nda"})));
+  }catch(e){setStatus(e.message,true);}
+}
+$("scenario").addEventListener("change",function(){S.sid=this.value;S.step=1;load();});
+function refresh(){load();loadScore();}
+$("mode").addEventListener("change",function(){
+  var nda=this.value==="nda";$("token").hidden=!nda;
+  if(nda&&!$("token").value){setStatus("Enter the internal token to load the internal view.",false);return;}
+  refresh();
+});
+// B61-4: re-fetch once a token is entered/changed while the internal view is selected (change fires on blur/enter; input on every edit)
+var tokTimer=null;
+function onToken(){
+  if($("mode").value!=="nda"||!$("token").value){return;}
+  if(tokTimer){clearTimeout(tokTimer);}
+  tokTimer=setTimeout(refresh,300);
+}
+$("token").addEventListener("change",onToken);
+$("token").addEventListener("input",onToken);
+$("ask").addEventListener("click",function(){act(async function(){
+  var v=$("custom").value.trim();if(!v){throw new Error("Type a flow description first.");}
+  var d=await call("POST","/query",{scenario:S.sid,step:S.step,mode:mode(),text:v});
+  $("qout").textContent=JSON.stringify(d.query,null,2);});});
+$("btnReceipt").addEventListener("click",function(){act(async function(){
+  var r=await call("POST","/receipt",{scenario:S.sid,step:S.step,mode:mode()});
+  S.lastReceipt=r;$("verifyIn").value=JSON.stringify(r,null,2);show(r);});});
+$("btnUndo").addEventListener("click",function(){act(async function(){
+  show(await call("POST","/undo",{scenario:S.sid,step:S.step,mode:mode()}));});});
+$("btnBench").addEventListener("click",function(){act(async function(){
+  show(await call("GET","/benchmark"+q({repeats:30,mode:mode()})));});});
+$("btnSched").addEventListener("click",function(){act(async function(){
+  show(await call("GET","/schedule"+q({mode:mode()})));});});
+$("btnLedger").addEventListener("click",function(){act(async function(){
+  show(await call("GET","/ledger"+q({mode:mode()})));});});
+$("btnKey").addEventListener("click",function(){act(async function(){
+  show(await call("GET","/pubkey"+q({mode:mode()})));});});
+$("btnVerify").addEventListener("click",function(){act(async function(){
+  var parsed;try{parsed=JSON.parse($("verifyIn").value);}catch(e){throw new Error("The pasted text is not valid JSON.");}
+  show(await call("POST","/verify-receipt",{receipt:parsed,mode:mode()}));});});
+$("btnTamper").addEventListener("click",function(){
+  if(!S.lastReceipt){setStatus("Issue a receipt first.",true);return;}
+  var c=JSON.parse(JSON.stringify(S.lastReceipt));c.payload.step_title=c.payload.step_title+"!";
+  $("verifyIn").value=JSON.stringify(c,null,2);setStatus("Tampered copy pasted; press Verify.");});
+$("btnInject").addEventListener("click",function(){act(async function(){
+  show(await call("POST","/inject",{scenario:S.sid,step:S.step,mode:mode(),"class":$("injClass").value,claim:$("injClaim").value,
+    tier:parseInt($("injTier").value,10),tranche:parseInt($("injTr").value,10),ruling:$("injRuling").value==="1"}));});});
+$("btnTco").addEventListener("click",function(){act(async function(){
+  renderTco(await call("GET","/tco"+q({n_flows:$("tcoN").value,oisl_rate_mbps:$("tcoR").value,link_efficiency_ppm:$("tcoE").value,
+    vector_bytes_per_dim:$("tcoB").value,downlink_cents_per_gb:$("tcoC").value,mode:mode()})));});});
+init();
+})();
+</script>
+</body>
+</html>

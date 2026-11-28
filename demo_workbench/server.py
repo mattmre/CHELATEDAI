@@ -13,6 +13,11 @@ Provides a zero-dependency-bloat stdlib HTTP live execution server backing
      separated 500-anchor fit vs 20% backfill, and compact OpenSearch default (`2,178.6` toks).
   4. `GET /api/v1/registry/status` & `GET /api/v1/wave6/summary` — Live on-disk SHA-256
      re-verification of `docs/research/verified_registry.json` and `artifacts/wave6_*` bundles.
+  5. `GET /api/v1/pv7/routes` — the declarative PV7 route table compiled from every
+     `demo_workbench/routes.d/*.json` fragment (spine-digest pinned, fail-closed). Every declared
+     route is forwarded to its bundle handler, e.g. Bundle #61 `/fabric` + `/api/v2/fabric/*`.
+     Under `--public` the fabric routes stay served (they are Non-NDA, IP-scanned and never
+     accept an NDA unlock header) while the internal route table itself 404s.
 """
 
 from __future__ import annotations
@@ -48,6 +53,71 @@ from ek5_v3_stratified import (  # noqa: E402
     compute_alternating_wfs_oracle,
 )
 from scripts.night1_common import FastBM25Index  # noqa: E402
+
+# Pinned PV7 spine digest every routes.d fragment must declare (see chelated_pv7_spine.claim_registry).
+PV7_SPINE_DIGEST = "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9"
+ROUTES_DIR = WORKBENCH_DIR / "routes.d"
+# bundle id -> (module, path-predicate, GET handler, POST handler, nda-header-name attribute)
+_FRAGMENT_HANDLERS: Dict[int, Tuple[str, str, str, str, str]] = {
+    61: ("demo_workbench.network_orbital_engine", "is_fabric_path", "handle_fabric_get",
+         "handle_fabric_post", "NDA_TOKEN_HEADER"),
+}
+_ROUTE_TABLE_CACHE: Dict[str, Any] = {}
+
+
+def load_declared_routes(*, refresh: bool = False) -> Dict[str, Any]:
+    """Compile every routes.d fragment (plus its registry/verifier siblings) and return the route table.
+
+    Fails closed: a compile error yields no routes and an explicit ``error`` string, never a partial table.
+    """
+    if _ROUTE_TABLE_CACHE and not refresh:
+        return _ROUTE_TABLE_CACHE
+    from chelated_pv7_spine.fragment_compiler import FragmentCompileError, compile_repo_fragments
+
+    table: Dict[str, Any] = {"spine_digest": PV7_SPINE_DIGEST, "routes": [], "bundles": [], "error": None,
+                             "compiled_sha256": None}
+    if ROUTES_DIR.is_dir():
+        try:
+            compiled = compile_repo_fragments(REPO_ROOT, PV7_SPINE_DIGEST)
+            table["routes"] = [dict(r) for r in compiled["routes"]]
+            table["bundles"] = sorted({int(r["bundle_id"]) for r in compiled["routes"]})
+            table["compiled_sha256"] = compiled["compiled_sha256"]
+        except (FragmentCompileError, OSError, ValueError) as exc:
+            table["error"] = f"{type(exc).__name__}: {exc}"
+    _ROUTE_TABLE_CACHE.clear()
+    _ROUTE_TABLE_CACHE.update(table)
+    return _ROUTE_TABLE_CACHE
+
+
+def _declared_route(method: str, clean_path: str) -> Optional[Dict[str, Any]]:
+    for route in load_declared_routes()["routes"]:
+        if route["method"] == method and route["path"] == clean_path:
+            return route
+    return None
+
+
+def _forward_declared_route(route: Mapping[str, Any], method: str, path: str,
+                            query_params: Mapping[str, Any], headers: Optional[Mapping[str, Any]],
+                            body_bytes: bytes, public_only: bool) -> Tuple[int, str, bytes]:
+    import importlib
+
+    spec = _FRAGMENT_HANDLERS.get(int(route["bundle_id"]))
+    if spec is None:
+        return 501, "application/json", json.dumps(
+            {"error": "route_declared_without_handler", "bundle_id": route["bundle_id"], "path": route["path"]}
+        ).encode("utf-8")
+    module_name, _predicate, get_name, post_name, header_attr = spec
+    module = importlib.import_module(module_name)
+    forwarded = dict(headers or {})
+    if public_only:
+        # Non-NDA isolation: a public server never forwards an NDA unlock token to a bundle handler.
+        nda_header = str(getattr(module, header_attr, "")).lower()
+        forwarded = {k: v for k, v in forwarded.items() if str(k).lower() != nda_header}
+    if method == "GET":
+        return getattr(module, get_name)(path, query_params, forwarded)
+    if method == "POST":
+        return getattr(module, post_name)(path, query_params, forwarded, body_bytes)
+    return 405, "application/json", json.dumps({"error": "method_not_allowed"}).encode("utf-8")
 
 
 def _sha256_bytes(path: Path) -> str:
@@ -635,9 +705,16 @@ def dispatch_api_request(
             return handle_copilot_post(clean_path, query_params, effective_headers, body_bytes)
         return 405, "application/json", json.dumps({"error": "method_not_allowed", "message": "Method not allowed."}).encode("utf-8")
 
+    # Declarative PV7 routes (routes.d/*.json): served in both modes; the handler enforces Non-NDA.
+    declared = _declared_route(method, clean_path)
+    if declared is not None:
+        return _forward_declared_route(declared, method, path, query_params, headers, body_bytes, public_only)
+
     if public_only:
         return 404, "application/json", json.dumps({"error": "not_found", "message": "Not found."}).encode("utf-8")
 
+    if method == "GET" and clean_path == "/api/v1/pv7/routes":
+        return 200, "application/json", json.dumps(load_declared_routes(), indent=2, sort_keys=True).encode("utf-8")
     if method == "GET" and clean_path in ("/", "/index.html"):
         idx_file = WORKBENCH_DIR / "index.html"
         return 200, "text/html; charset=utf-8", idx_file.read_bytes()
@@ -672,7 +749,7 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
 
     def _handle(self, method: str) -> None:
         clean_path = urlparse(self.path).path
-        copilot_req = is_copilot_path(clean_path)
+        copilot_req = is_copilot_path(clean_path) or _declared_route(method, clean_path) is not None
         length = int(self.headers.get("Content-Length", "0") or "0")
         body = self.rfile.read(length) if length > 0 else b""
         status, ctype, data = dispatch_api_request(
@@ -702,7 +779,7 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
 
     def do_OPTIONS(self) -> None:  # noqa: N802
         clean_path = urlparse(self.path).path
-        if is_copilot_path(clean_path):
+        if is_copilot_path(clean_path) or any(r["path"] == clean_path for r in load_declared_routes()["routes"]):
             err_bytes = json.dumps({"error": "same_origin_only", "message": "Cross-origin requests are not supported."}).encode("utf-8")
             self.send_response(405)
             self.send_header("Content-Type", "application/json; charset=utf-8")

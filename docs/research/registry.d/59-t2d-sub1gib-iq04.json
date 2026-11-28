@@ -1,0 +1,58 @@
+{
+  "id": 59,
+  "wave": 19,
+  "item": "2D",
+  "track": "Sub-1 GiB CPU Shared-Memory IQ-04 7-Arm Appliance",
+  "branch": "pv7/t2d-sub1gib-iq04",
+  "tier": "T2",
+  "status": "protocol-ready",
+  "spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "depends_on": [],
+  "runtime_file": "chelated_cpu_memory_appliance.py",
+  "runner_file": "scripts/run_pv7_w19_2d_sub1gib_iq04.py",
+  "verifier_file": "scripts/verifiers.d/59_verifier.py",
+  "test_file": "tests/test_pv7_w19_2b_2d_2e_appliances.py",
+  "primary_endpoint": "Copied-summary vs independent-corroboration behavior across seven arms under MemoryMax=960M (1,006,632,960 B) and strictly below 1,073,741,824 B, with a strictly symmetric reranker, top_k and reader-token budget across every arm",
+  "design": {
+    "memory_max": "960M",
+    "memory_max_bytes": 1006632960,
+    "strict_ceiling_bytes": 1073741824,
+    "source_families": 200,
+    "family_kinds": [
+      "clean",
+      "copy_echo_vs_correction",
+      "paraphrase_echo_vs_independent",
+      "independent_corroboration"
+    ],
+    "arms": [
+      "raw_append_rag",
+      "recency_overwrite",
+      "unsigned_dedup",
+      "equally_tuned_sqlite_c3_challenger",
+      "mem0_adapter",
+      "live_memos_upstream_adapter",
+      "chelated_iq04_appliance"
+    ],
+    "symmetric_read_budget": {
+      "reranker": "lexical_overlap_v1",
+      "top_k": 5,
+      "reader_token_budget": 64,
+      "rule": "one shared read function for all arms; corrects the asymmetric reranker evaluation in MemT-1.0 arXiv:2610.26825v5; 0 MemT-1.0 model runs"
+    },
+    "clean_recall_loss_max": 0.02,
+    "named_comparator": "equally tuned SQLite C3 challenger",
+    "adapters": {
+      "run-live": "imports the real upstream MemTensor/MemOS `memos` package (and `mem0`); raises LiveAdapterUnavailableError when absent, never falls back",
+      "local-drycheck": "labeled memos_offline_contract_adapter and mem0_offline_contract_adapter only"
+    },
+    "burn_ledger": "text fingerprints checked against a complete historical inventory (worktree-local in drycheck; operator supplied in run-live)"
+  },
+  "evidence_tier": "local-drycheck-pass",
+  "evidence_disclosure": {
+    "scope": "Local drycheck of the sub-1GiB IQ04 appliance.",
+    "burn_clean_scope": "local_drycheck_smoke_partial_inventory (confirmatory_eligible=false); regenerated receipts now record this scope.",
+    "synthetic": "Synthetic fixtures only.",
+    "tuning": "Preregistered constants; traced_peak_bytes varies run to run.",
+    "sla": "No latency or SLA claim."
+  }
+}

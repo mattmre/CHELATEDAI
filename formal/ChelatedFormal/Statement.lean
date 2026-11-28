@@ -4,6 +4,8 @@ import ChelatedFormal.Theorem1b_ProcrustesOptimality
 import ChelatedFormal.Theorem2_AdjointZeroMuPerturbation
 import ChelatedFormal.Theorem3_EK5_CyclicWFS
 import ChelatedFormal.Theorem4_AnchoredClippedEMA
+import ChelatedFormal.Theorem5_IncrementalWFS_CW1
+import ChelatedFormal.Theorem6_VerifiedConeAndPCC
 
 /-!
 # Master Wave-14A Formal Verification Bundle (`ChelatedFormal.Statement`)
@@ -37,6 +39,14 @@ The following are **companion proved lemmas OUTSIDE the locked umbrella**. They 
 * `theorem4_chordal_cosine_drift` (`Theorem4_AnchoredClippedEMA`): the `2ρ/γ` chordal / cosine drift bounds.
 * `evalStratum2Wfs_sound` (`Theorem3_EK5_CyclicWFS`): binds `evalStratum2Wfs` (the Stratum-2 core of `ek5_ref_cli`)
   to `(wfsTrueSet, wfsFalseSet)`.
+* `wfs_frame_isolation`, `incrementalWfsSplice_sound`, `unfounded_pos_cycle_false`, `delete_refute_gamma_mono`,
+  `delete_dep_posClosure_mono`, `theorem5_witness_nonvacuous` (`Theorem5_IncrementalWFS_CW1`): proves `CW-1`
+  affected-cone frame isolation, incremental splice soundness under arbitrary deletions/mutations inside `A`,
+  unfounded positive-cycle rejection, and edge-deletion monotonicity on `CyclicEpistemicGraph`.
+* `computeAffectedCone_affectedClosed`, `sparseConeWfs_sound`, `verifyWfsCert_sound`,
+  `theorem6_witness_nonvacuous` (`Theorem6_VerifiedConeAndPCC`): proves verified affected-cone closure,
+  strictly sparse cone-only evaluation soundness (`sparseConeWfs`), and zero-false-accept proof-carrying
+  update certificate verification (`verifyWfsCert`) across `{T, F, U}` on `CyclicEpistemicGraph`.
 
 ## CSLS scale convention (2x)
 

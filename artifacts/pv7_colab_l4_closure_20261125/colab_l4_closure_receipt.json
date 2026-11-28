@@ -1,0 +1,10 @@
+{
+  "exit_code": 0,
+  "git_commit_sha": "b1e336074b4a7365790d03c5d1c3c141078fd73b",
+  "hardware_cohort": "colab:NVIDIA L4",
+  "manifest_file": "colab_l4_closure_manifest.json",
+  "manifest_sha256": "04e7543bdbbc05e9b0bb5033c423e0e4334efe337df2dd4dee00093031cebfdb",
+  "schema_version": "colab_l4_burst_receipt_v1",
+  "source_archive_sha256": "438d6c52f8440fd3db3891eef6cffc63483f3da28a6bfc93d67292b88562b479",
+  "wall_seconds_total": 1156.75
+}

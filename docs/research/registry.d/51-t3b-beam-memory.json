@@ -1,0 +1,42 @@
+{
+  "id": 51,
+  "wave": 18,
+  "item": "3B",
+  "tier": "T3",
+  "additional_tiers": [
+    "T0"
+  ],
+  "track": "gBench BEAM 128K + Paired Derivative-vs-Independent Withdrawal",
+  "branch": "pv7/t3b-beam-memory",
+  "status": "protocol-ready",
+  "spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "depends_on": [],
+  "module_file": "chelated_beam_128k_replay.py",
+  "runner_file": "scripts/run_pv7_w18_3b_beam_memory.py",
+  "verifier_file": "scripts/verifiers.d/51_verifier.py",
+  "test_file": "tests/test_pv7_w18_3a_3b_6b_generalization.py",
+  "primary_endpoint": "Paired derivative-only vs independent-corroboration withdrawal accuracy across 20 BEAM 128K conversation clusters (400 questions, conversation-level cluster bootstrap n=20) with 100% incremental==full EK5 audit parity across every prefix",
+  "design": {
+    "gbench_canonical_commit": "d3e42831",
+    "conversation_clusters": 20,
+    "questions_per_conversation": 20,
+    "total_questions": 400,
+    "context_window_tokens": 131072,
+    "bootstrap_sampling_unit": "conversation_cluster",
+    "naive_question_n_inflation_forbidden": true,
+    "ek5_prefix_parity_required": 1.0,
+    "stateful_checkpoint_replay": true,
+    "modes": [
+      "local-drycheck",
+      "run-live-gpu"
+    ]
+  },
+  "evidence_tier": "local-drycheck-pass",
+  "evidence_disclosure": {
+    "scope": "Local drycheck of the 128k beam-memory replay.",
+    "synthetic": "Synthetic replay fixtures; token_length_est near 131072 is a label on a fixture, not a measured 128k-token run.",
+    "tuning": "Preregistered constants; no wild-corpus validation.",
+    "sla": "No latency or SLA claim.",
+    "burn_clean_scope": "local_drycheck_smoke_partial_inventory (confirmatory_eligible=false)."
+  }
+}

@@ -1,0 +1,316 @@
+{
+  "schema_version": "pv7_claim_registry_v1",
+  "source": "docs/research/council-logs/post-v7-r2-consensus-master-plan.md",
+  "holm_family": {
+    "alpha": 0.05,
+    "hypotheses": [
+      {
+        "id": "3A",
+        "bundle_id": 50
+      },
+      {
+        "id": "H6B_merge",
+        "bundle_id": 54
+      },
+      {
+        "id": "H6B_bridge_shift_and_4hop",
+        "bundle_id": 54,
+        "required_components": [
+          "prompt_shift",
+          "four_hop"
+        ]
+      },
+      {
+        "id": "6C",
+        "bundle_id": 55
+      },
+      {
+        "id": "6D",
+        "bundle_id": 49
+      }
+    ],
+    "outside_family": [
+      "H6B_bridge_static"
+    ]
+  },
+  "proposed_thresholds": {
+    "acceptance": "owner-confirmation-pending",
+    "H6B_bridge_static": {
+      "retirement_ni_margin": -0.01,
+      "reported_tight_equivalence_margin": -0.005
+    },
+    "6C": {
+      "requires_disposition_and_lineage_noninferiority": true,
+      "alternative_accuracy": "unlinked mirror cycles or Disputed conflicts",
+      "cost_advantage_ratio": 1.25
+    },
+    "6D": {
+      "sessions": 36,
+      "minimum_overall_successes": 30,
+      "minimum_successes_per_family": 8,
+      "private_imports": 0,
+      "unsupported_canary_accuracy": 1,
+      "cross_tenant_leaks": 0
+    }
+  },
+  "bundles": [
+    {
+      "id": 47,
+      "wave": 16,
+      "item": "core",
+      "track": "Core Spine + Claim Registry + burn_ledger + A/A Null Calibration",
+      "branch": "pv7/w16-core",
+      "tier": "T0",
+      "additional_tiers": [],
+      "primary_endpoint": "Engineering and A/A calibration gates, including nominal false rejection at alpha=0.05",
+      "named_comparator": "Identical arms of the same retrieval, storage, and ledger harness on each host",
+      "sampling_unit": "Paired resampled split within host and harness",
+      "retirement_trigger": "Withhold the spine gate if integrity, isolation, or A/A calibration fails.",
+      "status": "reserved-pending"
+    },
+    {
+      "id": 48,
+      "wave": 17,
+      "item": "6A",
+      "track": "HNSW Pre-Filter Pushdown + Lazy EK5 Reason Canonicalizer",
+      "branch": "pv7/t6a-engine-closure",
+      "tier": "T2",
+      "additional_tiers": [
+        "T0"
+      ],
+      "primary_endpoint": "p95 <35 ms at 90% retraction with recall within 0.01 of exact fallback, query plans and p99/timeouts recorded, plus zero canonicalizer export differences",
+      "named_comparator": "Exact fallback and existing EK5 reasons across Qdrant bitmap filtering, OpenSearch 3.9, and pgvector 0.8.7 iterative scan vs pre-filter",
+      "sampling_unit": "10,000 paired requests per engine/cell and property-tested reason cases",
+      "retirement_trigger": "Miss the p95 or recall gate, or fail reason parity by merging distinct causes or producing an export difference.",
+      "status": "reserved-pending"
+    },
+    {
+      "id": 49,
+      "wave": 17,
+      "item": "6D",
+      "track": "Zero-Services chelated-kernel Wheel + Blinded Multi-Family Cold-Start Benchmark",
+      "branch": "pv7/t6d-sdk-coldstart",
+      "tier": "T1",
+      "additional_tiers": [],
+      "primary_endpoint": "Paired cold-start task success, with unsupported-capability and two-tenant isolation canaries, public API boundary, reproducible wheel hash, SBOM, and license gates",
+      "named_comparator": "Baseline reference adapter",
+      "sampling_unit": "Clean paired model-family × withheld-fixture × reset-session run across three unrelated families and four fixtures",
+      "retirement_trigger": "Miss the paired or preregistered overall/per-family gate, private-import gate, typed unsupported canary, isolation, reproducibility, SBOM, or license gate.",
+      "status": "reserved-pending"
+    },
+    {
+      "id": 50,
+      "wave": 18,
+      "item": "3A",
+      "track": "gBench LOFT SciFact Pilot + Disjoint Corpus PM-2 Exact Tango NI",
+      "branch": "pv7/t3a-zero-write-ni",
+      "tier": "T1",
+      "additional_tiers": [],
+      "primary_endpoint": "One-shot exact Tango lower confidence bound > -0.0500 on the disjoint zero-write PM-2 contrast, separate from the LOFT SciFact pilot",
+      "named_comparator": "Frozen paired PM-2 reference arm",
+      "sampling_unit": "At least 1,000 paired queries from a burn-ledger-clean disjoint corpus",
+      "retirement_trigger": "Retire if the lower bound ties or misses -0.0500. Record an insufficient finite disjoint pool as underpowered.",
+      "status": "reserved-pending"
+    },
+    {
+      "id": 51,
+      "wave": 18,
+      "item": "3B",
+      "track": "gBench BEAM 128K + Paired Derivative-vs-Independent Withdrawal",
+      "branch": "pv7/t3b-beam-memory",
+      "tier": "T3",
+      "additional_tiers": [
+        "T0"
+      ],
+      "primary_endpoint": "Paired derivative-vs-independent withdrawal behavior on BEAM 128K with incremental parity",
+      "named_comparator": "Independent withdrawal arm and full recomputation for incremental parity",
+      "sampling_unit": "20 conversation clusters",
+      "retirement_trigger": "Retire the corresponding claim on a tie or miss of its preregistered endpoint, or failure of incremental parity.",
+      "status": "reserved-pending"
+    },
+    {
+      "id": 52,
+      "wave": 18,
+      "item": "3C",
+      "track": "QSCCI Planted Positive Control + k=1 Native Neuron vs. SAE Latent",
+      "branch": "pv7/t3c-qscci-singleton",
+      "tier": "T3",
+      "additional_tiers": [],
+      "primary_endpoint": "Planted nuisance-correlated positive control followed by the norm-matched k=1 write-vector contrast on one fresh Qwen3.5-2B REPORT split",
+      "named_comparator": "Native neuron vs SAE latent at matched write-vector norm",
+      "sampling_unit": "Paired observations on a single fresh REPORT split",
+      "retirement_trigger": "Retire the probe if the planted control fails or the preregistered contrast ties or misses its threshold.",
+      "status": "reserved-pending"
+    },
+    {
+      "id": 53,
+      "wave": 18,
+      "item": "3D",
+      "track": "Post-W14B PM-6 Observational Shadow Probe",
+      "branch": "pv7/t3d-pm6-shadow",
+      "tier": "T3",
+      "additional_tiers": [],
+      "primary_endpoint": "Holm-adjusted false-alert upper bound <2% across the 1-unit and 4-unit one-way shadow probe, with separate sensitivity and lead time",
+      "named_comparator": "Benign family labels on the strict one-way shadow copy across both unit settings",
+      "sampling_unit": "At least 300 independent benign families",
+      "retirement_trigger": "Retire the false-alert claim if the adjusted upper bound ties or exceeds 2%, or the shadow design is breached.",
+      "status": "reserved-pending"
+    },
+    {
+      "id": 54,
+      "wave": 18,
+      "item": "6B",
+      "track": "Zero-Retune 12-Domain + 4-Hop + Prompt-Shift & Anchor-Poisoning Gauntlet",
+      "branch": "pv7/t6b-12domain-4hop",
+      "tier": "T1",
+      "additional_tiers": [],
+      "primary_endpoint": "Clean 1-hop nDCG@10 merge superiority with positive lower bound and at least 10/12 domains positive, a static 1-hop NI guard, and joint shift and sequential 4-hop superiority",
+      "named_comparator": "CSLS vs CalibratedZScore; fixed-CSLS ZeroMu vs UncenteredProcrustes, with CenteredProcrustes, shifted-anchor refit, and direct v1→v5 controls",
+      "sampling_unit": "12 domains with paired queries and 20 frozen 500-anchor draws per domain",
+      "retirement_trigger": "Retire the affected superiority claim if it ties or misses its preregistered gate, either shift/4-hop component fails, or the bridge misses the static NI floor.",
+      "status": "reserved-pending"
+    },
+    {
+      "id": 55,
+      "wave": 18,
+      "item": "6C",
+      "track": "Wild NVD/GHSA/OSV/VEX + SEC 8-K Item 4.02 vs. Independent Postgres 17 Ledger",
+      "branch": "pv7/t6c-wild-revisions",
+      "tier": "T1",
+      "additional_tiers": [],
+      "primary_endpoint": "All-four-cut family disposition and independent-lineage accuracy jointly with concurrent-ingest as_of p95 and per-withdrawal maintenance cost",
+      "named_comparator": "DEV-best independent PostgreSQL 17 WITH RECURSIVE ... CYCLE or incremental closure table with equal tuning and production indexes",
+      "sampling_unit": "240 independently adjudicated wild families, 60 per stratum, with four fixed (valid_time, tx_time) cuts per family",
+      "retirement_trigger": "Retire EK5 proprietary superiority if SQL ties accuracy and sits within 1.25x cost, or if the preregistered superiority rule is missed.",
+      "status": "reserved-pending"
+    },
+    {
+      "id": 56,
+      "wave": 19,
+      "item": "2A",
+      "track": "Qwen3-30B-A3B CPU Disk-MoE + 0.6B Speculative Draft",
+      "branch": "pv7/t2a-disk-moe",
+      "tier": "T2",
+      "additional_tiers": [],
+      "primary_endpoint": "Throughput lower bound >=3.0x at greedy Q4 token equality and within the inclusive 8 GiB cgroup budget",
+      "named_comparator": "DEV-best of rungs 1–4",
+      "sampling_unit": "164 HumanEval prompts × three cold/warm runs",
+      "retirement_trigger": "Retire if any token differs, the total memory cap is breached, or the throughput lower bound is <3.0x. Restrict mechanical cylinder-order claims to physical ROTA=1.",
+      "status": "reserved-pending"
+    },
+    {
+      "id": 57,
+      "wave": 19,
+      "item": "2B",
+      "track": "250-Payload (1,000-Catalog) Cartridge Array + EK5 v3 Revocation",
+      "branch": "pv7/t2b-cartridge-array",
+      "tier": "T2",
+      "additional_tiers": [
+        "T0"
+      ],
+      "primary_endpoint": "Time to first usable inference within the 6 GiB cgroup, and zero post-enforcement executions with an exact binomial upper bound",
+      "named_comparator": "Physical bandwidth bound and queued/in-flight revocation fence",
+      "sampling_unit": "250 materialized payloads within 1,000 catalog entries and paired queued/in-flight revocation races",
+      "retirement_trigger": "Retire on a missed preregistered performance gate, memory cap breach, or any post-enforcement execution.",
+      "status": "reserved-pending"
+    },
+    {
+      "id": 58,
+      "wave": 19,
+      "item": "2C",
+      "track": "9.47M Real Cold-OSD Zero-Rewrite RAG",
+      "branch": "pv7/t2c-cold-osd-9m",
+      "tier": "T2",
+      "additional_tiers": [],
+      "primary_endpoint": "Total block-device write bytes through quiescence for clustered and scattered withdrawals at matched Recall@10 (±0.01) under a 4 GiB cgroup",
+      "named_comparator": "Matched-extent on-disk IVF-SQ8 and equally tuned Qdrant on_disk=True",
+      "sampling_unit": "Paired clustered and scattered withdrawal workload on the 9.47M corpus",
+      "retirement_trigger": "Retire if matched recall or memory fails, or write savings tie or miss the preregistered threshold.",
+      "status": "reserved-pending"
+    },
+    {
+      "id": 59,
+      "wave": 19,
+      "item": "2D",
+      "track": "Sub-1 GiB CPU Shared-Memory IQ-04 7-Arm Appliance",
+      "branch": "pv7/t2d-sub1gib-iq04",
+      "tier": "T2",
+      "additional_tiers": [],
+      "primary_endpoint": "Copied-summary vs independent-corroboration behavior across seven arms under MemoryMax=960M and strictly <1,073,741,824 B",
+      "named_comparator": "Equally tuned SQLite C3 challenger",
+      "sampling_unit": "200 burn-ledger-held-out source families across sessions",
+      "retirement_trigger": "Retire if the strict byte ceiling is breached or the preregistered performance/disposition threshold ties or is missed.",
+      "status": "reserved-pending"
+    },
+    {
+      "id": 60,
+      "wave": 19,
+      "item": "2E",
+      "track": "Prefix-Bound TRA-1 + EK5 SSD KV/Prefix Cache",
+      "branch": "pv7/t2e-ssd-kv-repos",
+      "tier": "T2",
+      "additional_tiers": [],
+      "primary_endpoint": "Logit-equivalent KV reuse bound to the full causal prefix, token positions, mask, model, and tokenizer",
+      "named_comparator": "Full prefill for logit parity and stable-files-first prefix-LRU for cache performance",
+      "sampling_unit": "20 hash-selected Git repositories × 50 commits, cluster-bootstrapped by repository",
+      "retirement_trigger": "Retire if logit equivalence or causal binding fails, or the preregistered cache performance threshold ties or is missed.",
+      "status": "reserved-pending"
+    },
+    {
+      "id": 61,
+      "wave": 20,
+      "item": "1",
+      "track": "Demo D12 /fabric Autonomous DPU/Switch & Multi-Tranche LEO Control Plane",
+      "branch": "pv7/t1-fabric-dpu-leo",
+      "tier": "T2",
+      "additional_tiers": [],
+      "primary_endpoint": "Every-prefix oracle parity on randomized public-flow/dated-LEO traces, with per-hop 4096-d recall and kappa",
+      "named_comparator": "Independent state-transition oracle, spine ledger, and Procrustes + CSLS",
+      "sampling_unit": "Randomized traces drawn from public CESNET-TLS/CIC-IDS, real encoders and dated CelesTrak TLE schedules",
+      "retirement_trigger": "Retire on any oracle deviation, including reserved register 11 or torn epoch reads, or a missed preregistered claim threshold.",
+      "status": "reserved-pending"
+    },
+    {
+      "id": 62,
+      "wave": 20,
+      "item": "4",
+      "track": "Demo D13 Pooled-Agent Loops Under Encoder Change & Withdrawal",
+      "branch": "pv7/t4-pooled-workers",
+      "tier": "T2",
+      "additional_tiers": [],
+      "primary_endpoint": "Single primary interaction contrast at pool size four, retaining every eligible job including late or timed-out jobs",
+      "named_comparator": "Recorded-worker attribution replay and live-worker comparison across 1, 2, 4, and 8 workers",
+      "sampling_unit": "24 held-out matter templates × four arrival schedules",
+      "retirement_trigger": "Retire if the primary interaction ties or misses its preregistered threshold, or job accounting or attribution is invalid.",
+      "status": "reserved-pending"
+    },
+    {
+      "id": 63,
+      "wave": 21,
+      "item": "5.1",
+      "track": "Trial 1 Kit: Search-Operator Migration Charter & Scorer",
+      "branch": "pv7/t5a-partner-search",
+      "tier": "T4",
+      "additional_tiers": [],
+      "primary_endpoint": "Buyer-owned nDCG@10 equivalence (±0.010) and SLA",
+      "named_comparator": "Procrustes + CSLS",
+      "sampling_unit": "Buyer-owned paired search queries",
+      "retirement_trigger": "Stage 1 seals as protocol-ready. Apply the frozen equivalence band and SLA if the buyer trial runs.",
+      "status": "reserved-pending"
+    },
+    {
+      "id": 64,
+      "wave": 21,
+      "item": "5.2",
+      "track": "Trial 2 Kit: Records-Owner Natural-Base-Rate Charter & Loss Scorer",
+      "branch": "pv7/t5b-partner-records",
+      "tier": "T4",
+      "additional_tiers": [],
+      "primary_endpoint": "Buyer-owned natural-base-rate field loss with owner weights frozen before unblinding",
+      "named_comparator": "Independent SQL ledger",
+      "sampling_unit": "Consecutive records matters, N >= 30 / base_rate",
+      "retirement_trigger": "Stage 1 seals as protocol-ready. Apply the frozen owner loss rule if the buyer trial runs.",
+      "status": "reserved-pending"
+    }
+  ]
+}

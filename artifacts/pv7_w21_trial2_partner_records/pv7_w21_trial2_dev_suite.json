@@ -1,0 +1,392 @@
+{
+  "bundle_id": 64,
+  "claim_tier": "T4",
+  "data_origin": "open_dev_fixture",
+  "fixture_split": "DEV_OPEN",
+  "mandatory_arms": [
+    "ek5_on",
+    "ek5_off",
+    "challenger_ledger"
+  ],
+  "protocol_digest": "559a785594464fe8f76ef70c29804a4f688f84306cb9ba3ac504267a0e2ee3ec",
+  "scenarios": {
+    "insufficient_natural_conflicts": {
+      "bundle_id": 64,
+      "claim_tier": "T4",
+      "data_origin": "open_dev_fixture",
+      "ek5_premium": "undetermined",
+      "fixture_label": "open_dev_insufficient_natural_conflicts",
+      "outcome": "insufficient_natural_conflicts",
+      "protocol_digest": "559a785594464fe8f76ef70c29804a4f688f84306cb9ba3ac504267a0e2ee3ec",
+      "rationale": "Need >= 100 consecutive closed matters containing >= 30 natural conflicts; have 100 matters / 20 natural conflicts. No win or loss may be claimed.",
+      "report_sha256": "0650a39cc620c41cdb06974fdaaf03fbc8dda6f5ef990a59358b5619b74c523d",
+      "retirement_causes": [],
+      "scored_matters": 100,
+      "scoring_cohort": "all_enrolled_matters",
+      "sizing": {
+        "consecutive_matters": 100,
+        "declared_base_rate": 0.3,
+        "min_natural_conflicts": 30,
+        "natural_conflicts": 20,
+        "observed_base_rate": 0.2,
+        "required_consecutive_matters": 100,
+        "sizing_met": false
+      },
+      "status": "protocol-ready",
+      "track_id": "item_5_2_trial2_records_governance",
+      "verdict": "INSUFFICIENT_EVIDENCE"
+    },
+    "loss": {
+      "bundle_id": 64,
+      "claim_tier": "T4",
+      "comparisons": {
+        "ek5_on_vs_challenger": {
+          "attribution_pass": {
+            "clears_margin": false,
+            "lower_confidence_bound": -2.386681,
+            "margin": 0.25,
+            "mean_advantage": -1.8,
+            "n_matters": 100,
+            "t_critical": 1.660391156
+          },
+          "operational_pass": {
+            "clears_margin": false,
+            "lower_confidence_bound": -2.711942,
+            "margin": 0.25,
+            "mean_advantage": -2.07,
+            "n_matters": 100,
+            "t_critical": 1.660391156
+          }
+        },
+        "ek5_on_vs_ek5_off": {
+          "attribution_pass": {
+            "clears_margin": false,
+            "lower_confidence_bound": -2.386681,
+            "margin": 0.25,
+            "mean_advantage": -1.8,
+            "n_matters": 100,
+            "t_critical": 1.660391156
+          },
+          "operational_pass": {
+            "clears_margin": false,
+            "lower_confidence_bound": -2.711942,
+            "margin": 0.25,
+            "mean_advantage": -2.07,
+            "n_matters": 100,
+            "t_critical": 1.660391156
+          }
+        }
+      },
+      "data_origin": "open_dev_fixture",
+      "ek5_premium": "retired",
+      "faithfulness_by_arm": {
+        "challenger_ledger": 1.0,
+        "ek5_off": 1.0,
+        "ek5_on": 0.775
+      },
+      "faithfulness_noninferior_to_challenger": false,
+      "faithfulness_noninferiority": {
+        "lower_confidence_bound": -0.282354,
+        "n_matters": 100,
+        "noninferior": false,
+        "paired_mean_difference": -0.225,
+        "rule": "one-sided 95% LCB of paired per-matter (ek5_on - challenger_ledger) faithfulness >= -tolerance",
+        "t_critical": 1.660391156,
+        "tolerance": 0.05
+      },
+      "fixture_label": "open_dev_loss",
+      "outcome": "loss",
+      "protocol_digest": "559a785594464fe8f76ef70c29804a4f688f84306cb9ba3ac504267a0e2ee3ec",
+      "rationale": "Joint retirement rule not satisfied; the EK5 premium is retired: VS_CHALLENGER_ATTRIBUTION_MARGIN_NOT_CLEARED, VS_CHALLENGER_OPERATIONAL_MARGIN_NOT_CLEARED, VS_EK5_OFF_ATTRIBUTION_MARGIN_NOT_CLEARED, VS_EK5_OFF_OPERATIONAL_MARGIN_NOT_CLEARED, FAITHFULNESS_INFERIOR_TO_CHALLENGER",
+      "report_sha256": "a269f085199edc22e66f1d49a30af0ac689ecb66cac0e21bde005350636c7709",
+      "retirement_causes": [
+        "VS_CHALLENGER_ATTRIBUTION_MARGIN_NOT_CLEARED",
+        "VS_CHALLENGER_OPERATIONAL_MARGIN_NOT_CLEARED",
+        "VS_EK5_OFF_ATTRIBUTION_MARGIN_NOT_CLEARED",
+        "VS_EK5_OFF_OPERATIONAL_MARGIN_NOT_CLEARED",
+        "FAITHFULNESS_INFERIOR_TO_CHALLENGER"
+      ],
+      "scored_matters": 100,
+      "scoring_cohort": "all_enrolled_matters",
+      "sizing": {
+        "consecutive_matters": 100,
+        "declared_base_rate": 0.3,
+        "min_natural_conflicts": 30,
+        "natural_conflicts": 30,
+        "observed_base_rate": 0.3,
+        "required_consecutive_matters": 100,
+        "sizing_met": true
+      },
+      "status": "protocol-ready",
+      "timeout_rate_by_arm": {
+        "challenger_ledger": 0.0,
+        "ek5_off": 0.0,
+        "ek5_on": 0.0
+      },
+      "track_id": "item_5_2_trial2_records_governance",
+      "verdict": "EK5_PREMIUM_RETIRED"
+    },
+    "tie": {
+      "bundle_id": 64,
+      "claim_tier": "T4",
+      "comparisons": {
+        "ek5_on_vs_challenger": {
+          "attribution_pass": {
+            "clears_margin": false,
+            "lower_confidence_bound": 0.0,
+            "margin": 0.25,
+            "mean_advantage": 0.0,
+            "n_matters": 100,
+            "t_critical": 1.660391156
+          },
+          "operational_pass": {
+            "clears_margin": false,
+            "lower_confidence_bound": 0.0,
+            "margin": 0.25,
+            "mean_advantage": 0.0,
+            "n_matters": 100,
+            "t_critical": 1.660391156
+          }
+        },
+        "ek5_on_vs_ek5_off": {
+          "attribution_pass": {
+            "clears_margin": false,
+            "lower_confidence_bound": 0.0,
+            "margin": 0.25,
+            "mean_advantage": 0.0,
+            "n_matters": 100,
+            "t_critical": 1.660391156
+          },
+          "operational_pass": {
+            "clears_margin": false,
+            "lower_confidence_bound": 0.0,
+            "margin": 0.25,
+            "mean_advantage": 0.0,
+            "n_matters": 100,
+            "t_critical": 1.660391156
+          }
+        }
+      },
+      "data_origin": "open_dev_fixture",
+      "ek5_premium": "retired",
+      "faithfulness_by_arm": {
+        "challenger_ledger": 1.0,
+        "ek5_off": 1.0,
+        "ek5_on": 1.0
+      },
+      "faithfulness_noninferior_to_challenger": true,
+      "faithfulness_noninferiority": {
+        "lower_confidence_bound": 0.0,
+        "n_matters": 100,
+        "noninferior": true,
+        "paired_mean_difference": 0.0,
+        "rule": "one-sided 95% LCB of paired per-matter (ek5_on - challenger_ledger) faithfulness >= -tolerance",
+        "t_critical": 1.660391156,
+        "tolerance": 0.05
+      },
+      "fixture_label": "open_dev_tie",
+      "outcome": "tie",
+      "protocol_digest": "559a785594464fe8f76ef70c29804a4f688f84306cb9ba3ac504267a0e2ee3ec",
+      "rationale": "Joint retirement rule not satisfied; the EK5 premium is retired: VS_CHALLENGER_ATTRIBUTION_MARGIN_NOT_CLEARED, VS_CHALLENGER_OPERATIONAL_MARGIN_NOT_CLEARED, VS_EK5_OFF_ATTRIBUTION_MARGIN_NOT_CLEARED, VS_EK5_OFF_OPERATIONAL_MARGIN_NOT_CLEARED",
+      "report_sha256": "ed7b05e2c08350dece8b9ab8e5a34a31fef342e5533a722eb5a83c37844f8e27",
+      "retirement_causes": [
+        "VS_CHALLENGER_ATTRIBUTION_MARGIN_NOT_CLEARED",
+        "VS_CHALLENGER_OPERATIONAL_MARGIN_NOT_CLEARED",
+        "VS_EK5_OFF_ATTRIBUTION_MARGIN_NOT_CLEARED",
+        "VS_EK5_OFF_OPERATIONAL_MARGIN_NOT_CLEARED"
+      ],
+      "scored_matters": 100,
+      "scoring_cohort": "all_enrolled_matters",
+      "sizing": {
+        "consecutive_matters": 100,
+        "declared_base_rate": 0.3,
+        "min_natural_conflicts": 30,
+        "natural_conflicts": 30,
+        "observed_base_rate": 0.3,
+        "required_consecutive_matters": 100,
+        "sizing_met": true
+      },
+      "status": "protocol-ready",
+      "timeout_rate_by_arm": {
+        "challenger_ledger": 0.0,
+        "ek5_off": 0.0,
+        "ek5_on": 0.0
+      },
+      "track_id": "item_5_2_trial2_records_governance",
+      "verdict": "EK5_PREMIUM_RETIRED"
+    },
+    "timeout": {
+      "bundle_id": 64,
+      "claim_tier": "T4",
+      "comparisons": {
+        "ek5_on_vs_challenger": {
+          "attribution_pass": {
+            "clears_margin": true,
+            "lower_confidence_bound": 0.653047,
+            "margin": 0.25,
+            "mean_advantage": 0.9,
+            "n_matters": 100,
+            "t_critical": 1.660391156
+          },
+          "operational_pass": {
+            "clears_margin": true,
+            "lower_confidence_bound": 0.653047,
+            "margin": 0.25,
+            "mean_advantage": 0.9,
+            "n_matters": 100,
+            "t_critical": 1.660391156
+          }
+        },
+        "ek5_on_vs_ek5_off": {
+          "attribution_pass": {
+            "clears_margin": true,
+            "lower_confidence_bound": 0.653047,
+            "margin": 0.25,
+            "mean_advantage": 0.9,
+            "n_matters": 100,
+            "t_critical": 1.660391156
+          },
+          "operational_pass": {
+            "clears_margin": true,
+            "lower_confidence_bound": 0.653047,
+            "margin": 0.25,
+            "mean_advantage": 0.9,
+            "n_matters": 100,
+            "t_critical": 1.660391156
+          }
+        }
+      },
+      "data_origin": "open_dev_fixture",
+      "ek5_premium": "retired",
+      "faithfulness_by_arm": {
+        "challenger_ledger": 1.0,
+        "ek5_off": 1.0,
+        "ek5_on": 1.0
+      },
+      "faithfulness_noninferior_to_challenger": true,
+      "faithfulness_noninferiority": {
+        "lower_confidence_bound": 0.0,
+        "n_matters": 100,
+        "noninferior": true,
+        "paired_mean_difference": 0.0,
+        "rule": "one-sided 95% LCB of paired per-matter (ek5_on - challenger_ledger) faithfulness >= -tolerance",
+        "t_critical": 1.660391156,
+        "tolerance": 0.05
+      },
+      "fixture_label": "open_dev_timeout",
+      "outcome": "timeout",
+      "protocol_digest": "559a785594464fe8f76ef70c29804a4f688f84306cb9ba3ac504267a0e2ee3ec",
+      "rationale": "Joint retirement rule not satisfied; the EK5 premium is retired: EK5_ON_TIMEOUT_RATE_EXCEEDS_LIMIT",
+      "report_sha256": "d8be59727f48ec3de895f0459bff3f00e23bb746a502cc0a0a230cd752c4f0ef",
+      "retirement_causes": [
+        "EK5_ON_TIMEOUT_RATE_EXCEEDS_LIMIT"
+      ],
+      "scored_matters": 100,
+      "scoring_cohort": "all_enrolled_matters",
+      "sizing": {
+        "consecutive_matters": 100,
+        "declared_base_rate": 0.3,
+        "min_natural_conflicts": 30,
+        "natural_conflicts": 30,
+        "observed_base_rate": 0.3,
+        "required_consecutive_matters": 100,
+        "sizing_met": true
+      },
+      "status": "protocol-ready",
+      "timeout_rate_by_arm": {
+        "challenger_ledger": 0.0,
+        "ek5_off": 0.0,
+        "ek5_on": 0.15
+      },
+      "track_id": "item_5_2_trial2_records_governance",
+      "verdict": "EK5_PREMIUM_RETIRED"
+    },
+    "win": {
+      "bundle_id": 64,
+      "claim_tier": "T4",
+      "comparisons": {
+        "ek5_on_vs_challenger": {
+          "attribution_pass": {
+            "clears_margin": true,
+            "lower_confidence_bound": 1.213319,
+            "margin": 0.25,
+            "mean_advantage": 1.8,
+            "n_matters": 100,
+            "t_critical": 1.660391156
+          },
+          "operational_pass": {
+            "clears_margin": true,
+            "lower_confidence_bound": 1.368678,
+            "margin": 0.25,
+            "mean_advantage": 1.995,
+            "n_matters": 100,
+            "t_critical": 1.660391156
+          }
+        },
+        "ek5_on_vs_ek5_off": {
+          "attribution_pass": {
+            "clears_margin": true,
+            "lower_confidence_bound": 1.213319,
+            "margin": 0.25,
+            "mean_advantage": 1.8,
+            "n_matters": 100,
+            "t_critical": 1.660391156
+          },
+          "operational_pass": {
+            "clears_margin": true,
+            "lower_confidence_bound": 1.368678,
+            "margin": 0.25,
+            "mean_advantage": 1.995,
+            "n_matters": 100,
+            "t_critical": 1.660391156
+          }
+        }
+      },
+      "data_origin": "open_dev_fixture",
+      "ek5_premium": "retained",
+      "faithfulness_by_arm": {
+        "challenger_ledger": 0.85,
+        "ek5_off": 0.85,
+        "ek5_on": 1.0
+      },
+      "faithfulness_noninferior_to_challenger": true,
+      "faithfulness_noninferiority": {
+        "lower_confidence_bound": 0.111764,
+        "n_matters": 100,
+        "noninferior": true,
+        "paired_mean_difference": 0.15,
+        "rule": "one-sided 95% LCB of paired per-matter (ek5_on - challenger_ledger) faithfulness >= -tolerance",
+        "t_critical": 1.660391156,
+        "tolerance": 0.05
+      },
+      "fixture_label": "open_dev_win",
+      "outcome": "win",
+      "protocol_digest": "559a785594464fe8f76ef70c29804a4f688f84306cb9ba3ac504267a0e2ee3ec",
+      "rationale": "Both EK5-on vs ChallengerLedger and EK5-on vs EK5-off cleared the pre-registered margins.",
+      "report_sha256": "f30195ffb9e7151a1eb3ab372d9a20bc92364aba583ce18e264334a8cc1baf58",
+      "retirement_causes": [],
+      "scored_matters": 100,
+      "scoring_cohort": "all_enrolled_matters",
+      "sizing": {
+        "consecutive_matters": 100,
+        "declared_base_rate": 0.3,
+        "min_natural_conflicts": 30,
+        "natural_conflicts": 30,
+        "observed_base_rate": 0.3,
+        "required_consecutive_matters": 100,
+        "sizing_met": true
+      },
+      "status": "protocol-ready",
+      "timeout_rate_by_arm": {
+        "challenger_ledger": 0.0,
+        "ek5_off": 0.0,
+        "ek5_on": 0.0
+      },
+      "track_id": "item_5_2_trial2_records_governance",
+      "verdict": "EK5_PREMIUM_RETAINED"
+    }
+  },
+  "status": "protocol-ready",
+  "suite_sha256": "3a96a98a7776708c5f6ffaee5eb509864c77ea46d86c09febc9920a7eb00c10e",
+  "track_id": "item_5_2_trial2_records_governance"
+}

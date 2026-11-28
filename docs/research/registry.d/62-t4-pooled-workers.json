@@ -1,0 +1,68 @@
+{
+  "id": 62,
+  "wave": 20,
+  "item": "4",
+  "demo_id": "D13",
+  "track": "Demo D13 Pooled-Agent Loops Under Encoder Change & Withdrawal",
+  "branch": "pv7/t4-pooled-workers",
+  "tier": "T2",
+  "status": "protocol-ready",
+  "spine_digest": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "depends_on": [],
+  "runtime_file": "chelated_pooled_agent_runtime.py",
+  "runner_file": "scripts/run_pv7_w20_d13_pooled_agent_loops.py",
+  "verifier_file": "scripts/verifiers.d/62_verifier.py",
+  "test_file": "tests/test_pv7_w20_d13_pooled_agent_loops.py",
+  "primary_endpoint": "Single primary paired 2x2 interaction contrast on on-time cited correct jobs/minute at pool size 4, retaining every eligible job including late or timed-out jobs in denominator",
+  "design": {
+    "matter_templates": 24,
+    "arrival_schedules": [
+      "S1_steady",
+      "S2_bursty_front",
+      "S3_wave_bimodal",
+      "S4_withdrawal_surge"
+    ],
+    "pool_sizes": [1, 2, 4, 8],
+    "primary_pool_size": 4,
+    "twin_branches": [
+      "A_derivative_only",
+      "B_independent_corroboration"
+    ],
+    "system_factorial": {
+      "retrievers": [
+        "Conventional_Retriever",
+        "ZeroMu_Pinned_Bridge"
+      ],
+      "ledgers": [
+        "SQLiteChallengerLedger",
+        "EK5_v3"
+      ]
+    },
+    "event_regimes": [
+      "no_change",
+      "encoder_change_only",
+      "withdrawal_only",
+      "both",
+      "sham_subtask_reopen_interrupt"
+    ],
+    "comparators": [
+      "full_restart_rebuild"
+    ],
+    "controls": [
+      "KEEP_2_sham_subtask_reopen_interrupt"
+    ],
+    "execution_stages": {
+      "stage1": "stage1-controlled-replay (CPU-only deterministic recorded-worker attribution replay)",
+      "stage2_3": "run-live-workers (Spark #3 live vLLM worker pool)"
+    }
+  },
+  "evidence_tier": "stage1-replay-pass",
+  "evidence_disclosure": {
+    "scope": "Stage-1 controlled replay passes offline (deterministic, 4 schedules x 24 templates at pool size 4). Two live-worker sweeps are committed side-by-side: Spark #3 (nemotron-lightning) and Wave 22B Colab L4 (Qwen/Qwen2.5-0.5B-Instruct).",
+    "live_worker_outcome_spark3": "FAILED (6/8 gates). Spark #3 receipt (artifacts/pv7_w20_d13_pooled_agent_loops/report_receipt.json, nemotron-lightning, 7,842 live calls, 70 cells, 1,680 jobs): overall_pass=false, status=replay-fail; 0/1,680 on-time jobs under 560 ms SLA (3.7-7.9 s latency), beats_full_restart_rebuild_jpm=false and sham_reopen_control_valid=false.",
+    "live_worker_outcome_colab_l4": "MIXED / FAILED overall_pass (7/8 gates). Wave 22B Colab L4 receipt (artifacts/pv7_w22b_b62_d13_colab_l4/colab_l4_provenance.json, hardware_cohort=colab:NVIDIA L4, Qwen/Qwen2.5-0.5B-Instruct, 7,866 live calls, 70 cells, 1,680 jobs, deterministic_sha256=b7d6085bd27a): PASSED 7/8 gates including beats_full_restart_rebuild_jpm=true (ZeroMu+EK5_v3 59.38 JPM vs full_restart_rebuild 0.00 JPM, +59.38 JPM), zero_stale_commits_on_zeromu_ek5=true (0 stale commits), ek5_incremental_equals_full_parity=true (0 failures), and positive per-job JPM interaction (mean=+0.6779, LCB95=+0.2586 > 0). STILL FAILED sham_reopen_control_valid=false (overall_pass=false, status=replay-fail): batch p50 was 309-417 ms, so two sequential LLM calls (initial + sham reopen) averaged 2,141.7 ms vs 560.0 ms SLA (0/48 on-time sham jobs; matter-clustered rate interaction=0.0).",
+    "hardware_cohort": "Local Spark #3 (aarch64 nemotron-lightning) and colab:NVIDIA L4 (Qwen2.5-0.5B-Instruct) reported separately; Colab evidence is NOT local DGX Spark GB10 evidence.",
+    "synthetic": "Matter templates and arrival schedules are synthetic.",
+    "tuning": "The preregistered 560.0 ms deadline and stall constants were NEVER retuned to rescue either live run."
+  }
+}
