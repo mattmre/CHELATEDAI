@@ -1,0 +1,3343 @@
+{
+ "preregistration": "artifacts/pv7_w23b_w22_08/PREREGISTRATION.md",
+ "prereg_commit": "3911ad1c",
+ "departures": [
+  "Extraction: F-W14 (as permitted), F-R5 and F-W4 were extracted by separate sub-agents; the preregistration only named F-W14 as delegable. F-PV7 and F-W8 were extracted by the implementer. The F-W14 sub-agent did not receive the coding rules (extraction/CODING_RULES.md); the F-R5/F-W4 sub-agents did.",
+  "Scope rule: 'declared scope equals the family's shared scope' is implemented as: the unit scope is the intersection of the candidate lists' declared scopes (or the F-PV7 stratum), a list enters if its declared scope covers the unit scope, and findings outside the unit scope are dropped and logged.",
+  "F-PV7 strata contain bundle ordinals only. XC (cross-cutting) findings are reported descriptively and enter no stratum estimate.",
+  "F-R5 scopes are textual ('Draft v3 whole, 27 bundles'); all four lists are assigned B1-B27 + XC. r5_grok reviewed the whole draft but re-hashed only 7 manifests; that is treated as a method limit, not a scope change.",
+  "F-W14 IDs are component-level ('46/runner:C01'), coarser than bundle IDs; this inflates overlap. Unit scope is the intersection runner+formal; w14_sonnet's partial runner coverage is accepted as covering it.",
+  "Chao2 variance uses the A=(k-1)/k scaled incidence form (Chao 2005); the preregistration names only 'Chao's (1987) log-normal interval'. For K3 a non-converged log-linear model, or one with a boundary estimate (a parameter |beta| > 15, i.e. the MLE does not exist because a capture-history margin is empty), is treated as non-finite. This changes K3 for F-PV7 non-gating units and for F-W14 (boundary on the grok*sol, neon*sol and sol*sonnet interaction models; without this rule F-W14 K3 would pass); F-W14 already fails K2, so no verdict changes.",
+  "No R5 or W4 round brief exists on disk, so brief pre-seeding for those families is 'no evidence', not verified."
+ ],
+ "families": {
+  "F-PV7": {
+   "extraction_records": 63,
+   "verified": 63,
+   "extraction_errors": [],
+   "brief_preseeds_defects": false,
+   "judgement_calls": [
+    "Strata are defined by ordinal only. XC findings belong to no stratum; they are reported separately and do not enter any stratum's estimators.",
+    "Carbon section 1 rows restate peer defects and mark them CLOSED. Under the preregistered unit those are 'already fixed' restatements and are not counted. Only NH-PV7-1 residual items (logged for v7.1+ cleanup) are counted.",
+    "Carbon NH-PV7-1 #56 placement note excluded (the disclosure exists in the registry; not a defect). NH-PV7-2 (wave6 server summary, pre-existing v6.0) and NH-PV7-3 (computational_storage_poc warning scope) are outside #47-#64 and dropped. NH-PV7-4 describes intended behaviour; not a defect.",
+    "Sonnet section 6 (computational_storage_poc EXPERIMENTAL flag) and section 8 (rebase/CRLF) name no scorecard bundle and are outside the family scope: dropped.",
+    "Grok L140 'brief's line numbers are stale' concerns review-brief call-site line numbers, not bundle evidence: not counted (coding rule 4 covers digest/number misprints only).",
+    "Grok L211-215 and L232 (#63/#64 keep protocol-ready, DEV scorers) are status confirmations (coding rule 2): not counted. Grok L211 'do not carry an evidence tier' folds into XC:C11.",
+    "Burn-ledger implicit smoke path at #50-#55 call sites (grok) and #59 partial self-derived inventory (sonnet) are both classed C11 so the same defect type aligns across strata.",
+    "Sonnet L104 (who chose the 50x gate and when) counted as B57:C06 although it is framed as a question; borderline.",
+    "Sonnet L110 'strictly_under_one_gib is configured, not measured' classed C03 (label overstates) under the tie-break order rather than C13.",
+    "Fable L46 (gate moved to clustered-only after scattered tie/loss) is explicitly accepted by the judge as disclosed: not counted. Fable L54 is a brief wording correction: not counted. Fable L114 (#50 one-shot not re-verified) is a scope limitation, not a defect claim.",
+    "W23A V2 records: the #62 ABSENT nit is explicitly not a defect in W23A and is excluded. W22-03 #53/#62 and W22-04 #54 cost-matched results are classed C08 (comparator). The W23A 'sham control is invalid' is C09 while grok/fable's failed sham gate is C05 in this coding; the coarse class split may overstate V2 misses by one.",
+    "Both judges read the peer memos (Carbon reconciles both; Fable cites the grok memo). They fail the procedural-independence filter for every stratum."
+   ],
+   "list_meta": [
+    {
+     "list_id": "pv7_grok",
+     "source_path": "docs/research/council-logs/pv7-post-live-xval-grok47-xhigh.md",
+     "scope_quote": "Bundles #56–#60 were not audited.",
+     "scope_line": 23,
+     "reads_other_lists": false,
+     "independence_quote": "none found",
+     "independence_line": null
+    },
+    {
+     "list_id": "pv7_sonnet",
+     "source_path": "docs/research/council-logs/pv7-post-live-xval-sonnet55-high.md",
+     "scope_quote": "Wave 19 (Bundles #56-#60) and Fragment Integration",
+     "scope_line": 1,
+     "reads_other_lists": false,
+     "independence_quote": "none found",
+     "independence_line": null
+    },
+    {
+     "list_id": "pv7_carbon",
+     "source_path": "docs/research/council-logs/pv7-final-judge-carbon4-med.md",
+     "scope_quote": "Additive Bundles `#47–#64`",
+     "scope_line": 1,
+     "reads_other_lists": true,
+     "independence_quote": "Both Post-`v7.0` adversarial peer-audit memos",
+     "independence_line": 27
+    },
+    {
+     "list_id": "pv7_fable",
+     "source_path": "docs/research/council-logs/pv7-final-judge-fable52-med.md",
+     "scope_quote": "Bundles #47-#64",
+     "scope_line": 1,
+     "reads_other_lists": true,
+     "independence_quote": "I am blocking on two items from the grok-4.7 peer memo",
+     "independence_line": 13
+    }
+   ],
+   "units": {
+    "S_A": {
+     "scope": [
+      "B47",
+      "B48",
+      "B49",
+      "B50",
+      "B51",
+      "B52",
+      "B53",
+      "B54",
+      "B55",
+      "B61",
+      "B62",
+      "B63",
+      "B64"
+     ],
+     "lists_in_scope": [
+      "pv7_grok",
+      "pv7_carbon",
+      "pv7_fable"
+     ],
+     "lists_out_of_scope": [
+      "pv7_sonnet"
+     ],
+     "lists_dependent": [
+      "pv7_carbon",
+      "pv7_fable"
+     ],
+     "estimating_set": [
+      "pv7_grok"
+     ],
+     "dropped_out_of_scope": [
+      {
+       "finding_id": "pv7_grok-09",
+       "list_id": "pv7_grok",
+       "ordinal": "XC"
+      },
+      {
+       "finding_id": "pv7_grok-10",
+       "list_id": "pv7_grok",
+       "ordinal": "XC"
+      },
+      {
+       "finding_id": "pv7_sonnet-01",
+       "list_id": "pv7_sonnet",
+       "ordinal": "B58"
+      },
+      {
+       "finding_id": "pv7_sonnet-02",
+       "list_id": "pv7_sonnet",
+       "ordinal": "B58"
+      },
+      {
+       "finding_id": "pv7_sonnet-03",
+       "list_id": "pv7_sonnet",
+       "ordinal": "B58"
+      },
+      {
+       "finding_id": "pv7_sonnet-04",
+       "list_id": "pv7_sonnet",
+       "ordinal": "B58"
+      },
+      {
+       "finding_id": "pv7_sonnet-05",
+       "list_id": "pv7_sonnet",
+       "ordinal": "B58"
+      },
+      {
+       "finding_id": "pv7_sonnet-06",
+       "list_id": "pv7_sonnet",
+       "ordinal": "B56"
+      },
+      {
+       "finding_id": "pv7_sonnet-07",
+       "list_id": "pv7_sonnet",
+       "ordinal": "B57"
+      },
+      {
+       "finding_id": "pv7_sonnet-08",
+       "list_id": "pv7_sonnet",
+       "ordinal": "B57"
+      },
+      {
+       "finding_id": "pv7_sonnet-09",
+       "list_id": "pv7_sonnet",
+       "ordinal": "B59"
+      },
+      {
+       "finding_id": "pv7_sonnet-10",
+       "list_id": "pv7_sonnet",
+       "ordinal": "B59"
+      },
+      {
+       "finding_id": "pv7_sonnet-11",
+       "list_id": "pv7_sonnet",
+       "ordinal": "B59"
+      },
+      {
+       "finding_id": "pv7_sonnet-12",
+       "list_id": "pv7_sonnet",
+       "ordinal": "B60"
+      },
+      {
+       "finding_id": "pv7_sonnet-13",
+       "list_id": "pv7_sonnet",
+       "ordinal": "XC"
+      },
+      {
+       "finding_id": "pv7_sonnet-14",
+       "list_id": "pv7_sonnet",
+       "ordinal": "XC"
+      },
+      {
+       "finding_id": "pv7_sonnet-15",
+       "list_id": "pv7_sonnet",
+       "ordinal": "XC"
+      },
+      {
+       "finding_id": "pv7_sonnet-16",
+       "list_id": "pv7_sonnet",
+       "ordinal": "XC"
+      },
+      {
+       "finding_id": "pv7_fable-09",
+       "list_id": "pv7_fable",
+       "ordinal": "B57"
+      },
+      {
+       "finding_id": "pv7_fable-10",
+       "list_id": "pv7_fable",
+       "ordinal": "B58"
+      }
+     ],
+     "gating": {
+      "lists": [
+       "pv7_grok"
+      ],
+      "n_captures": {
+       "pv7_grok": 31
+      },
+      "S_obs": 31,
+      "pairwise": [],
+      "K1": {
+       "pass": false,
+       "n_lists": 1
+      },
+      "K2": {
+       "pass": true,
+       "max_overlap": null,
+       "failing_pairs": []
+      },
+      "chao2": null,
+      "loglinear": null,
+      "K3": {
+       "pass": false,
+       "not_evaluated": "fewer than 3 lists"
+      },
+      "K4": {
+       "pass": false,
+       "not_evaluated": "fewer than 3 lists"
+      },
+      "passes": false
+     },
+     "as_if_independent_non_gating": {
+      "lists": [
+       "pv7_carbon",
+       "pv7_fable",
+       "pv7_grok"
+      ],
+      "n_captures": {
+       "pv7_carbon": 7,
+       "pv7_fable": 8,
+       "pv7_grok": 31
+      },
+      "S_obs": 31,
+      "pairwise": [
+       {
+        "pair": [
+         "pv7_carbon",
+         "pv7_fable"
+        ],
+        "n1": 7,
+        "n2": 8,
+        "m": 4,
+        "lincoln_petersen": 14.0,
+        "chapman": {
+         "N": 13.4,
+         "var": 5.76,
+         "ci95": [
+          8.69608643710387,
+          18.103913562896132
+         ]
+        },
+        "overlap": 0.5714285714285714,
+        "jaccard": 0.36363636363636365
+       },
+       {
+        "pair": [
+         "pv7_carbon",
+         "pv7_grok"
+        ],
+        "n1": 7,
+        "n2": 31,
+        "m": 7,
+        "lincoln_petersen": 31.0,
+        "chapman": {
+         "N": 31.0,
+         "var": 0.0,
+         "ci95": [
+          31.0,
+          31.0
+         ]
+        },
+        "overlap": 1.0,
+        "jaccard": 0.22580645161290322
+       },
+       {
+        "pair": [
+         "pv7_fable",
+         "pv7_grok"
+        ],
+        "n1": 8,
+        "n2": 31,
+        "m": 8,
+        "lincoln_petersen": 31.0,
+        "chapman": {
+         "N": 31.0,
+         "var": 0.0,
+         "ci95": [
+          31.0,
+          31.0
+         ]
+        },
+        "overlap": 1.0,
+        "jaccard": 0.25806451612903225
+       }
+      ],
+      "K1": {
+       "pass": true,
+       "n_lists": 3
+      },
+      "K2": {
+       "pass": false,
+       "max_overlap": 1.0,
+       "failing_pairs": [
+        [
+         "pv7_carbon",
+         "pv7_grok"
+        ],
+        [
+         "pv7_fable",
+         "pv7_grok"
+        ]
+       ]
+      },
+      "chao2": {
+       "k": 3,
+       "S_obs": 31,
+       "f1": 20,
+       "f2": 7,
+       "f0": 19.047619047619044,
+       "var_f0": 143.44023323615158,
+       "N": 50.047619047619044,
+       "N_ci95": [
+        37.14517319257176,
+        90.04012466593844
+       ],
+       "f0_upper95": 59.04012466593843,
+       "degenerate_f0_zero": false
+      },
+      "loglinear": [
+       {
+        "model": "independence",
+        "converged": true,
+        "iterations": 24,
+        "deviance": 4.2157565871964895,
+        "f0": 8.429241027006113e-11,
+        "finite": true,
+        "boundary_estimate": true,
+        "params": 4,
+        "cells": 7
+       },
+       {
+        "model": "pv7_carbon*pv7_fable",
+        "converged": true,
+        "iterations": 27,
+        "deviance": 5.582356302319863e-12,
+        "f0": 5.078300964185006e-12,
+        "finite": true,
+        "boundary_estimate": true,
+        "params": 5,
+        "cells": 7
+       },
+       {
+        "model": "pv7_carbon*pv7_grok",
+        "converged": true,
+        "iterations": 24,
+        "deviance": 4.215756587192867,
+        "f0": 5.4287197791985646e-11,
+        "finite": true,
+        "boundary_estimate": true,
+        "params": 5,
+        "cells": 7
+       },
+       {
+        "model": "pv7_fable*pv7_grok",
+        "converged": true,
+        "iterations": 24,
+        "deviance": 4.215756587195315,
+        "f0": 6.470074604655115e-11,
+        "finite": true,
+        "boundary_estimate": true,
+        "params": 5,
+        "cells": 7
+       }
+      ],
+      "K3": {
+       "pass": false,
+       "a_fail": true,
+       "b_fail": true,
+       "f0_ratio": null,
+       "nonfinite_models": [
+        "independence",
+        "pv7_carbon*pv7_fable",
+        "pv7_carbon*pv7_grok",
+        "pv7_fable*pv7_grok"
+       ],
+       "f0_independence": 8.429241027006113e-11,
+       "S_obs": 31,
+       "f0_theta": {
+        "1.0": 8.429241027006113e-11,
+        "2.0": 1.6858482054012226e-10,
+        "4.0": 3.371696410802445e-10
+       }
+      },
+      "K4": {
+       "pass": false,
+       "rows": [
+        {
+         "held_out": "pv7_carbon",
+         "u_i": 0,
+         "chao2_others_f0": 16.53125,
+         "chao2_others_f0_upper95": 48.97470115377308,
+         "fail": false
+        },
+        {
+         "held_out": "pv7_fable",
+         "u_i": 0,
+         "chao2_others_f0": 20.571428571428573,
+         "chao2_others_f0_upper95": 60.84323999576916,
+         "fail": false
+        },
+        {
+         "held_out": "pv7_grok",
+         "u_i": 20,
+         "chao2_others_f0": 3.0625,
+         "chao2_others_f0_upper95": 16.995693563468734,
+         "fail": true
+        }
+       ]
+      },
+      "passes": false
+     },
+     "captures_all_lists": {
+      "pv7_grok": [
+       "B47:C01",
+       "B47:C03",
+       "B48:C01",
+       "B48:C06",
+       "B48:C07",
+       "B48:C16",
+       "B49:C02",
+       "B49:C03",
+       "B50:C11",
+       "B50:C16",
+       "B51:C11",
+       "B51:C13",
+       "B52:C11",
+       "B53:C01",
+       "B53:C03",
+       "B53:C11",
+       "B54:C03",
+       "B54:C05",
+       "B54:C10",
+       "B54:C11",
+       "B55:C02",
+       "B55:C03",
+       "B55:C11",
+       "B55:C16",
+       "B61:C01",
+       "B61:C05",
+       "B61:C10",
+       "B62:C01",
+       "B62:C05",
+       "B62:C07",
+       "B63:C02"
+      ],
+      "pv7_sonnet": [],
+      "pv7_carbon": [
+       "B48:C07",
+       "B48:C16",
+       "B50:C16",
+       "B54:C05",
+       "B54:C10",
+       "B55:C16",
+       "B61:C10"
+      ],
+      "pv7_fable": [
+       "B47:C03",
+       "B48:C06",
+       "B48:C07",
+       "B48:C16",
+       "B54:C05",
+       "B61:C05",
+       "B61:C10",
+       "B62:C07"
+      ]
+     }
+    },
+    "S_B": {
+     "scope": [
+      "B56",
+      "B57",
+      "B58",
+      "B59",
+      "B60"
+     ],
+     "lists_in_scope": [
+      "pv7_sonnet",
+      "pv7_carbon",
+      "pv7_fable"
+     ],
+     "lists_out_of_scope": [
+      "pv7_grok"
+     ],
+     "lists_dependent": [
+      "pv7_carbon",
+      "pv7_fable"
+     ],
+     "estimating_set": [
+      "pv7_sonnet"
+     ],
+     "dropped_out_of_scope": [
+      {
+       "finding_id": "pv7_grok-01",
+       "list_id": "pv7_grok",
+       "ordinal": "B49"
+      },
+      {
+       "finding_id": "pv7_grok-01",
+       "list_id": "pv7_grok",
+       "ordinal": "B55"
+      },
+      {
+       "finding_id": "pv7_grok-01",
+       "list_id": "pv7_grok",
+       "ordinal": "B63"
+      },
+      {
+       "finding_id": "pv7_grok-02",
+       "list_id": "pv7_grok",
+       "ordinal": "B49"
+      },
+      {
+       "finding_id": "pv7_grok-03",
+       "list_id": "pv7_grok",
+       "ordinal": "B48"
+      },
+      {
+       "finding_id": "pv7_grok-04",
+       "list_id": "pv7_grok",
+       "ordinal": "B61"
+      },
+      {
+       "finding_id": "pv7_grok-05",
+       "list_id": "pv7_grok",
+       "ordinal": "B62"
+      },
+      {
+       "finding_id": "pv7_grok-06",
+       "list_id": "pv7_grok",
+       "ordinal": "B62"
+      },
+      {
+       "finding_id": "pv7_grok-07",
+       "list_id": "pv7_grok",
+       "ordinal": "B53"
+      },
+      {
+       "finding_id": "pv7_grok-08",
+       "list_id": "pv7_grok",
+       "ordinal": "B47"
+      },
+      {
+       "finding_id": "pv7_grok-09",
+       "list_id": "pv7_grok",
+       "ordinal": "XC"
+      },
+      {
+       "finding_id": "pv7_grok-10",
+       "list_id": "pv7_grok",
+       "ordinal": "XC"
+      },
+      {
+       "finding_id": "pv7_grok-11",
+       "list_id": "pv7_grok",
+       "ordinal": "B48"
+      },
+      {
+       "finding_id": "pv7_grok-12",
+       "list_id": "pv7_grok",
+       "ordinal": "B48"
+      },
+      {
+       "finding_id": "pv7_grok-13",
+       "list_id": "pv7_grok",
+       "ordinal": "B48"
+      },
+      {
+       "finding_id": "pv7_grok-14",
+       "list_id": "pv7_grok",
+       "ordinal": "B48"
+      },
+      {
+       "finding_id": "pv7_grok-15",
+       "list_id": "pv7_grok",
+       "ordinal": "B49"
+      },
+      {
+       "finding_id": "pv7_grok-16",
+       "list_id": "pv7_grok",
+       "ordinal": "B61"
+      },
+      {
+       "finding_id": "pv7_grok-17",
+       "list_id": "pv7_grok",
+       "ordinal": "B61"
+      },
+      {
+       "finding_id": "pv7_grok-18",
+       "list_id": "pv7_grok",
+       "ordinal": "B62"
+      },
+      {
+       "finding_id": "pv7_grok-19",
+       "list_id": "pv7_grok",
+       "ordinal": "B50"
+      },
+      {
+       "finding_id": "pv7_grok-19",
+       "list_id": "pv7_grok",
+       "ordinal": "B51"
+      },
+      {
+       "finding_id": "pv7_grok-19",
+       "list_id": "pv7_grok",
+       "ordinal": "B52"
+      },
+      {
+       "finding_id": "pv7_grok-19",
+       "list_id": "pv7_grok",
+       "ordinal": "B53"
+      },
+      {
+       "finding_id": "pv7_grok-19",
+       "list_id": "pv7_grok",
+       "ordinal": "B54"
+      },
+      {
+       "finding_id": "pv7_grok-19",
+       "list_id": "pv7_grok",
+       "ordinal": "B55"
+      },
+      {
+       "finding_id": "pv7_grok-20",
+       "list_id": "pv7_grok",
+       "ordinal": "B50"
+      },
+      {
+       "finding_id": "pv7_grok-20",
+       "list_id": "pv7_grok",
+       "ordinal": "B51"
+      },
+      {
+       "finding_id": "pv7_grok-20",
+       "list_id": "pv7_grok",
+       "ordinal": "B52"
+      },
+      {
+       "finding_id": "pv7_grok-20",
+       "list_id": "pv7_grok",
+       "ordinal": "B53"
+      },
+      {
+       "finding_id": "pv7_grok-20",
+       "list_id": "pv7_grok",
+       "ordinal": "B54"
+      },
+      {
+       "finding_id": "pv7_grok-20",
+       "list_id": "pv7_grok",
+       "ordinal": "B55"
+      },
+      {
+       "finding_id": "pv7_grok-21",
+       "list_id": "pv7_grok",
+       "ordinal": "B50"
+      },
+      {
+       "finding_id": "pv7_grok-22",
+       "list_id": "pv7_grok",
+       "ordinal": "B51"
+      },
+      {
+       "finding_id": "pv7_grok-23",
+       "list_id": "pv7_grok",
+       "ordinal": "B53"
+      },
+      {
+       "finding_id": "pv7_grok-24",
+       "list_id": "pv7_grok",
+       "ordinal": "B53"
+      },
+      {
+       "finding_id": "pv7_grok-25",
+       "list_id": "pv7_grok",
+       "ordinal": "B54"
+      },
+      {
+       "finding_id": "pv7_grok-26",
+       "list_id": "pv7_grok",
+       "ordinal": "B54"
+      },
+      {
+       "finding_id": "pv7_grok-27",
+       "list_id": "pv7_grok",
+       "ordinal": "B54"
+      },
+      {
+       "finding_id": "pv7_grok-28",
+       "list_id": "pv7_grok",
+       "ordinal": "B55"
+      },
+      {
+       "finding_id": "pv7_grok-29",
+       "list_id": "pv7_grok",
+       "ordinal": "B55"
+      },
+      {
+       "finding_id": "pv7_grok-30",
+       "list_id": "pv7_grok",
+       "ordinal": "B47"
+      },
+      {
+       "finding_id": "pv7_sonnet-13",
+       "list_id": "pv7_sonnet",
+       "ordinal": "XC"
+      },
+      {
+       "finding_id": "pv7_sonnet-14",
+       "list_id": "pv7_sonnet",
+       "ordinal": "XC"
+      },
+      {
+       "finding_id": "pv7_sonnet-15",
+       "list_id": "pv7_sonnet",
+       "ordinal": "XC"
+      },
+      {
+       "finding_id": "pv7_sonnet-16",
+       "list_id": "pv7_sonnet",
+       "ordinal": "XC"
+      },
+      {
+       "finding_id": "pv7_carbon-01",
+       "list_id": "pv7_carbon",
+       "ordinal": "B48"
+      },
+      {
+       "finding_id": "pv7_carbon-02",
+       "list_id": "pv7_carbon",
+       "ordinal": "B48"
+      },
+      {
+       "finding_id": "pv7_carbon-03",
+       "list_id": "pv7_carbon",
+       "ordinal": "B50"
+      },
+      {
+       "finding_id": "pv7_carbon-04",
+       "list_id": "pv7_carbon",
+       "ordinal": "B54"
+      },
+      {
+       "finding_id": "pv7_carbon-05",
+       "list_id": "pv7_carbon",
+       "ordinal": "B54"
+      },
+      {
+       "finding_id": "pv7_carbon-06",
+       "list_id": "pv7_carbon",
+       "ordinal": "B55"
+      },
+      {
+       "finding_id": "pv7_carbon-07",
+       "list_id": "pv7_carbon",
+       "ordinal": "B61"
+      },
+      {
+       "finding_id": "pv7_fable-01",
+       "list_id": "pv7_fable",
+       "ordinal": "B48"
+      },
+      {
+       "finding_id": "pv7_fable-02",
+       "list_id": "pv7_fable",
+       "ordinal": "B48"
+      },
+      {
+       "finding_id": "pv7_fable-03",
+       "list_id": "pv7_fable",
+       "ordinal": "B54"
+      },
+      {
+       "finding_id": "pv7_fable-04",
+       "list_id": "pv7_fable",
+       "ordinal": "B54"
+      },
+      {
+       "finding_id": "pv7_fable-05",
+       "list_id": "pv7_fable",
+       "ordinal": "B48"
+      },
+      {
+       "finding_id": "pv7_fable-06",
+       "list_id": "pv7_fable",
+       "ordinal": "B61"
+      },
+      {
+       "finding_id": "pv7_fable-07",
+       "list_id": "pv7_fable",
+       "ordinal": "B61"
+      },
+      {
+       "finding_id": "pv7_fable-08",
+       "list_id": "pv7_fable",
+       "ordinal": "B47"
+      },
+      {
+       "finding_id": "pv7_fable-09",
+       "list_id": "pv7_fable",
+       "ordinal": "B62"
+      }
+     ],
+     "gating": {
+      "lists": [
+       "pv7_sonnet"
+      ],
+      "n_captures": {
+       "pv7_sonnet": 9
+      },
+      "S_obs": 9,
+      "pairwise": [],
+      "K1": {
+       "pass": false,
+       "n_lists": 1
+      },
+      "K2": {
+       "pass": true,
+       "max_overlap": null,
+       "failing_pairs": []
+      },
+      "chao2": null,
+      "loglinear": null,
+      "K3": {
+       "pass": false,
+       "not_evaluated": "fewer than 3 lists"
+      },
+      "K4": {
+       "pass": false,
+       "not_evaluated": "fewer than 3 lists"
+      },
+      "passes": false
+     },
+     "as_if_independent_non_gating": {
+      "lists": [
+       "pv7_carbon",
+       "pv7_fable",
+       "pv7_sonnet"
+      ],
+      "n_captures": {
+       "pv7_carbon": 0,
+       "pv7_fable": 2,
+       "pv7_sonnet": 9
+      },
+      "S_obs": 10,
+      "pairwise": [
+       {
+        "pair": [
+         "pv7_carbon",
+         "pv7_fable"
+        ],
+        "n1": 0,
+        "n2": 2,
+        "m": 0,
+        "lincoln_petersen": Infinity,
+        "chapman": {
+         "N": 2.0,
+         "var": 0.0,
+         "ci95": [
+          2.0,
+          2.0
+         ]
+        },
+        "overlap": null,
+        "jaccard": 0.0
+       },
+       {
+        "pair": [
+         "pv7_carbon",
+         "pv7_sonnet"
+        ],
+        "n1": 0,
+        "n2": 9,
+        "m": 0,
+        "lincoln_petersen": Infinity,
+        "chapman": {
+         "N": 9.0,
+         "var": 0.0,
+         "ci95": [
+          9.0,
+          9.0
+         ]
+        },
+        "overlap": null,
+        "jaccard": 0.0
+       },
+       {
+        "pair": [
+         "pv7_fable",
+         "pv7_sonnet"
+        ],
+        "n1": 2,
+        "n2": 9,
+        "m": 1,
+        "lincoln_petersen": 18.0,
+        "chapman": {
+         "N": 14.0,
+         "var": 20.0,
+         "ci95": [
+          5.2347745942341835,
+          22.76522540576582
+         ]
+        },
+        "overlap": 0.5,
+        "jaccard": 0.1
+       }
+      ],
+      "K1": {
+       "pass": true,
+       "n_lists": 3
+      },
+      "K2": {
+       "pass": true,
+       "max_overlap": 0.5,
+       "failing_pairs": []
+      },
+      "chao2": {
+       "k": 3,
+       "S_obs": 10,
+       "f1": 9,
+       "f2": 1,
+       "f0": 27.0,
+       "var_f0": 1080.0,
+       "N": 37.0,
+       "N_ci95": [
+        14.167541286544315,
+        184.92328206890537
+       ],
+       "f0_upper95": 174.92328206890537,
+       "degenerate_f0_zero": false
+      },
+      "loglinear": [
+       {
+        "model": "independence",
+        "converged": true,
+        "iterations": 28,
+        "deviance": 3.70126658620427e-12,
+        "f0": 8.000000000000027,
+        "finite": true,
+        "boundary_estimate": true,
+        "params": 4,
+        "cells": 7
+       },
+       {
+        "model": "pv7_carbon*pv7_fable",
+        "converged": true,
+        "iterations": 28,
+        "deviance": 2.7657600427761523e-12,
+        "f0": 7.999999999999973,
+        "finite": true,
+        "boundary_estimate": true,
+        "params": 5,
+        "cells": 7
+       },
+       {
+        "model": "pv7_carbon*pv7_sonnet",
+        "converged": true,
+        "iterations": 28,
+        "deviance": 3.5756266107128256e-12,
+        "f0": 7.9999999999999805,
+        "finite": true,
+        "boundary_estimate": true,
+        "params": 5,
+        "cells": 7
+       },
+       {
+        "model": "pv7_fable*pv7_sonnet",
+        "converged": true,
+        "iterations": 28,
+        "deviance": 3.701531063125409e-12,
+        "f0": 2.29120542131187,
+        "finite": true,
+        "boundary_estimate": true,
+        "params": 5,
+        "cells": 7
+       }
+      ],
+      "K3": {
+       "pass": false,
+       "a_fail": true,
+       "b_fail": true,
+       "f0_ratio": null,
+       "nonfinite_models": [
+        "independence",
+        "pv7_carbon*pv7_fable",
+        "pv7_carbon*pv7_sonnet",
+        "pv7_fable*pv7_sonnet"
+       ],
+       "f0_independence": 8.000000000000027,
+       "S_obs": 10,
+       "f0_theta": {
+        "1.0": 8.000000000000027,
+        "2.0": 16.000000000000053,
+        "4.0": 32.00000000000011
+       }
+      },
+      "K4": {
+       "pass": false,
+       "rows": [
+        {
+         "held_out": "pv7_carbon",
+         "u_i": 0,
+         "chao2_others_f0": 20.25,
+         "chao2_others_f0_upper95": 131.86253192645972,
+         "fail": false
+        },
+        {
+         "held_out": "pv7_fable",
+         "u_i": 1,
+         "chao2_others_f0": 18.0,
+         "chao2_others_f0_upper95": 65.23457475668631,
+         "fail": false
+        },
+        {
+         "held_out": "pv7_sonnet",
+         "u_i": 8,
+         "chao2_others_f0": 0.5,
+         "chao2_others_f0_upper95": 6.461745212260354,
+         "fail": true
+        }
+       ]
+      },
+      "passes": false
+     },
+     "captures_all_lists": {
+      "pv7_grok": [],
+      "pv7_sonnet": [
+       "B56:C03",
+       "B57:C04",
+       "B57:C06",
+       "B58:C03",
+       "B58:C08",
+       "B58:C14",
+       "B59:C03",
+       "B59:C11",
+       "B60:C12"
+      ],
+      "pv7_carbon": [],
+      "pv7_fable": [
+       "B57:C07",
+       "B58:C03"
+      ]
+     }
+    }
+   },
+   "xc_descriptive": {
+    "pv7_grok": [
+     "XC:C11"
+    ],
+    "pv7_sonnet": [
+     "XC:C10",
+     "XC:C16"
+    ],
+    "pv7_carbon": [],
+    "pv7_fable": []
+   },
+   "V2": {
+    "extraction_errors": [],
+    "strata": {
+     "S_A": {
+      "w23a_ids_in_stratum": [
+       "B53:C08",
+       "B54:C08",
+       "B54:C10",
+       "B54:C11",
+       "B62:C08",
+       "B62:C09"
+      ],
+      "missed_by_fpv7_union": [
+       "B53:C08",
+       "B54:C08",
+       "B62:C08",
+       "B62:C09"
+      ],
+      "n_missed": 4,
+      "compare_chao2_f0": 19.047619047619044,
+      "compare_chao2_f0_upper95": 59.04012466593843,
+      "compare_basis": "as-if-independent (non-gating)"
+     },
+     "S_B": {
+      "w23a_ids_in_stratum": [],
+      "missed_by_fpv7_union": [],
+      "n_missed": 0,
+      "compare_chao2_f0": 27.0,
+      "compare_chao2_f0_upper95": 174.92328206890537,
+      "compare_basis": "as-if-independent (non-gating)"
+     }
+    }
+   }
+  },
+  "F-W8": {
+   "extraction_records": 97,
+   "verified": 97,
+   "extraction_errors": [],
+   "brief_preseeds_defects": false,
+   "judgement_calls": [
+    "Ordinal mapping from wave8-r0-brief.md L12-L48 and scorecard bundle_id: Track A=B36 wave6_pm1b_v4, Track B=B37 wave6_d2, Track C=B38 wave6_pm3_v2, Track D=B39 wave6_d4, Track E=B40 wave6_d5.",
+    "The brief is a claim summary with no prior defect list, so brief_preseeds_defects=false. All four memos answer the same brief; none cites another memo.",
+    "Wave-7 deliverable defects that misstate one bundle's receipt map to that bundle; TCO/workbench/margin/untracked-code defects map to XC (coding_rules.md rule 3).",
+    "Brief digest misprints (opus L6, sol L3) map to B37:C07 and B40:C07; neon L38 'exact Track E SHA in verified_registry.json' aligned to B40:C07 (judgement call: registry binding, not the brief).",
+    "grok L35 'Cite 6,088 from the J4 receipt' aligned to B36:C03 with opus L32 and sol L15 (same 2.78x cross-run ratio), though grok frames it as provenance.",
+    "neon L33 [SUPERSEDED] disclosure aligned with grok/opus stale_resurrection metric-label defect as B38:C10.",
+    "sol L7 'Direct Qdrant achieved 218.79 Hz ...' counted as B40:C08 saturated baseline (judgement: neutral phrasing inside the timing-boundary corrections).",
+    "sol L27 Clopper-Pearson counted as B38:C05 (judgement, same reason).",
+    "Excluded under coding rule 1 (neutral restatement): sol L11 SciFact null and FiQA -2.08pp; neon L22 bold 'incremental GRPO-SFT is non-significant'; neon L16 '1/N ties' (explicitly excused); grok L19 tie counts; sol L17 Holm .0766; sol L21 and neon L22 zero-std max.",
+    "Coarse class IDs collapse distinct defects of one class in one bundle (B40:C03 holds the OpenSearch label, service-RTT headline and 90% fallback). This is the preregistered unit; it raises pairwise overlap."
+   ],
+   "list_meta": [
+    {
+     "list_id": "w8_grok",
+     "source_path": "docs/research/council-logs/wave8-r1-grok47-xhigh.md",
+     "scope_quote": "Read-only audit of the five Wave-6 Part VI manifests and the Wave-7 thesis, deck, and workbench",
+     "scope_line": 3,
+     "reads_other_lists": false,
+     "independence_quote": "none found",
+     "independence_line": null
+    },
+    {
+     "list_id": "w8_neon",
+     "source_path": "docs/research/council-logs/wave8-r1-neon-high.md",
+     "scope_quote": "**Scope:** Wave-6 `Part VI` (`5/5` bundles), Wave-7 deliverables, `K1–K6`",
+     "scope_line": 3,
+     "reads_other_lists": false,
+     "independence_quote": "none found",
+     "independence_line": null
+    },
+    {
+     "list_id": "w8_opus",
+     "source_path": "docs/research/council-logs/wave8-r1-opus55-high.md",
+     "scope_quote": "All 5 manifest SHA-256 values match their receipts.",
+     "scope_line": 3,
+     "reads_other_lists": false,
+     "independence_quote": "none found",
+     "independence_line": null
+    },
+    {
+     "list_id": "w8_sol",
+     "source_path": "docs/research/council-logs/wave8-r1-sol62-xhigh.md",
+     "scope_quote": "All five Wave 6 manifests and all eight receipt-listed side files matched their SHA-256 digests.",
+     "scope_line": 3,
+     "reads_other_lists": false,
+     "independence_quote": "none found",
+     "independence_line": null
+    }
+   ],
+   "units": {
+    "all": {
+     "scope": [
+      "B36",
+      "B37",
+      "B38",
+      "B39",
+      "B40",
+      "XC"
+     ],
+     "lists_in_scope": [
+      "w8_grok",
+      "w8_neon",
+      "w8_opus",
+      "w8_sol"
+     ],
+     "lists_out_of_scope": [],
+     "lists_dependent": [],
+     "estimating_set": [
+      "w8_grok",
+      "w8_neon",
+      "w8_opus",
+      "w8_sol"
+     ],
+     "dropped_out_of_scope": [],
+     "gating": {
+      "lists": [
+       "w8_grok",
+       "w8_neon",
+       "w8_opus",
+       "w8_sol"
+      ],
+      "n_captures": {
+       "w8_grok": 13,
+       "w8_neon": 13,
+       "w8_opus": 22,
+       "w8_sol": 25
+      },
+      "S_obs": 32,
+      "pairwise": [
+       {
+        "pair": [
+         "w8_grok",
+         "w8_neon"
+        ],
+        "n1": 13,
+        "n2": 13,
+        "m": 8,
+        "lincoln_petersen": 21.125,
+        "chapman": {
+         "N": 20.77777777777778,
+         "var": 6.049382716049383,
+         "ci95": [
+          15.9571497487423,
+          25.598405806813258
+         ]
+        },
+        "overlap": 0.6153846153846154,
+        "jaccard": 0.4444444444444444
+       },
+       {
+        "pair": [
+         "w8_grok",
+         "w8_opus"
+        ],
+        "n1": 13,
+        "n2": 22,
+        "m": 11,
+        "lincoln_petersen": 26.0,
+        "chapman": {
+         "N": 25.833333333333332,
+         "var": 3.784188034188034,
+         "ci95": [
+          22.020617437400777,
+          29.646049229265888
+         ]
+        },
+        "overlap": 0.8461538461538461,
+        "jaccard": 0.4583333333333333
+       },
+       {
+        "pair": [
+         "w8_grok",
+         "w8_sol"
+        ],
+        "n1": 13,
+        "n2": 25,
+        "m": 8,
+        "lincoln_petersen": 40.625,
+        "chapman": {
+         "N": 39.44444444444444,
+         "var": 38.19753086419753,
+         "ci95": [
+          27.331053430074945,
+          51.55783545881394
+         ]
+        },
+        "overlap": 0.6153846153846154,
+        "jaccard": 0.26666666666666666
+       },
+       {
+        "pair": [
+         "w8_neon",
+         "w8_opus"
+        ],
+        "n1": 13,
+        "n2": 22,
+        "m": 11,
+        "lincoln_petersen": 26.0,
+        "chapman": {
+         "N": 25.833333333333332,
+         "var": 3.784188034188034,
+         "ci95": [
+          22.020617437400777,
+          29.646049229265888
+         ]
+        },
+        "overlap": 0.8461538461538461,
+        "jaccard": 0.4583333333333333
+       },
+       {
+        "pair": [
+         "w8_neon",
+         "w8_sol"
+        ],
+        "n1": 13,
+        "n2": 25,
+        "m": 9,
+        "lincoln_petersen": 36.111111111111114,
+        "chapman": {
+         "N": 35.4,
+         "var": 21.17818181818182,
+         "ci95": [
+          26.380293056217486,
+          44.419706943782515
+         ]
+        },
+        "overlap": 0.6923076923076923,
+        "jaccard": 0.3103448275862069
+       },
+       {
+        "pair": [
+         "w8_opus",
+         "w8_sol"
+        ],
+        "n1": 22,
+        "n2": 25,
+        "m": 16,
+        "lincoln_petersen": 34.375,
+        "chapman": {
+         "N": 34.1764705882353,
+         "var": 6.2076124567474045,
+         "ci95": [
+          29.293204506254607,
+          39.05973667021599
+         ]
+        },
+        "overlap": 0.7272727272727273,
+        "jaccard": 0.5161290322580645
+       }
+      ],
+      "K1": {
+       "pass": true,
+       "n_lists": 4
+      },
+      "K2": {
+       "pass": false,
+       "max_overlap": 0.8461538461538461,
+       "failing_pairs": [
+        [
+         "w8_grok",
+         "w8_opus"
+        ],
+        [
+         "w8_neon",
+         "w8_opus"
+        ]
+       ]
+      },
+      "chao2": {
+       "k": 4,
+       "S_obs": 32,
+       "f1": 9,
+       "f2": 9,
+       "f0": 3.375,
+       "var_f0": 9.703125,
+       "N": 35.375,
+       "N_ci95": [
+        32.724605514730904,
+        47.719760294993186
+       ],
+       "f0_upper95": 15.719760294993185,
+       "degenerate_f0_zero": false
+      },
+      "loglinear": [
+       {
+        "model": "independence",
+        "converged": true,
+        "iterations": 5,
+        "deviance": 17.771348117996304,
+        "f0": 0.9737051817139172,
+        "finite": true,
+        "boundary_estimate": false,
+        "params": 5,
+        "cells": 15
+       },
+       {
+        "model": "w8_grok*w8_neon",
+        "converged": true,
+        "iterations": 5,
+        "deviance": 13.283960243408137,
+        "f0": 1.2918031713594562,
+        "finite": true,
+        "boundary_estimate": false,
+        "params": 6,
+        "cells": 15
+       },
+       {
+        "model": "w8_grok*w8_opus",
+        "converged": true,
+        "iterations": 5,
+        "deviance": 14.331094914692544,
+        "f0": 1.4637264254036053,
+        "finite": true,
+        "boundary_estimate": false,
+        "params": 6,
+        "cells": 15
+       },
+       {
+        "model": "w8_grok*w8_sol",
+        "converged": true,
+        "iterations": 5,
+        "deviance": 15.145450979814218,
+        "f0": 0.47989698847294443,
+        "finite": true,
+        "boundary_estimate": false,
+        "params": 6,
+        "cells": 15
+       },
+       {
+        "model": "w8_neon*w8_opus",
+        "converged": true,
+        "iterations": 5,
+        "deviance": 14.331094914692546,
+        "f0": 1.4637264254124045,
+        "finite": true,
+        "boundary_estimate": false,
+        "params": 6,
+        "cells": 15
+       },
+       {
+        "model": "w8_neon*w8_sol",
+        "converged": true,
+        "iterations": 5,
+        "deviance": 17.222431689774975,
+        "f0": 0.7396183032102998,
+        "finite": true,
+        "boundary_estimate": false,
+        "params": 6,
+        "cells": 15
+       },
+       {
+        "model": "w8_opus*w8_sol",
+        "converged": true,
+        "iterations": 5,
+        "deviance": 17.276897341740582,
+        "f0": 0.5648383077042444,
+        "finite": true,
+        "boundary_estimate": false,
+        "params": 6,
+        "cells": 15
+       }
+      ],
+      "K3": {
+       "pass": true,
+       "a_fail": false,
+       "b_fail": false,
+       "f0_ratio": 1.4637264254124045,
+       "nonfinite_models": [],
+       "f0_independence": 0.9737051817139172,
+       "S_obs": 32,
+       "f0_theta": {
+        "1.0": 0.9737051817139172,
+        "2.0": 1.9474103634278344,
+        "4.0": 3.8948207268556687
+       }
+      },
+      "K4": {
+       "pass": true,
+       "rows": [
+        {
+         "held_out": "w8_grok",
+         "u_i": 0,
+         "chao2_others_f0": 4.0,
+         "chao2_others_f0_upper95": 16.2342160441747,
+         "fail": false
+        },
+        {
+         "held_out": "w8_neon",
+         "u_i": 0,
+         "chao2_others_f0": 2.8809523809523805,
+         "chao2_others_f0_upper95": 12.781438961053475,
+         "fail": false
+        },
+        {
+         "held_out": "w8_opus",
+         "u_i": 2,
+         "chao2_others_f0": 4.333333333333333,
+         "chao2_others_f0_upper95": 16.83796140869613,
+         "fail": false
+        },
+        {
+         "held_out": "w8_sol",
+         "u_i": 7,
+         "chao2_others_f0": 3.0,
+         "chao2_others_f0_upper95": 14.32007046742477,
+         "fail": false
+        }
+       ]
+      },
+      "passes": false
+     },
+     "captures_all_lists": {
+      "w8_grok": [
+       "B36:C03",
+       "B36:C05",
+       "B37:C03",
+       "B37:C05",
+       "B38:C10",
+       "B39:C03",
+       "B39:C05",
+       "B40:C03",
+       "XC:C03",
+       "XC:C04",
+       "XC:C07",
+       "XC:C10",
+       "XC:C13"
+      ],
+      "w8_neon": [
+       "B36:C05",
+       "B36:C10",
+       "B37:C05",
+       "B38:C03",
+       "B38:C10",
+       "B39:C05",
+       "B39:C10",
+       "B40:C03",
+       "B40:C07",
+       "XC:C04",
+       "XC:C10",
+       "XC:C11",
+       "XC:C13"
+      ],
+      "w8_opus": [
+       "B36:C03",
+       "B36:C05",
+       "B36:C10",
+       "B36:C14",
+       "B37:C03",
+       "B37:C05",
+       "B37:C07",
+       "B38:C03",
+       "B38:C05",
+       "B38:C10",
+       "B39:C03",
+       "B39:C05",
+       "B39:C08",
+       "B40:C03",
+       "B40:C05",
+       "B40:C07",
+       "B40:C08",
+       "XC:C07",
+       "XC:C10",
+       "XC:C11",
+       "XC:C12",
+       "XC:C13"
+      ],
+      "w8_sol": [
+       "B36:C03",
+       "B36:C08",
+       "B36:C10",
+       "B36:C14",
+       "B37:C03",
+       "B37:C05",
+       "B37:C07",
+       "B37:C08",
+       "B37:C10",
+       "B38:C03",
+       "B38:C05",
+       "B38:C08",
+       "B38:C11",
+       "B39:C03",
+       "B39:C10",
+       "B40:C03",
+       "B40:C05",
+       "B40:C07",
+       "B40:C08",
+       "B40:C14",
+       "B40:C16",
+       "XC:C03",
+       "XC:C10",
+       "XC:C11",
+       "XC:C13"
+      ]
+     }
+    }
+   }
+  },
+  "F-R5": {
+   "extraction_records": 93,
+   "verified": 93,
+   "extraction_errors": [],
+   "brief_preseeds_defects": false,
+   "judgement_calls": [
+    "BRIEF: no R5 panel brief/prompt exists on disk. Searched council-logs/ (only the 4 memos + synthesis), git grep for panel-r5/4-model panel/Final 4-Model across the worktree (hits only in whitepaper, HTML, ledger, roadmap, em4 module, tests, vault-staging script; none is a prompt). brief_path=null; brief_preseeds_defects=false means 'no evidence of pre-seeding', not 'verified absent'. The synthesis gives only roster/thread IDs, no prompt text.",
+    "SCOPE: astra, opus, neon declare Draft v3 / 27 bundles. Grok never says '27 bundles'; it audits 'the draft' claims (PM-1a..PM-5, Parts III-IV numbers) and explicitly limits hash re-verification to 7 Part IV manifests (line 9). Its claim-review scope is the same draft, but its verification scope is narrower; whether that fails the 'declared scope equals shared scope' rule is left to the runner. Neon also reviews HTML v3 and build_whitepaper_assets.py (same deliverable set as the draft; astra/opus/grok also cite HTML/figure items indirectly). All 4 findings fall within ordinals 1-27 or XC; no out-of-scope drops.",
+    "INDEPENDENCE: no list quotes, cites, or reconciles another panel memo. Opus line 38 ('remove premature completion wording on the 4-model panel until all 4 logs land') and Neon line 64 (panel tense 'until thread links are archived') show awareness the panel exists and that other logs had not landed - evidence of non-reading, not dependence. Each list states its own re-hash/verification work.",
+    "ORDINAL r5_s1 -> B23 (r5_s1_pm2_dense_oov_probe), not B19 (r5_s1_zs_v3_pre_c4v4), in grok line 33: the context is 'dense 12/12 CAR cells', and the B23 scorecard summary says 'beats Composed CAR in 12/12 cells'. Opus line 31 'added after r5_s1 (C4_v3 = 0.875)' refers to B19 but the defect is post-hoc C4_v4 on B20's cases, so it is coded B20 only.",
+    "ORDINAL PM-5 / 381,497 oracle count / 1M power-law / 100k service -> B17 (f2_ek5_v3_1m_powerlaw), whose scorecard summary carries the 353,105 + 28,561 oracle breakdown, 1M power-law and 100k service.",
+    "ORDINAL PM-1a (ZS v3 closure, C2b 0.3375, C4_v4 240/240, structured edges, post-hoc C4_v4) -> B20 (r5b_s1_zs_v3_pm1a_closure). B19 carries C2b=0.3417 (different run); grok line 19 notes both runs appear in the whitepaper but frames it neutrally ('Matches'), so excluded.",
+    "ORDINAL PM-1b clean LoCoMo-300 (M4e/M4f/M4g, Recall@5, R4-tuned thresholds) -> B21; PM-1b LME-500 clean and KU-78 stress (stress gate, M1c, 6 LME echo prefixes) -> B22 (r5_s3_longmemeval_n500, which holds the 78-item KU stress). PM-2 hybrid (0.718 ms, family-label guard, Query0W, DualAdap, TRA-1 12/12, weights) -> B24; dense PM-2 / 36.55 ms uncached -> B23. PM-3 default mem0 (0.95, r5b_s2) -> B25; steelmanned 6,225x / Suite B (r5b_s2b) -> B26. PM-4 kappa / human-audit scorer -> B27. A3-EffRank (WP line 128) -> B16 (f1_r4_comprehensive, A3-2x2). HTML '0.7812 (Reg B)' f2_longmemeval_v2 -> B12. R4 M4e run (neon line 33 'between R4 and R5') -> B18 (f2_r4_..._locomo, EM-1 M4e).",
+    "ORDINAL C4_v4 1.000-instability defect harmonised to B20,B25,B26,B27 in opus (line 20 names r5b_s2/s2b/s4 and the PM-1a 1.000 claim), grok (line 31: PM-4 cells + PM-1a 100% + two other N=80 draws) and neon line 76 (names r5b_s1/s2/s2b/s4). Neon line 30 names only r5b_s2/r5b_s2b -> B25,B26. Class C03 for all (headline omits range that shrinks claim), not C05, since the lower scores are reported, only unexplained/undisclosed as a range.",
+    "ORDINAL Part IV provenance (opus line 37 'Part IV manifests') expanded to all nine Part IV ordinals B19-B27 (scorecard part=PART_IV_R5_GATE_CLOSURE). This is the largest single expansion (9 IDs from one statement).",
+    "XC: shared em4_soft_telemetry_routing.py code bugs (dead loop, ts validation, 'Update:' false positive, union-find chaining, inverted sort key, colon leak, same-session skip) name a module used by B21/B22/B26, no single bundle -> XC. Dead loop coded C17 (no output effect); behavioural bugs C16. Registry digest mislabel (grok line 11), side-hash Part attribution (astra 13, neon 32), 'cryptographic evidence bundles' framing and panel-completion wording (opus 38, neon 64), stale v2 docstring (neon 34) -> XC. Side-hash attribution coded XC not B1 even though neon names s1 as holding 2 of the hashes: the misstatement is about the ledger's Part grouping, not s1's evidence.",
+    "CLASS calls: family-label guard and DualAdap transductive centering and qrel-selected COPY_OF echoes -> C15 (label/test-set consultation). 6-prefix regex overfitting and R4-tuned thresholds -> C06. 6,225x and structured-edge asymmetry and question-prefiltered mem0 slice and substring scoring -> C08. Stress gate failed -> C05 (tie-break rule 5 first line). M1c 'header-stripped', hybrid weights 0.35/0.65 vs 0.50/0.50, C4_v4 module attribution, ek5_store=None, Stratum-1 tail misattribution -> C10. pm3_cleared hardcoded True -> C02 (vacuous gate). Neon oracle check skipped on missing deps -> C01. Neon A3-EffRank omitted dips -> C05 (undisclosed loss). Grok line 37 'C4_v4 ... distinct from conversational M4f/M4g' coded B20:C10 (conflation in prose, same as neon module attribution) rather than C08; borderline.",
+    "SPLITS: neon line 27 split into 5 (family label C15, resolve_slot bug C16, Query0W omission C03, n=86 latency C03, fusion weights C10); neon line 28 into 2 (count C03, skipped oracle check C01); neon line 30 into 6; neon line 31 into 4; neon 33/34 into 2/3; astra line 22 into 4 (two C03 statements collapse to B17:C03); astra line 25 into 8; opus line 34 into 4; opus line 38 into 2; grok line 33 into 3 and line 37 into 5.",
+    "EXCLUSIONS (rule 1/2 neutral or confirmation): astra line 13 registry digest sentence ('`b57b05660edf…` is the canonical **content** digest') - informative, no edit demand (grok's 'not the SHA-256' is counted); astra line 20 Suite B 'has LCB -3.33 pp (query-selected top-20 user turns)' - neutral restatement, unlike opus/grok/neon which use 'not significant'/overclaim framing; astra line 18 M4f Tango -5.20 pp SSU-70 and 297/300 identical prompts - neutral; astra line 21 '80 cases reused' - neutral; grok line 19 C2b two-runs note ('Matches'); grok line 36 'No gold-id leak' (confirmation); opus line 26 and line 38 'keep sealed key out of public git commit' - rule 2 'keep' wording; opus line 27 PM-5 'PASS'; neon line 33 Qwen self-grading bias - observation that the other judge caught; all 'Next demonstrations'/strategy sections (astra 26, opus 40-45, grok 39-44, neon 94-128) excluded as strategy/new experiments.",
+    "SUMMARY-LINE DEDUP: verdict paragraphs (astra 9, opus 11, grok 9, neon 12) restate detailed findings; only astra line 9 'times a different workload from QA' is recorded (no detail line for the timing defect in astra). Neon section-3 edit lines (65-90) restating section-1 findings are not re-recorded except lines 64, 76, 85, 87 which add new content or ordinals.",
+    "HARMONISATION: B24:C03 latency/caveats appears in all 4 lists; B22:C05 stress gate in astra/opus/grok (neon raises M1c C10 instead, not the gate failure); B21:C06 tuning in all 4; B22:C06 regex in astra/grok/neon; B17:C03 oracle count in astra/neon only (grok line 24 accepts 381,497 as 'fair'); B26:C08 6,225x in all 4; B24:C15 family label in astra/grok/neon; XC:C17 dead loop in opus/grok/neon; XC:C16 em4 bugs in all 4."
+   ],
+   "list_meta": [
+    {
+     "list_id": "r5_astra",
+     "source_path": "docs/research/council-logs/panel-r5-astra-ultra.md",
+     "scope_quote": "**Hold Draft v3 for correction. Keep `PRE-RELEASE / HUMAN AUDIT PENDING`.** The 27 bundles verify.",
+     "scope_line": 9,
+     "reads_other_lists": false,
+     "independence_quote": "none found",
+     "independence_line": null
+    },
+    {
+     "list_id": "r5_opus",
+     "source_path": "docs/research/council-logs/panel-r5-claude-opus-ultrathink.md",
+     "scope_quote": "# Panel audit: Post-R5b Draft v3 (27/27 bundles)",
+     "scope_line": 9,
+     "reads_other_lists": false,
+     "independence_quote": "none found",
+     "independence_line": null
+    },
+    {
+     "list_id": "r5_grok",
+     "source_path": "docs/research/council-logs/panel-r5-grok-xhigh.md",
+     "scope_quote": "I re-hashed seven Part IV manifests against `verified_registry.json`. All seven match. I did not re-run `scripts/build_whitepaper_assets.py --check`, and I did not re-hash the other 20 bundles or the side-artifact files.",
+     "scope_line": 9,
+     "reads_other_lists": false,
+     "independence_quote": "none found",
+     "independence_line": null
+    },
+    {
+     "list_id": "r5_neon",
+     "source_path": "docs/research/council-logs/panel-r5-neon-xhigh.md",
+     "scope_quote": "# Read-Only Final Panel of Experts Audit (Post-R5b Draft v3 — 27/27 Verified Bundles)",
+     "scope_line": 9,
+     "reads_other_lists": false,
+     "independence_quote": "none found",
+     "independence_line": null
+    }
+   ],
+   "units": {
+    "all": {
+     "scope": [
+      "B1",
+      "B10",
+      "B11",
+      "B12",
+      "B13",
+      "B14",
+      "B15",
+      "B16",
+      "B17",
+      "B18",
+      "B19",
+      "B2",
+      "B20",
+      "B21",
+      "B22",
+      "B23",
+      "B24",
+      "B25",
+      "B26",
+      "B27",
+      "B3",
+      "B4",
+      "B5",
+      "B6",
+      "B7",
+      "B8",
+      "B9",
+      "XC"
+     ],
+     "lists_in_scope": [
+      "r5_astra",
+      "r5_opus",
+      "r5_grok",
+      "r5_neon"
+     ],
+     "lists_out_of_scope": [],
+     "lists_dependent": [],
+     "estimating_set": [
+      "r5_astra",
+      "r5_opus",
+      "r5_grok",
+      "r5_neon"
+     ],
+     "dropped_out_of_scope": [],
+     "gating": {
+      "lists": [
+       "r5_astra",
+       "r5_grok",
+       "r5_neon",
+       "r5_opus"
+      ],
+      "n_captures": {
+       "r5_astra": 17,
+       "r5_grok": 17,
+       "r5_neon": 31,
+       "r5_opus": 23
+      },
+      "S_obs": 47,
+      "pairwise": [
+       {
+        "pair": [
+         "r5_astra",
+         "r5_grok"
+        ],
+        "n1": 17,
+        "n2": 17,
+        "m": 10,
+        "lincoln_petersen": 28.9,
+        "chapman": {
+         "N": 28.454545454545453,
+         "var": 10.933884297520661,
+         "ci95": [
+          21.973645341200104,
+          34.9354455678908
+         ]
+        },
+        "overlap": 0.5882352941176471,
+        "jaccard": 0.4166666666666667
+       },
+       {
+        "pair": [
+         "r5_astra",
+         "r5_neon"
+        ],
+        "n1": 17,
+        "n2": 31,
+        "m": 13,
+        "lincoln_petersen": 40.53846153846154,
+        "chapman": {
+         "N": 40.142857142857146,
+         "var": 14.106122448979592,
+         "ci95": [
+          32.78160123727798,
+          47.50411304843631
+         ]
+        },
+        "overlap": 0.7647058823529411,
+        "jaccard": 0.37142857142857144
+       },
+       {
+        "pair": [
+         "r5_astra",
+         "r5_opus"
+        ],
+        "n1": 17,
+        "n2": 23,
+        "m": 8,
+        "lincoln_petersen": 48.875,
+        "chapman": {
+         "N": 47.0,
+         "var": 72.0,
+         "ci95": [
+          30.36915410780387,
+          63.630845892196135
+         ]
+        },
+        "overlap": 0.47058823529411764,
+        "jaccard": 0.25
+       },
+       {
+        "pair": [
+         "r5_grok",
+         "r5_neon"
+        ],
+        "n1": 17,
+        "n2": 31,
+        "m": 14,
+        "lincoln_petersen": 37.642857142857146,
+        "chapman": {
+         "N": 37.4,
+         "var": 8.16,
+         "ci95": [
+          31.801222992754212,
+          42.998777007245785
+         ]
+        },
+        "overlap": 0.8235294117647058,
+        "jaccard": 0.4117647058823529
+       },
+       {
+        "pair": [
+         "r5_grok",
+         "r5_opus"
+        ],
+        "n1": 17,
+        "n2": 23,
+        "m": 11,
+        "lincoln_petersen": 35.54545454545455,
+        "chapman": {
+         "N": 35.0,
+         "var": 16.615384615384617,
+         "ci95": [
+          27.010800053197148,
+          42.989199946802856
+         ]
+        },
+        "overlap": 0.6470588235294118,
+        "jaccard": 0.3793103448275862
+       },
+       {
+        "pair": [
+         "r5_neon",
+         "r5_opus"
+        ],
+        "n1": 31,
+        "n2": 23,
+        "m": 12,
+        "lincoln_petersen": 59.416666666666664,
+        "chapman": {
+         "N": 58.07692307692308,
+         "var": 67.84108199492815,
+         "ci95": [
+          41.93354292173717,
+          74.22030323210899
+         ]
+        },
+        "overlap": 0.5217391304347826,
+        "jaccard": 0.2857142857142857
+       }
+      ],
+      "K1": {
+       "pass": true,
+       "n_lists": 4
+      },
+      "K2": {
+       "pass": false,
+       "max_overlap": 0.8235294117647058,
+       "failing_pairs": [
+        [
+         "r5_grok",
+         "r5_neon"
+        ]
+       ]
+      },
+      "chao2": {
+       "k": 4,
+       "S_obs": 47,
+       "f1": 26,
+       "f2": 8,
+       "f0": 31.6875,
+       "var_f0": 311.67626953125,
+       "N": 78.6875,
+       "N_ci95": [
+        58.437096020545155,
+        134.7930599206545
+       ],
+       "f0_upper95": 87.79305992065453,
+       "degenerate_f0_zero": false
+      },
+      "loglinear": [
+       {
+        "model": "independence",
+        "converged": true,
+        "iterations": 6,
+        "deviance": 39.542998565736355,
+        "f0": 5.542531683978909,
+        "finite": true,
+        "boundary_estimate": false,
+        "params": 5,
+        "cells": 15
+       },
+       {
+        "model": "r5_astra*r5_grok",
+        "converged": true,
+        "iterations": 5,
+        "deviance": 31.353900992793704,
+        "f0": 7.718445784370659,
+        "finite": true,
+        "boundary_estimate": false,
+        "params": 6,
+        "cells": 15
+       },
+       {
+        "model": "r5_astra*r5_neon",
+        "converged": true,
+        "iterations": 6,
+        "deviance": 35.80875868538769,
+        "f0": 8.092907918790953,
+        "finite": true,
+        "boundary_estimate": false,
+        "params": 6,
+        "cells": 15
+       },
+       {
+        "model": "r5_astra*r5_opus",
+        "converged": true,
+        "iterations": 6,
+        "deviance": 39.42487545977403,
+        "f0": 5.844741833980643,
+        "finite": true,
+        "boundary_estimate": false,
+        "params": 6,
+        "cells": 15
+       },
+       {
+        "model": "r5_grok*r5_neon",
+        "converged": true,
+        "iterations": 6,
+        "deviance": 32.73109840854464,
+        "f0": 9.070593438565295,
+        "finite": true,
+        "boundary_estimate": false,
+        "params": 6,
+        "cells": 15
+       },
+       {
+        "model": "r5_grok*r5_opus",
+        "converged": true,
+        "iterations": 5,
+        "deviance": 34.736028068487215,
+        "f0": 7.643877849589995,
+        "finite": true,
+        "boundary_estimate": false,
+        "params": 6,
+        "cells": 15
+       },
+       {
+        "model": "r5_neon*r5_opus",
+        "converged": true,
+        "iterations": 6,
+        "deviance": 38.52126321440311,
+        "f0": 4.0000000000000036,
+        "finite": true,
+        "boundary_estimate": false,
+        "params": 6,
+        "cells": 15
+       }
+      ],
+      "K3": {
+       "pass": true,
+       "a_fail": false,
+       "b_fail": false,
+       "f0_ratio": 2.2676483596413215,
+       "nonfinite_models": [],
+       "f0_independence": 5.542531683978909,
+       "S_obs": 47,
+       "f0_theta": {
+        "1.0": 5.542531683978909,
+        "2.0": 11.085063367957819,
+        "4.0": 22.170126735915638
+       }
+      },
+      "K4": {
+       "pass": true,
+       "rows": [
+        {
+         "held_out": "r5_astra",
+         "u_i": 3,
+         "chao2_others_f0": 34.714285714285715,
+         "chao2_others_f0_upper95": 97.47601157614342,
+         "fail": false
+        },
+        {
+         "held_out": "r5_grok",
+         "u_i": 2,
+         "chao2_others_f0": 18.777777777777775,
+         "chao2_others_f0_upper95": 50.51982245357183,
+         "fail": false
+        },
+        {
+         "held_out": "r5_neon",
+         "u_i": 11,
+         "chao2_others_f0": 35.266666666666666,
+         "chao2_others_f0_upper95": 110.23024423477922,
+         "fail": false
+        },
+        {
+         "held_out": "r5_opus",
+         "u_i": 10,
+         "chao2_others_f0": 10.8,
+         "chao2_others_f0_upper95": 34.263961192645255,
+         "fail": false
+        }
+       ]
+      },
+      "passes": false
+     },
+     "captures_all_lists": {
+      "r5_astra": [
+       "B17:C03",
+       "B17:C16",
+       "B20:C03",
+       "B21:C03",
+       "B21:C06",
+       "B21:C10",
+       "B22:C05",
+       "B22:C06",
+       "B22:C10",
+       "B23:C15",
+       "B24:C03",
+       "B24:C15",
+       "B26:C08",
+       "B27:C16",
+       "XC:C10",
+       "XC:C16",
+       "XC:C17"
+      ],
+      "r5_opus": [
+       "B19:C07",
+       "B20:C03",
+       "B20:C06",
+       "B20:C07",
+       "B20:C08",
+       "B21:C03",
+       "B21:C06",
+       "B21:C07",
+       "B22:C05",
+       "B22:C07",
+       "B23:C07",
+       "B24:C03",
+       "B24:C07",
+       "B25:C03",
+       "B25:C07",
+       "B26:C03",
+       "B26:C07",
+       "B26:C08",
+       "B27:C03",
+       "B27:C07",
+       "XC:C03",
+       "XC:C16",
+       "XC:C17"
+      ],
+      "r5_grok": [
+       "B20:C03",
+       "B20:C10",
+       "B21:C03",
+       "B21:C06",
+       "B22:C03",
+       "B22:C05",
+       "B22:C06",
+       "B23:C03",
+       "B24:C03",
+       "B24:C15",
+       "B25:C03",
+       "B26:C03",
+       "B26:C08",
+       "B27:C03",
+       "XC:C07",
+       "XC:C16",
+       "XC:C17"
+      ],
+      "r5_neon": [
+       "B12:C03",
+       "B16:C05",
+       "B17:C01",
+       "B17:C03",
+       "B17:C10",
+       "B17:C16",
+       "B18:C03",
+       "B20:C03",
+       "B20:C08",
+       "B20:C10",
+       "B20:C16",
+       "B21:C03",
+       "B21:C06",
+       "B22:C03",
+       "B22:C06",
+       "B22:C10",
+       "B24:C03",
+       "B24:C10",
+       "B24:C15",
+       "B24:C16",
+       "B25:C03",
+       "B26:C02",
+       "B26:C03",
+       "B26:C08",
+       "B26:C11",
+       "B27:C03",
+       "XC:C03",
+       "XC:C04",
+       "XC:C10",
+       "XC:C16",
+       "XC:C17"
+      ]
+     }
+    }
+   }
+  },
+  "F-W4": {
+   "extraction_records": 104,
+   "verified": 104,
+   "extraction_errors": [],
+   "brief_preseeds_defects": false,
+   "judgement_calls": [
+    "BRIEF: no Wave-4 r0 brief exists in R (council-logs holds only council-round0-brief-2026-11-21.md = F-R0 and a wave5 r0 brief; wave4-r2-synthesis header lists only R1/R2 inputs). brief_preseeds_defects=false means 'no evidence of pre-seeding', not a verified negative.",
+    "ORDINAL MAP: 28 r6_pm1b (PM1b/conv-v3/EK5 v3), 29 r6_pm2 (PM2 label-free, Query0W, DualAdap), 31 r6_pm4 (PM-4 kappa n200), 33 phase2_wave2_d1v2_and_d2_1m (D1 v2, D2-1M, 1023x sidecar), 34 d2_qdrant_hnsw_csls_backfill (D2-4096d, CSLS, HNSW; run_r6_pm3_and_d2_qdrant_csls_backfill.py is the D2 4096d script, NOT B30), 35 d3_multiagent_poisoning (D3 + RLVR audit ek5_wfs_rlvr_1000ep_audit.json, a verified side artifact of #35 in verified_registry.json). GRPO (colab_h100_70b_grpo) is not a scorecard bundle -> XC. Whitepaper/prior-art items naming no bundle -> XC (rule 3); workbench misstatements -> the bundle they misstate.",
+    "INDEPENDENCE: no list cites, reads or reconciles another memo. Grok line 3 names Sol/Opus/Neon as builders of the audited artifacts, not as memos. Neon line 3 read prior-art-and-novelty-audit-2026-11-22.md, outside the four-list set. Neither counted as cross-reading.",
+    "SCOPE: sol's scope is inferred (line 3 is generic) from strength headings lines 7-8 and body; declared scopes are unequal and no bundle is in all four (B28: grok/neon/opus; B34: neon/opus/sol; B35: grok/neon/sol; B31: grok/sol). Every list also has findings outside the shared intersection; affects prereg rule 1 scope-equality filter.",
+    "SPLITS: grok GRPO item -> XC:C16 (reward) + XC:C12 (offline verify never exercises it); grok D3 item -> C03/C06/C16/C09; grok PM1b M1 -> C03/C08/C09/C16/C15; opus PM2 C1 -> C15/C10/C13/C08/C03; sol PM-4 item -> C14/C05/C03/C15/C16/C10; sol CSLS item -> C08/C03/C11/C15.",
+    "MULTI-ORDINAL: neon line 14 and opus line 48 (ZeroMu trails Procrustes) map to both B33 (1M) and B34 (4096-d) since each states both scales.",
+    "CLASS CHOICES: Query0W zero-write mislabel C03 over C10 (tie-break); 'F4 survival' metric-name mismatch C10; literal-True provenance flags C13; grok PM-4 v8 rubric validity and opus saturated LME recall -> C17 (no C01-C16 fit); neon whitepaper comparator omission -> XC:C17; sol untracked deliverables -> XC:C07 (names all receipts, no single bundle); grok kappa=2p_o-1 disclosure and pooled-gate fix collapse into B31:C03.",
+    "HARMONISATION: shared-WFS-oracle (grok l29, sol l17) both B35:C15; Cat-5/SSU-70/assignment_gates_pass across grok/neon/opus all B28:C05; PM1b misattribution (grok/opus) B28:C03; context-volume confound (grok/opus) B28:C08; single-endpoint judge (grok/neon) B28:C15; missing domains (neon/opus/sol) B34:C11; sol l22 shared-centroid/4-byte sidecar mapped to B33:C03 to match opus l59 (outside sol's inferred scope).",
+    "CONFLICTS: opus line 9 confirms the D2 fit set excludes report positives, contradicting sol B34:C15; opus line 11 confirms proposer v2 infers slots, contrary to neon B29:C15 (neon's resolver finding retained; different code path claim). Both findings kept as captured.",
+    "EXCLUSIONS: grok verification lines 7/9/11 treated as confirmations except the lcb_975 copy (counted B28:C10); grok 'CI sits under 0.80' and single-session-user no-CI not counted separately; neon l19 echo_stress +1.28 pp and 412.6 vs 1665.7 token figures are neutral restatements; sol l13 'Point 0 is the sole vector readback' and l14 'six sampled means rise' excluded as neutral; grok l41 per-family D3 table request is new reporting, not a defect; grok l45 summary not counted; sol l14 ZeroMu bare-number record is borderline, kept as B34:C03 for harmonisation."
+   ],
+   "list_meta": [
+    {
+     "list_id": "w4_grok",
+     "source_path": "docs/research/council-logs/wave4-r1-grok47-xhigh.md",
+     "scope_quote": "Read-only audit of Sol PM1b, Opus RLVR+D3, and Neon PM4+GRPO.",
+     "scope_line": 3,
+     "reads_other_lists": false,
+     "independence_quote": "none found",
+     "independence_line": null
+    },
+    {
+     "list_id": "w4_neon",
+     "source_path": "docs/research/council-logs/wave4-r1-neon-high.md",
+     "scope_quote": "against Wave-2/3 manifests (`r6_pm2`, `d1_v2`/`d2_1m`, `d2_4096d_qdrant`, `d3`, `ek5_wfs_rlvr_1000ep`, `r6_pm1b`)",
+     "scope_line": 3,
+     "reads_other_lists": false,
+     "independence_quote": "none found",
+     "independence_line": null
+    },
+    {
+     "list_id": "w4_opus",
+     "source_path": "docs/research/council-logs/wave4-r1-opus55-high.md",
+     "scope_quote": "Audit A (PM1b / conv-v3), B (D2-4096d Qdrant+CSLS), C (PM2, proposer v2, Wave-2).",
+     "scope_line": 3,
+     "reads_other_lists": false,
+     "independence_quote": "none found",
+     "independence_line": null
+    },
+    {
+     "list_id": "w4_sol",
+     "source_path": "docs/research/council-logs/wave4-r1-sol62-xhigh.md",
+     "scope_quote": "Static review of the specified Stage 0 sources and receipts.",
+     "scope_line": 3,
+     "reads_other_lists": false,
+     "independence_quote": "none found",
+     "independence_line": null
+    }
+   ],
+   "units": {
+    "all": {
+     "scope": [],
+     "lists_in_scope": [],
+     "lists_out_of_scope": [
+      "w4_grok",
+      "w4_neon",
+      "w4_opus",
+      "w4_sol"
+     ],
+     "lists_dependent": [],
+     "estimating_set": [],
+     "dropped_out_of_scope": [
+      {
+       "finding_id": "w4_grok-01",
+       "list_id": "w4_grok",
+       "ordinal": "B28"
+      },
+      {
+       "finding_id": "w4_grok-02",
+       "list_id": "w4_grok",
+       "ordinal": "XC"
+      },
+      {
+       "finding_id": "w4_grok-03",
+       "list_id": "w4_grok",
+       "ordinal": "XC"
+      },
+      {
+       "finding_id": "w4_grok-04",
+       "list_id": "w4_grok",
+       "ordinal": "XC"
+      },
+      {
+       "finding_id": "w4_grok-05",
+       "list_id": "w4_grok",
+       "ordinal": "B31"
+      },
+      {
+       "finding_id": "w4_grok-06",
+       "list_id": "w4_grok",
+       "ordinal": "B31"
+      },
+      {
+       "finding_id": "w4_grok-07",
+       "list_id": "w4_grok",
+       "ordinal": "B35"
+      },
+      {
+       "finding_id": "w4_grok-08",
+       "list_id": "w4_grok",
+       "ordinal": "B35"
+      },
+      {
+       "finding_id": "w4_grok-09",
+       "list_id": "w4_grok",
+       "ordinal": "B35"
+      },
+      {
+       "finding_id": "w4_grok-10",
+       "list_id": "w4_grok",
+       "ordinal": "B35"
+      },
+      {
+       "finding_id": "w4_grok-11",
+       "list_id": "w4_grok",
+       "ordinal": "B35"
+      },
+      {
+       "finding_id": "w4_grok-12",
+       "list_id": "w4_grok",
+       "ordinal": "B28"
+      },
+      {
+       "finding_id": "w4_grok-13",
+       "list_id": "w4_grok",
+       "ordinal": "B28"
+      },
+      {
+       "finding_id": "w4_grok-14",
+       "list_id": "w4_grok",
+       "ordinal": "B28"
+      },
+      {
+       "finding_id": "w4_grok-15",
+       "list_id": "w4_grok",
+       "ordinal": "B28"
+      },
+      {
+       "finding_id": "w4_grok-16",
+       "list_id": "w4_grok",
+       "ordinal": "B28"
+      },
+      {
+       "finding_id": "w4_grok-17",
+       "list_id": "w4_grok",
+       "ordinal": "B28"
+      },
+      {
+       "finding_id": "w4_grok-18",
+       "list_id": "w4_grok",
+       "ordinal": "B35"
+      },
+      {
+       "finding_id": "w4_grok-19",
+       "list_id": "w4_grok",
+       "ordinal": "B35"
+      },
+      {
+       "finding_id": "w4_grok-20",
+       "list_id": "w4_grok",
+       "ordinal": "B35"
+      },
+      {
+       "finding_id": "w4_grok-21",
+       "list_id": "w4_grok",
+       "ordinal": "B31"
+      },
+      {
+       "finding_id": "w4_grok-22",
+       "list_id": "w4_grok",
+       "ordinal": "B31"
+      },
+      {
+       "finding_id": "w4_grok-23",
+       "list_id": "w4_grok",
+       "ordinal": "B31"
+      },
+      {
+       "finding_id": "w4_grok-24",
+       "list_id": "w4_grok",
+       "ordinal": "B35"
+      },
+      {
+       "finding_id": "w4_grok-25",
+       "list_id": "w4_grok",
+       "ordinal": "B35"
+      },
+      {
+       "finding_id": "w4_grok-26",
+       "list_id": "w4_grok",
+       "ordinal": "B31"
+      },
+      {
+       "finding_id": "w4_grok-27",
+       "list_id": "w4_grok",
+       "ordinal": "B31"
+      },
+      {
+       "finding_id": "w4_grok-28",
+       "list_id": "w4_grok",
+       "ordinal": "B31"
+      },
+      {
+       "finding_id": "w4_grok-29",
+       "list_id": "w4_grok",
+       "ordinal": "B28"
+      },
+      {
+       "finding_id": "w4_grok-30",
+       "list_id": "w4_grok",
+       "ordinal": "B28"
+      },
+      {
+       "finding_id": "w4_grok-31",
+       "list_id": "w4_grok",
+       "ordinal": "B28"
+      },
+      {
+       "finding_id": "w4_grok-32",
+       "list_id": "w4_grok",
+       "ordinal": "B35"
+      },
+      {
+       "finding_id": "w4_neon-01",
+       "list_id": "w4_neon",
+       "ordinal": "B35"
+      },
+      {
+       "finding_id": "w4_neon-02",
+       "list_id": "w4_neon",
+       "ordinal": "XC"
+      },
+      {
+       "finding_id": "w4_neon-03",
+       "list_id": "w4_neon",
+       "ordinal": "B33"
+      },
+      {
+       "finding_id": "w4_neon-03",
+       "list_id": "w4_neon",
+       "ordinal": "B34"
+      },
+      {
+       "finding_id": "w4_neon-04",
+       "list_id": "w4_neon",
+       "ordinal": "B33"
+      },
+      {
+       "finding_id": "w4_neon-05",
+       "list_id": "w4_neon",
+       "ordinal": "B34"
+      },
+      {
+       "finding_id": "w4_neon-06",
+       "list_id": "w4_neon",
+       "ordinal": "B33"
+      },
+      {
+       "finding_id": "w4_neon-07",
+       "list_id": "w4_neon",
+       "ordinal": "B28"
+      },
+      {
+       "finding_id": "w4_neon-08",
+       "list_id": "w4_neon",
+       "ordinal": "B28"
+      },
+      {
+       "finding_id": "w4_neon-09",
+       "list_id": "w4_neon",
+       "ordinal": "B28"
+      },
+      {
+       "finding_id": "w4_neon-10",
+       "list_id": "w4_neon",
+       "ordinal": "B29"
+      },
+      {
+       "finding_id": "w4_neon-11",
+       "list_id": "w4_neon",
+       "ordinal": "B29"
+      },
+      {
+       "finding_id": "w4_neon-12",
+       "list_id": "w4_neon",
+       "ordinal": "B29"
+      },
+      {
+       "finding_id": "w4_neon-13",
+       "list_id": "w4_neon",
+       "ordinal": "B33"
+      },
+      {
+       "finding_id": "w4_neon-14",
+       "list_id": "w4_neon",
+       "ordinal": "B33"
+      },
+      {
+       "finding_id": "w4_neon-15",
+       "list_id": "w4_neon",
+       "ordinal": "XC"
+      },
+      {
+       "finding_id": "w4_neon-16",
+       "list_id": "w4_neon",
+       "ordinal": "B28"
+      },
+      {
+       "finding_id": "w4_neon-17",
+       "list_id": "w4_neon",
+       "ordinal": "B33"
+      },
+      {
+       "finding_id": "w4_neon-18",
+       "list_id": "w4_neon",
+       "ordinal": "B33"
+      },
+      {
+       "finding_id": "w4_neon-19",
+       "list_id": "w4_neon",
+       "ordinal": "B35"
+      },
+      {
+       "finding_id": "w4_opus-01",
+       "list_id": "w4_opus",
+       "ordinal": "B29"
+      },
+      {
+       "finding_id": "w4_opus-02",
+       "list_id": "w4_opus",
+       "ordinal": "B29"
+      },
+      {
+       "finding_id": "w4_opus-03",
+       "list_id": "w4_opus",
+       "ordinal": "B29"
+      },
+      {
+       "finding_id": "w4_opus-04",
+       "list_id": "w4_opus",
+       "ordinal": "B29"
+      },
+      {
+       "finding_id": "w4_opus-05",
+       "list_id": "w4_opus",
+       "ordinal": "B29"
+      },
+      {
+       "finding_id": "w4_opus-06",
+       "list_id": "w4_opus",
+       "ordinal": "B29"
+      },
+      {
+       "finding_id": "w4_opus-07",
+       "list_id": "w4_opus",
+       "ordinal": "B28"
+      },
+      {
+       "finding_id": "w4_opus-08",
+       "list_id": "w4_opus",
+       "ordinal": "B28"
+      },
+      {
+       "finding_id": "w4_opus-09",
+       "list_id": "w4_opus",
+       "ordinal": "B28"
+      },
+      {
+       "finding_id": "w4_opus-10",
+       "list_id": "w4_opus",
+       "ordinal": "B28"
+      },
+      {
+       "finding_id": "w4_opus-11",
+       "list_id": "w4_opus",
+       "ordinal": "B28"
+      },
+      {
+       "finding_id": "w4_opus-12",
+       "list_id": "w4_opus",
+       "ordinal": "B28"
+      },
+      {
+       "finding_id": "w4_opus-13",
+       "list_id": "w4_opus",
+       "ordinal": "B34"
+      },
+      {
+       "finding_id": "w4_opus-14",
+       "list_id": "w4_opus",
+       "ordinal": "B34"
+      },
+      {
+       "finding_id": "w4_opus-15",
+       "list_id": "w4_opus",
+       "ordinal": "B33"
+      },
+      {
+       "finding_id": "w4_opus-15",
+       "list_id": "w4_opus",
+       "ordinal": "B34"
+      },
+      {
+       "finding_id": "w4_opus-16",
+       "list_id": "w4_opus",
+       "ordinal": "B33"
+      },
+      {
+       "finding_id": "w4_opus-17",
+       "list_id": "w4_opus",
+       "ordinal": "B33"
+      },
+      {
+       "finding_id": "w4_opus-18",
+       "list_id": "w4_opus",
+       "ordinal": "B33"
+      },
+      {
+       "finding_id": "w4_opus-19",
+       "list_id": "w4_opus",
+       "ordinal": "B28"
+      },
+      {
+       "finding_id": "w4_opus-20",
+       "list_id": "w4_opus",
+       "ordinal": "B28"
+      },
+      {
+       "finding_id": "w4_opus-21",
+       "list_id": "w4_opus",
+       "ordinal": "B29"
+      },
+      {
+       "finding_id": "w4_opus-22",
+       "list_id": "w4_opus",
+       "ordinal": "B34"
+      },
+      {
+       "finding_id": "w4_opus-23",
+       "list_id": "w4_opus",
+       "ordinal": "B33"
+      },
+      {
+       "finding_id": "w4_opus-24",
+       "list_id": "w4_opus",
+       "ordinal": "B28"
+      },
+      {
+       "finding_id": "w4_sol-01",
+       "list_id": "w4_sol",
+       "ordinal": "XC"
+      },
+      {
+       "finding_id": "w4_sol-02",
+       "list_id": "w4_sol",
+       "ordinal": "B34"
+      },
+      {
+       "finding_id": "w4_sol-03",
+       "list_id": "w4_sol",
+       "ordinal": "B34"
+      },
+      {
+       "finding_id": "w4_sol-04",
+       "list_id": "w4_sol",
+       "ordinal": "B34"
+      },
+      {
+       "finding_id": "w4_sol-05",
+       "list_id": "w4_sol",
+       "ordinal": "B34"
+      },
+      {
+       "finding_id": "w4_sol-06",
+       "list_id": "w4_sol",
+       "ordinal": "B34"
+      },
+      {
+       "finding_id": "w4_sol-07",
+       "list_id": "w4_sol",
+       "ordinal": "B34"
+      },
+      {
+       "finding_id": "w4_sol-08",
+       "list_id": "w4_sol",
+       "ordinal": "B34"
+      },
+      {
+       "finding_id": "w4_sol-09",
+       "list_id": "w4_sol",
+       "ordinal": "B34"
+      },
+      {
+       "finding_id": "w4_sol-10",
+       "list_id": "w4_sol",
+       "ordinal": "B35"
+      },
+      {
+       "finding_id": "w4_sol-11",
+       "list_id": "w4_sol",
+       "ordinal": "B35"
+      },
+      {
+       "finding_id": "w4_sol-12",
+       "list_id": "w4_sol",
+       "ordinal": "B35"
+      },
+      {
+       "finding_id": "w4_sol-13",
+       "list_id": "w4_sol",
+       "ordinal": "B35"
+      },
+      {
+       "finding_id": "w4_sol-14",
+       "list_id": "w4_sol",
+       "ordinal": "B35"
+      },
+      {
+       "finding_id": "w4_sol-15",
+       "list_id": "w4_sol",
+       "ordinal": "B31"
+      },
+      {
+       "finding_id": "w4_sol-16",
+       "list_id": "w4_sol",
+       "ordinal": "B31"
+      },
+      {
+       "finding_id": "w4_sol-17",
+       "list_id": "w4_sol",
+       "ordinal": "B31"
+      },
+      {
+       "finding_id": "w4_sol-18",
+       "list_id": "w4_sol",
+       "ordinal": "B31"
+      },
+      {
+       "finding_id": "w4_sol-19",
+       "list_id": "w4_sol",
+       "ordinal": "B31"
+      },
+      {
+       "finding_id": "w4_sol-20",
+       "list_id": "w4_sol",
+       "ordinal": "B31"
+      },
+      {
+       "finding_id": "w4_sol-21",
+       "list_id": "w4_sol",
+       "ordinal": "B31"
+      },
+      {
+       "finding_id": "w4_sol-22",
+       "list_id": "w4_sol",
+       "ordinal": "B31"
+      },
+      {
+       "finding_id": "w4_sol-23",
+       "list_id": "w4_sol",
+       "ordinal": "B31"
+      },
+      {
+       "finding_id": "w4_sol-24",
+       "list_id": "w4_sol",
+       "ordinal": "B35"
+      },
+      {
+       "finding_id": "w4_sol-25",
+       "list_id": "w4_sol",
+       "ordinal": "B35"
+      },
+      {
+       "finding_id": "w4_sol-26",
+       "list_id": "w4_sol",
+       "ordinal": "B35"
+      },
+      {
+       "finding_id": "w4_sol-27",
+       "list_id": "w4_sol",
+       "ordinal": "B35"
+      },
+      {
+       "finding_id": "w4_sol-28",
+       "list_id": "w4_sol",
+       "ordinal": "B35"
+      },
+      {
+       "finding_id": "w4_sol-29",
+       "list_id": "w4_sol",
+       "ordinal": "B33"
+      }
+     ],
+     "gating": {
+      "lists": [],
+      "n_captures": {},
+      "S_obs": 0,
+      "pairwise": [],
+      "K1": {
+       "pass": false,
+       "n_lists": 0
+      },
+      "K2": {
+       "pass": true,
+       "max_overlap": null,
+       "failing_pairs": []
+      },
+      "chao2": null,
+      "loglinear": null,
+      "K3": {
+       "pass": false,
+       "not_evaluated": "fewer than 3 lists"
+      },
+      "K4": {
+       "pass": false,
+       "not_evaluated": "fewer than 3 lists"
+      },
+      "passes": false
+     },
+     "captures_all_lists": {
+      "w4_grok": [],
+      "w4_neon": [],
+      "w4_opus": [],
+      "w4_sol": []
+     }
+    }
+   }
+  },
+  "F-W14": {
+   "extraction_records": 133,
+   "verified": 133,
+   "extraction_errors": [],
+   "brief_preseeds_defects": null,
+   "judgement_calls": [
+    "Scope: declared components per list from the quoted line. Grok line 3 names runner, CAA, runner test, Ek5RefCli, run_conformance and verify_all_offline --full-formal (it did not audit the firewall it authored; its V4/M8 firewall remarks are integration-call-site reads, recorded as no firewall defects). Neon scope is the targets_audited block, lines 7-23 (one-line quote is the block header). Sol line 5 audits the whole branch at f6e8abe9 against plan 69-114, so all five components. Sonnet line 18 covers firewall + its test, Statement/Theorem2/Spec/Theorem1a/1b/4 and ~900 of 2941 runner lines; no CAA and no verify_all_offline.",
+    "Shared scope (intersection) = {runner, formal}. Caveat: Sonnet's runner coverage is partial (lines 1456-1680, 2340-2600 only) and its formal coverage excludes Theorem3/Ek5RefCli/run_conformance, while Grok's formal coverage centres on Ek5RefCli/run_conformance; formal overlap between Grok and Sonnet is thin. Treat the intersection as nominal, not equal-depth.",
+    "Independence: no list cites, reconciles or was briefed with another wave14-code-xval memo. All four cite the same reference spec (wave14-r3-final-consensus-master-plan.md); Neon's 'Neon Δ1/Δ2/Δ6' are round-3 plan deltas, and Grok line 3 / Sonnet lines 12-13 name other models only as code authors.",
+    "Component choice: Gate-1 alias/work_id inversion (Neon B3, Sol 9) spans firewall:770 and runner:2365; assigned to runner for both lists (runner is the caller passing the wrong shape). r_q doc_mean centering (Neon B2, Sol 8) assigned to firewall for both. Procrustes/BEIR diagnostics (Neon MINOR-F5, Sol 4) assigned to formal for both although Sol cites runner/spherical_migration_bridge. CAA test with fake tokenizer (Grok line 52) assigned to runner because the test lives in the runner test file.",
+    "Class harmonisation: Phase-0 template reference = C16 (Grok, Neon, Sol); union-not-per-generator and per-generator pooling = C10; synthesized arm numbers = C13; TEST loop / Profile A/B scoring catalog text or a constant vector instead of live window embeddings = C01 (Grok, Neon, Sol, Sonnet; Sonnet's section-4 'leakage' restatement not recorded as C15); vacuous injected-delay test = C02; missing Profile B exposure bound = C11; R4 global rate in cluster bootstrap = C14; Arm 9 Gate-1 asymmetry and heuristic CAA FPR proxy = C08; Arm 5/6 and MiniLM baseline = C09; freeze hash wrong pool = C07; embed-server lock/OOM = C16, its 0.0.0.0/plaintext exposure = C17, encoder identity unchecked = C07; CAA returns alpha without meeting FPR = caa:C05; 153 inc-vs-fresh diffs = formal:C05; incremental/kernel labeling and scope overclaims = formal:C03; oracle sharing SUT state = formal:C15; host paths/unpinned tools = formal:C07; PASS_PARTIAL exit 0 = verifier:C05; verifier trusting rc/stale export = verifier:C01; Theorem 2 2x scale = formal:C10; performance defects (O(n^2) _sync_tokens, LCS throughput) = C17 (reason: performance, not correctness).",
+    "Splits logged: Grok B4 -> caa pad_token crash (C16) + caa left-padding pooling (C16) + runner CAA test gap (C12); Grok B7 -> delay test C02 + TEST-loop constant scorer C01 + Profile B bound C11; Grok M3 -> verifier C05 + formal C07; Neon B1 -> firewall C16 + runner test C12; Neon B2 -> firewall C15 + firewall C16 crash; Neon B4 -> two firewall C16 (undercount, h0<lcs leak); Neon B5 -> C16 template + C10 union + C13 arms + C01 no live generation + C10 generator pooling; Neon B8 -> formal C07 + verifier C01 staleness; Neon MINOR-6 -> C17 perf + C16 byte accounting; Neon MINOR-7 -> runner C07 + caa C16; Sol 1 -> C05 + C03; Sol 3 -> formal C07 (paths) + verifier C01 + verifier C05 + runner C05 (no formal receipt) + formal C07 (spec-lock timing); Sol 4 -> C03 + C10 + C11; Sol 6 -> C16 template + C10 union + C16 Qwen chat template; Sol 7 -> C15 + C12; Sol 8 -> firewall C15 + runner C07 + runner C08; Sol 9 -> C01 + C13 + C16 + C09 + C14 + caa C05; Sol 10 -> C14 + C08 + C08 + C16 + C11 + C05 + C10; Sol 11 -> C09 + C08 + C16; Sol 12 -> C01 + C02 + C11 + C08 + C01 (SSE); Sol 15 -> C01 + C11; Sol 16 -> C07 + C17; Sol 17 -> C05 + C03 + C12; Sol formal-scope minor -> C03 + C11; Sol CAA minor -> padding C16 + timebox C16; Sol legal minor -> C07 + C12; Sonnet B3 -> C17 + firewall test C12; Sonnet M11 -> C16 + C17.",
+    "Collapsed restatements (recorded once): Grok M8 restates B7 Profile B bound; Grok B8 line 117 CAA met_target_fpr restated by M5 (recorded at M5); Grok B6 test sentence and B9 line 123 folded into B9 C12 record; Neon MINOR-F1 scale restates MINOR-8 (recorded at MINOR-8; F1 hypothesis tightness recorded separately as C17); Sol 10 'R4 has no per-work bootstrap' folded into Sol 9 R4 record; Sonnet section 4 line 81 restates B2.",
+    "Excluded as non-defects: all VERIFIED_PASS items; Grok M7's statement that non_nda_leak_hits:0 is not a bypass; Grok V4/M8 firewall tokenization remarks ('not, by itself, an off-by-one'); Sonnet M4 (labelled PASS; 1-D witness note); Sonnet section 4 line 82 and section 5 unverified-coverage list (not defects); Neon's VERIFIED_PASS on entity-disjoint split (contradicts Grok/Sol but is a confirmation, not a defect).",
+    "Hard calls: Sonnet M3 (Theorem 2 first conjunct near-tautological) included as formal:C03 to align with Sol 4's 'numerator identity' clause, although Sonnet calls it true and correctly typed; Neon MINOR-F1 hypothesis tightness included as C17; Neon MINOR-F5 (telemetry hooks, 'acceptable for Wave-14A') included as formal:C11 rather than dropped as roadmap; Sonnet M5 (plan summary overclaim) put in component 'other' and therefore outside the shared scope.",
+    "Coarseness warning: canonical ID 46/<component>:<class> collapses many distinct defects (e.g. every runner correctness bug is 46/runner:C16, every firewall bug 46/firewall:C16), which inflates apparent overlap between lists. Per-record alignment notes allow a finer re-alignment if needed."
+   ],
+   "list_meta": [
+    {
+     "list_id": "w14_grok",
+     "source_path": "docs/research/council-logs/wave14-code-xval-grok47-xhigh.md",
+     "scope_quote": "Targets are Neon 4 High (`scripts/run_wave14b_d11_pm6_takedown_carryforward.py`, `chelated_caa_steering_baseline.py`, `tests/test_wave14b_d11_runner.py`) and Sonnet 5.5 High (`formal/Ek5RefCli.lean`, `formal/run_conformance.py`, `scripts/verify_all_offline.py --full-formal`).",
+     "scope_line": 3,
+     "reads_other_lists": false,
+     "independence_quote": "none found",
+     "independence_line": null
+    },
+    {
+     "list_id": "w14_neon",
+     "source_path": "docs/research/council-logs/wave14-code-xval-neon4-high.md",
+     "scope_quote": "targets_audited:",
+     "scope_line": 7,
+     "reads_other_lists": false,
+     "independence_quote": "none found",
+     "independence_line": null
+    },
+    {
+     "list_id": "w14_sol",
+     "source_path": "docs/research/council-logs/wave14-code-xval-sol62-high.md",
+     "scope_quote": "Audited `feat/v7-formal-pm6` at `f6e8abe92b8ebc98608cd354dc574b19fcefdf86` against `docs/research/council-logs/wave14-r3-final-consensus-master-plan.md:69",
+     "scope_line": 5,
+     "reads_other_lists": false,
+     "independence_quote": "none found",
+     "independence_line": null
+    },
+    {
+     "list_id": "w14_sonnet",
+     "source_path": "docs/research/council-logs/wave14-code-xval-sonnet55-high.md",
+     "scope_quote": "Coverage honesty: I fully read `chelated_takedown_firewall.py`, `tests/test_wave14b_takedown_firewall.py`, `Statement.lean`, `Theorem2_*.lean`, and (earlier in this audit) `Spec.lean`, `Theorem1a/1b/4`. I read only ~900 of 2941 runner lines (:1456-1680, :2340-2600).",
+     "scope_line": 18,
+     "reads_other_lists": false,
+     "independence_quote": "none found",
+     "independence_line": null
+    }
+   ],
+   "units": {
+    "all": {
+     "scope": [
+      "46/formal",
+      "46/runner"
+     ],
+     "lists_in_scope": [
+      "w14_grok",
+      "w14_neon",
+      "w14_sol",
+      "w14_sonnet"
+     ],
+     "lists_out_of_scope": [],
+     "lists_dependent": [],
+     "estimating_set": [
+      "w14_grok",
+      "w14_neon",
+      "w14_sol",
+      "w14_sonnet"
+     ],
+     "dropped_out_of_scope": [
+      {
+       "finding_id": "w14_grok-05",
+       "list_id": "w14_grok",
+       "ordinal": "46/caa"
+      },
+      {
+       "finding_id": "w14_grok-07",
+       "list_id": "w14_grok",
+       "ordinal": "46/caa"
+      },
+      {
+       "finding_id": "w14_grok-23",
+       "list_id": "w14_grok",
+       "ordinal": "46/verifier"
+      },
+      {
+       "finding_id": "w14_grok-26",
+       "list_id": "w14_grok",
+       "ordinal": "46/caa"
+      },
+      {
+       "finding_id": "w14_neon-01",
+       "list_id": "w14_neon",
+       "ordinal": "46/firewall"
+      },
+      {
+       "finding_id": "w14_neon-03",
+       "list_id": "w14_neon",
+       "ordinal": "46/firewall"
+      },
+      {
+       "finding_id": "w14_neon-04",
+       "list_id": "w14_neon",
+       "ordinal": "46/firewall"
+      },
+      {
+       "finding_id": "w14_neon-06",
+       "list_id": "w14_neon",
+       "ordinal": "46/firewall"
+      },
+      {
+       "finding_id": "w14_neon-07",
+       "list_id": "w14_neon",
+       "ordinal": "46/firewall"
+      },
+      {
+       "finding_id": "w14_neon-16",
+       "list_id": "w14_neon",
+       "ordinal": "46/verifier"
+      },
+      {
+       "finding_id": "w14_neon-17",
+       "list_id": "w14_neon",
+       "ordinal": "46/firewall"
+      },
+      {
+       "finding_id": "w14_neon-18",
+       "list_id": "w14_neon",
+       "ordinal": "46/firewall"
+      },
+      {
+       "finding_id": "w14_neon-19",
+       "list_id": "w14_neon",
+       "ordinal": "46/firewall"
+      },
+      {
+       "finding_id": "w14_neon-20",
+       "list_id": "w14_neon",
+       "ordinal": "46/firewall"
+      },
+      {
+       "finding_id": "w14_neon-21",
+       "list_id": "w14_neon",
+       "ordinal": "46/firewall"
+      },
+      {
+       "finding_id": "w14_neon-22",
+       "list_id": "w14_neon",
+       "ordinal": "46/firewall"
+      },
+      {
+       "finding_id": "w14_neon-23",
+       "list_id": "w14_neon",
+       "ordinal": "46/firewall"
+      },
+      {
+       "finding_id": "w14_neon-25",
+       "list_id": "w14_neon",
+       "ordinal": "46/caa"
+      },
+      {
+       "finding_id": "w14_neon-33",
+       "list_id": "w14_neon",
+       "ordinal": "46/verifier"
+      },
+      {
+       "finding_id": "w14_sol-05",
+       "list_id": "w14_sol",
+       "ordinal": "46/verifier"
+      },
+      {
+       "finding_id": "w14_sol-06",
+       "list_id": "w14_sol",
+       "ordinal": "46/verifier"
+      },
+      {
+       "finding_id": "w14_sol-18",
+       "list_id": "w14_sol",
+       "ordinal": "46/firewall"
+      },
+      {
+       "finding_id": "w14_sol-26",
+       "list_id": "w14_sol",
+       "ordinal": "46/caa"
+      },
+      {
+       "finding_id": "w14_sol-42",
+       "list_id": "w14_sol",
+       "ordinal": "46/firewall"
+      },
+      {
+       "finding_id": "w14_sol-53",
+       "list_id": "w14_sol",
+       "ordinal": "46/caa"
+      },
+      {
+       "finding_id": "w14_sol-54",
+       "list_id": "w14_sol",
+       "ordinal": "46/caa"
+      },
+      {
+       "finding_id": "w14_sol-55",
+       "list_id": "w14_sol",
+       "ordinal": "46/firewall"
+      },
+      {
+       "finding_id": "w14_sonnet-03",
+       "list_id": "w14_sonnet",
+       "ordinal": "46/firewall"
+      },
+      {
+       "finding_id": "w14_sonnet-04",
+       "list_id": "w14_sonnet",
+       "ordinal": "46/firewall"
+      },
+      {
+       "finding_id": "w14_sonnet-08",
+       "list_id": "w14_sonnet",
+       "ordinal": "46/other"
+      },
+      {
+       "finding_id": "w14_sonnet-10",
+       "list_id": "w14_sonnet",
+       "ordinal": "46/firewall"
+      },
+      {
+       "finding_id": "w14_sonnet-11",
+       "list_id": "w14_sonnet",
+       "ordinal": "46/firewall"
+      },
+      {
+       "finding_id": "w14_sonnet-12",
+       "list_id": "w14_sonnet",
+       "ordinal": "46/firewall"
+      },
+      {
+       "finding_id": "w14_sonnet-13",
+       "list_id": "w14_sonnet",
+       "ordinal": "46/firewall"
+      }
+     ],
+     "gating": {
+      "lists": [
+       "w14_grok",
+       "w14_neon",
+       "w14_sol",
+       "w14_sonnet"
+      ],
+      "n_captures": {
+       "w14_grok": 15,
+       "w14_neon": 14,
+       "w14_sol": 21,
+       "w14_sonnet": 6
+      },
+      "S_obs": 22,
+      "pairwise": [
+       {
+        "pair": [
+         "w14_grok",
+         "w14_neon"
+        ],
+        "n1": 15,
+        "n2": 14,
+        "m": 10,
+        "lincoln_petersen": 21.0,
+        "chapman": {
+         "N": 20.818181818181817,
+         "var": 3.3057851239669422,
+         "ci95": [
+          17.2546109371999,
+          24.381752699163734
+         ]
+        },
+        "overlap": 0.7142857142857143,
+        "jaccard": 0.5263157894736842
+       },
+       {
+        "pair": [
+         "w14_grok",
+         "w14_sol"
+        ],
+        "n1": 15,
+        "n2": 21,
+        "m": 15,
+        "lincoln_petersen": 21.0,
+        "chapman": {
+         "N": 21.0,
+         "var": 0.0,
+         "ci95": [
+          21.0,
+          21.0
+         ]
+        },
+        "overlap": 1.0,
+        "jaccard": 0.7142857142857143
+       },
+       {
+        "pair": [
+         "w14_grok",
+         "w14_sonnet"
+        ],
+        "n1": 15,
+        "n2": 6,
+        "m": 5,
+        "lincoln_petersen": 18.0,
+        "chapman": {
+         "N": 17.666666666666668,
+         "var": 4.444444444444445,
+         "ci95": [
+          13.534699784636256,
+          21.79863354869708
+         ]
+        },
+        "overlap": 0.8333333333333334,
+        "jaccard": 0.3125
+       },
+       {
+        "pair": [
+         "w14_neon",
+         "w14_sol"
+        ],
+        "n1": 14,
+        "n2": 21,
+        "m": 13,
+        "lincoln_petersen": 22.615384615384617,
+        "chapman": {
+         "N": 22.571428571428573,
+         "var": 0.8979591836734694,
+         "ci95": [
+          20.71415281733449,
+          24.428704325522656
+         ]
+        },
+        "overlap": 0.9285714285714286,
+        "jaccard": 0.5909090909090909
+       },
+       {
+        "pair": [
+         "w14_neon",
+         "w14_sonnet"
+        ],
+        "n1": 14,
+        "n2": 6,
+        "m": 5,
+        "lincoln_petersen": 16.8,
+        "chapman": {
+         "N": 16.5,
+         "var": 3.75,
+         "ci95": [
+          12.70454606435502,
+          20.29545393564498
+         ]
+        },
+        "overlap": 0.8333333333333334,
+        "jaccard": 0.3333333333333333
+       },
+       {
+        "pair": [
+         "w14_sol",
+         "w14_sonnet"
+        ],
+        "n1": 21,
+        "n2": 6,
+        "m": 6,
+        "lincoln_petersen": 21.0,
+        "chapman": {
+         "N": 21.0,
+         "var": 0.0,
+         "ci95": [
+          21.0,
+          21.0
+         ]
+        },
+        "overlap": 1.0,
+        "jaccard": 0.2857142857142857
+       }
+      ],
+      "K1": {
+       "pass": true,
+       "n_lists": 4
+      },
+      "K2": {
+       "pass": false,
+       "max_overlap": 1.0,
+       "failing_pairs": [
+        [
+         "w14_grok",
+         "w14_sol"
+        ],
+        [
+         "w14_grok",
+         "w14_sonnet"
+        ],
+        [
+         "w14_neon",
+         "w14_sol"
+        ],
+        [
+         "w14_neon",
+         "w14_sonnet"
+        ],
+        [
+         "w14_sol",
+         "w14_sonnet"
+        ]
+       ]
+      },
+      "chao2": {
+       "k": 4,
+       "S_obs": 22,
+       "f1": 3,
+       "f2": 9,
+       "f0": 0.375,
+       "var_f0": 0.578125,
+       "N": 22.375,
+       "N_ci95": [
+        22.03067733886705,
+        26.584002563242123
+       ],
+       "f0_upper95": 4.584002563242124,
+       "degenerate_f0_zero": false
+      },
+      "loglinear": [
+       {
+        "model": "independence",
+        "converged": true,
+        "iterations": 6,
+        "deviance": 11.744729972430155,
+        "f0": 0.09370700044628377,
+        "finite": true,
+        "boundary_estimate": false,
+        "params": 5,
+        "cells": 15
+       },
+       {
+        "model": "w14_grok*w14_neon",
+        "converged": true,
+        "iterations": 6,
+        "deviance": 11.524459039742325,
+        "f0": 0.11435527317967233,
+        "finite": true,
+        "boundary_estimate": false,
+        "params": 6,
+        "cells": 15
+       },
+       {
+        "model": "w14_grok*w14_sol",
+        "converged": true,
+        "iterations": 23,
+        "deviance": 8.900735339175242,
+        "f0": 0.3773913829443022,
+        "finite": true,
+        "boundary_estimate": true,
+        "params": 6,
+        "cells": 15
+       },
+       {
+        "model": "w14_grok*w14_sonnet",
+        "converged": true,
+        "iterations": 6,
+        "deviance": 10.765967155257911,
+        "f0": 0.11286862448954682,
+        "finite": true,
+        "boundary_estimate": false,
+        "params": 6,
+        "cells": 15
+       },
+       {
+        "model": "w14_neon*w14_sol",
+        "converged": true,
+        "iterations": 23,
+        "deviance": 10.991186900032215,
+        "f0": 5.368910646788659e-11,
+        "finite": true,
+        "boundary_estimate": true,
+        "params": 6,
+        "cells": 15
+       },
+       {
+        "model": "w14_neon*w14_sonnet",
+        "converged": true,
+        "iterations": 6,
+        "deviance": 10.201788280341564,
+        "f0": 0.11547108416386778,
+        "finite": true,
+        "boundary_estimate": false,
+        "params": 6,
+        "cells": 15
+       },
+       {
+        "model": "w14_sol*w14_sonnet",
+        "converged": true,
+        "iterations": 23,
+        "deviance": 11.018588649661062,
+        "f0": 0.1343691479377969,
+        "finite": true,
+        "boundary_estimate": true,
+        "params": 6,
+        "cells": 15
+       }
+      ],
+      "K3": {
+       "pass": false,
+       "a_fail": true,
+       "b_fail": false,
+       "f0_ratio": null,
+       "nonfinite_models": [
+        "w14_grok*w14_sol",
+        "w14_neon*w14_sol",
+        "w14_sol*w14_sonnet"
+       ],
+       "f0_independence": 0.09370700044628377,
+       "S_obs": 22,
+       "f0_theta": {
+        "1.0": 0.09370700044628377,
+        "2.0": 0.18741400089256754,
+        "4.0": 0.3748280017851351
+       }
+      },
+      "K4": {
+       "pass": true,
+       "rows": [
+        {
+         "held_out": "w14_grok",
+         "u_i": 0,
+         "chao2_others_f0": 2.3703703703703702,
+         "chao2_others_f0_upper95": 12.35383135243622,
+         "fail": false
+        },
+        {
+         "held_out": "w14_neon",
+         "u_i": 1,
+         "chao2_others_f0": 0.7575757575757575,
+         "chao2_others_f0_upper95": 6.291938391982743,
+         "fail": false
+        },
+        {
+         "held_out": "w14_sol",
+         "u_i": 2,
+         "chao2_others_f0": 6.666666666666666,
+         "chao2_others_f0_upper95": 28.884915257655482,
+         "fail": false
+        },
+        {
+         "held_out": "w14_sonnet",
+         "u_i": 0,
+         "chao2_others_f0": 0.6666666666666666,
+         "chao2_others_f0_upper95": 6.1642958413174025,
+         "fail": false
+        }
+       ]
+      },
+      "passes": false
+     },
+     "captures_all_lists": {
+      "w14_grok": [
+       "46/formal:C03",
+       "46/formal:C05",
+       "46/formal:C07",
+       "46/runner:C01",
+       "46/runner:C02",
+       "46/runner:C07",
+       "46/runner:C08",
+       "46/runner:C09",
+       "46/runner:C10",
+       "46/runner:C11",
+       "46/runner:C12",
+       "46/runner:C13",
+       "46/runner:C14",
+       "46/runner:C15",
+       "46/runner:C16"
+      ],
+      "w14_neon": [
+       "46/formal:C03",
+       "46/formal:C05",
+       "46/formal:C07",
+       "46/formal:C10",
+       "46/formal:C11",
+       "46/formal:C15",
+       "46/formal:C17",
+       "46/runner:C01",
+       "46/runner:C07",
+       "46/runner:C09",
+       "46/runner:C10",
+       "46/runner:C12",
+       "46/runner:C13",
+       "46/runner:C16"
+      ],
+      "w14_sol": [
+       "46/formal:C03",
+       "46/formal:C05",
+       "46/formal:C07",
+       "46/formal:C10",
+       "46/formal:C11",
+       "46/formal:C15",
+       "46/runner:C01",
+       "46/runner:C02",
+       "46/runner:C03",
+       "46/runner:C05",
+       "46/runner:C07",
+       "46/runner:C08",
+       "46/runner:C09",
+       "46/runner:C10",
+       "46/runner:C11",
+       "46/runner:C12",
+       "46/runner:C13",
+       "46/runner:C14",
+       "46/runner:C15",
+       "46/runner:C16",
+       "46/runner:C17"
+      ],
+      "w14_sonnet": [
+       "46/formal:C03",
+       "46/formal:C07",
+       "46/runner:C01",
+       "46/runner:C13",
+       "46/runner:C16",
+       "46/runner:C17"
+      ]
+     }
+    }
+   }
+  }
+ },
+ "verdict": "KILLED",
+ "passing_families": []
+}

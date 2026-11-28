@@ -1,0 +1,1232 @@
+{
+ "family": "F-W4",
+ "extractor": "sub-agent (general-purpose), single classifier for all four lists",
+ "brief_path": null,
+ "brief_preseeds_defects": false,
+ "brief_preseed_quote": null,
+ "brief_preseed_line": null,
+ "lists": [
+  {
+   "list_id": "w4_grok",
+   "source_path": "docs/research/council-logs/wave4-r1-grok47-xhigh.md",
+   "declared_scope": [
+    "B28",
+    "B35",
+    "B31",
+    "XC"
+   ],
+   "scope_quote": "Read-only audit of Sol PM1b, Opus RLVR+D3, and Neon PM4+GRPO.",
+   "scope_line": 3,
+   "reads_other_lists": false,
+   "independence_quote": "none found",
+   "independence_line": null
+  },
+  {
+   "list_id": "w4_neon",
+   "source_path": "docs/research/council-logs/wave4-r1-neon-high.md",
+   "declared_scope": [
+    "B28",
+    "B29",
+    "B33",
+    "B34",
+    "B35",
+    "XC"
+   ],
+   "scope_quote": "against Wave-2/3 manifests (`r6_pm2`, `d1_v2`/`d2_1m`, `d2_4096d_qdrant`, `d3`, `ek5_wfs_rlvr_1000ep`, `r6_pm1b`)",
+   "scope_line": 3,
+   "reads_other_lists": false,
+   "independence_quote": "none found",
+   "independence_line": null
+  },
+  {
+   "list_id": "w4_opus",
+   "source_path": "docs/research/council-logs/wave4-r1-opus55-high.md",
+   "declared_scope": [
+    "B28",
+    "B29",
+    "B33",
+    "B34"
+   ],
+   "scope_quote": "Audit A (PM1b / conv-v3), B (D2-4096d Qdrant+CSLS), C (PM2, proposer v2, Wave-2).",
+   "scope_line": 3,
+   "reads_other_lists": false,
+   "independence_quote": "none found",
+   "independence_line": null
+  },
+  {
+   "list_id": "w4_sol",
+   "source_path": "docs/research/council-logs/wave4-r1-sol62-xhigh.md",
+   "declared_scope": [
+    "B31",
+    "B34",
+    "B35",
+    "XC"
+   ],
+   "scope_quote": "Static review of the specified Stage 0 sources and receipts.",
+   "scope_line": 3,
+   "reads_other_lists": false,
+   "independence_quote": "none found",
+   "independence_line": null
+  }
+ ],
+ "splits_and_judgement_calls": [
+  "BRIEF: no Wave-4 r0 brief exists in R (council-logs holds only council-round0-brief-2026-11-21.md = F-R0 and a wave5 r0 brief; wave4-r2-synthesis header lists only R1/R2 inputs). brief_preseeds_defects=false means 'no evidence of pre-seeding', not a verified negative.",
+  "ORDINAL MAP: 28 r6_pm1b (PM1b/conv-v3/EK5 v3), 29 r6_pm2 (PM2 label-free, Query0W, DualAdap), 31 r6_pm4 (PM-4 kappa n200), 33 phase2_wave2_d1v2_and_d2_1m (D1 v2, D2-1M, 1023x sidecar), 34 d2_qdrant_hnsw_csls_backfill (D2-4096d, CSLS, HNSW; run_r6_pm3_and_d2_qdrant_csls_backfill.py is the D2 4096d script, NOT B30), 35 d3_multiagent_poisoning (D3 + RLVR audit ek5_wfs_rlvr_1000ep_audit.json, a verified side artifact of #35 in verified_registry.json). GRPO (colab_h100_70b_grpo) is not a scorecard bundle -> XC. Whitepaper/prior-art items naming no bundle -> XC (rule 3); workbench misstatements -> the bundle they misstate.",
+  "INDEPENDENCE: no list cites, reads or reconciles another memo. Grok line 3 names Sol/Opus/Neon as builders of the audited artifacts, not as memos. Neon line 3 read prior-art-and-novelty-audit-2026-11-22.md, outside the four-list set. Neither counted as cross-reading.",
+  "SCOPE: sol's scope is inferred (line 3 is generic) from strength headings lines 7-8 and body; declared scopes are unequal and no bundle is in all four (B28: grok/neon/opus; B34: neon/opus/sol; B35: grok/neon/sol; B31: grok/sol). Every list also has findings outside the shared intersection; affects prereg rule 1 scope-equality filter.",
+  "SPLITS: grok GRPO item -> XC:C16 (reward) + XC:C12 (offline verify never exercises it); grok D3 item -> C03/C06/C16/C09; grok PM1b M1 -> C03/C08/C09/C16/C15; opus PM2 C1 -> C15/C10/C13/C08/C03; sol PM-4 item -> C14/C05/C03/C15/C16/C10; sol CSLS item -> C08/C03/C11/C15.",
+  "MULTI-ORDINAL: neon line 14 and opus line 48 (ZeroMu trails Procrustes) map to both B33 (1M) and B34 (4096-d) since each states both scales.",
+  "CLASS CHOICES: Query0W zero-write mislabel C03 over C10 (tie-break); 'F4 survival' metric-name mismatch C10; literal-True provenance flags C13; grok PM-4 v8 rubric validity and opus saturated LME recall -> C17 (no C01-C16 fit); neon whitepaper comparator omission -> XC:C17; sol untracked deliverables -> XC:C07 (names all receipts, no single bundle); grok kappa=2p_o-1 disclosure and pooled-gate fix collapse into B31:C03.",
+  "HARMONISATION: shared-WFS-oracle (grok l29, sol l17) both B35:C15; Cat-5/SSU-70/assignment_gates_pass across grok/neon/opus all B28:C05; PM1b misattribution (grok/opus) B28:C03; context-volume confound (grok/opus) B28:C08; single-endpoint judge (grok/neon) B28:C15; missing domains (neon/opus/sol) B34:C11; sol l22 shared-centroid/4-byte sidecar mapped to B33:C03 to match opus l59 (outside sol's inferred scope).",
+  "CONFLICTS: opus line 9 confirms the D2 fit set excludes report positives, contradicting sol B34:C15; opus line 11 confirms proposer v2 infers slots, contrary to neon B29:C15 (neon's resolver finding retained; different code path claim). Both findings kept as captured.",
+  "EXCLUSIONS: grok verification lines 7/9/11 treated as confirmations except the lcb_975 copy (counted B28:C10); grok 'CI sits under 0.80' and single-session-user no-CI not counted separately; neon l19 echo_stress +1.28 pp and 412.6 vs 1665.7 token figures are neutral restatements; sol l13 'Point 0 is the sole vector readback' and l14 'six sampled means rise' excluded as neutral; grok l41 per-family D3 table request is new reporting, not a defect; grok l45 summary not counted; sol l14 ZeroMu bare-number record is borderline, kept as B34:C03 for harmonisation."
+ ],
+ "findings": [
+  {
+   "finding_id": "w4_grok-01",
+   "list_id": "w4_grok",
+   "source_line": 9,
+   "quote": "`lcb_975` copies `lcb_95`.",
+   "ordinals": [
+    "B28"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "PM1b stats field named lcb_975 just copies lcb_95; field name disagrees with what is computed."
+  },
+  {
+   "finding_id": "w4_grok-02",
+   "list_id": "w4_grok",
+   "source_line": 17,
+   "quote": "All 120 eval items are copies of train items.",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C15",
+   "alignment_note": "GRPO eval rows are train rows (split leakage); the colab GRPO script/artifact is not a scorecard bundle -> XC."
+  },
+  {
+   "finding_id": "w4_grok-03",
+   "list_id": "w4_grok",
+   "source_line": 19,
+   "quote": "The GRPO reward is a substring test.",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "GRPO reward hackable (substring accepts negations, open abstain lexicon, +0.25 truth-free format reward): reward correctness bug; not a scorecard bundle -> XC."
+  },
+  {
+   "finding_id": "w4_grok-04",
+   "list_id": "w4_grok",
+   "source_line": 19,
+   "quote": "`run_offline_verify` (`:664-666`) never tries these strings.",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C12",
+   "alignment_note": "Offline verifier never exercises the reward-hacking strings: test misses the production reward path."
+  },
+  {
+   "finding_id": "w4_grok-05",
+   "list_id": "w4_grok",
+   "source_line": 21,
+   "quote": "Pooled κ mixes an old rubric with a self-judge.",
+   "ordinals": [
+    "B31"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Pooled PM-4 kappa gate mixes 320/520 stored structured R5b ratings with the new set, inflating the headline number."
+  },
+  {
+   "finding_id": "w4_grok-06",
+   "list_id": "w4_grok",
+   "source_line": 21,
+   "quote": "Judge A is Nemotron (`:7-8`, `:625`); PM1b's answer model is `nemotron-lightning`.",
+   "ordinals": [
+    "B31"
+   ],
+   "defect_class": "C15",
+   "alignment_note": "Kappa judge is the same model family that wrote the answers being judged: judge/system independence violation."
+  },
+  {
+   "finding_id": "w4_grok-07",
+   "list_id": "w4_grok",
+   "source_line": 23,
+   "quote": "D3 cannot see a cross-value copy, and ASR=0 is not success.",
+   "ordinals": [
+    "B35"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "D3 ASR=0 overstates security because the detector is blind to cross-value copies by construction."
+  },
+  {
+   "finding_id": "w4_grok-08",
+   "list_id": "w4_grok",
+   "source_line": 23,
+   "quote": "`calibrate_taus` (`:460-475`) maximizes root-anchored attacker groups at FP=0 on the same templates",
+   "ordinals": [
+    "B35"
+   ],
+   "defect_class": "C06",
+   "alignment_note": "D3 tau thresholds tuned on the same templates used for evaluation: in-sample selection."
+  },
+  {
+   "finding_id": "w4_grok-09",
+   "list_id": "w4_grok",
+   "source_line": 23,
+   "quote": "Single linkage (`:350-351`) chains.",
+   "ordinals": [
+    "B35"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "D3 copy-edge clustering chains under single linkage and only clusters inside one asserted value: detection-logic flaw."
+  },
+  {
+   "finding_id": "w4_grok-10",
+   "list_id": "w4_grok",
+   "source_line": 23,
+   "quote": "because 384-d and 768-d vectors are never compared",
+   "ordinals": [
+    "B35"
+   ],
+   "defect_class": "C09",
+   "alignment_note": "D3 B3/F2 arm scores acc 0 / abstain 1.0 only because cross-dimension vectors are never compared: baseline arm invalid."
+  },
+  {
+   "finding_id": "w4_grok-11",
+   "list_id": "w4_grok",
+   "source_line": 23,
+   "quote": "Co-design has to govern the abstract.",
+   "ordinals": [
+    "B35"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Attack/defense co-design must be stated in the abstract: headline omits a caveat that shrinks the claim."
+  },
+  {
+   "finding_id": "w4_grok-12",
+   "list_id": "w4_grok",
+   "source_line": 27,
+   "quote": "PM1b's lift is the ungated hybrid; abstention gets worse as recall rises.",
+   "ordinals": [
+    "B28"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "PM1b gain credited to EK5 gating comes from ungated DualGran hybrid retrieval (gated-hybrid delta 0): headline misattribution."
+  },
+  {
+   "finding_id": "w4_grok-13",
+   "list_id": "w4_grok",
+   "source_line": 27,
+   "quote": "prompts are ~1666 vs ~413 tokens",
+   "ordinals": [
+    "B28"
+   ],
+   "defect_class": "C08",
+   "alignment_note": "Gated arm vs flat arm at ~4x context tokens; line 42 asks for a token-matched flat control: budget-unmatched comparator."
+  },
+  {
+   "finding_id": "w4_grok-14",
+   "list_id": "w4_grok",
+   "source_line": 27,
+   "quote": "has no empty-context action",
+   "ordinals": [
+    "B28"
+   ],
+   "defect_class": "C09",
+   "alignment_note": "No retrieve-nothing / empty-context arm; line 42 demands a retrieve-nothing control: missing control arm."
+  },
+  {
+   "finding_id": "w4_grok-15",
+   "list_id": "w4_grok",
+   "source_line": 27,
+   "quote": "and skips the judge; a cue inside a non-abstention under 90 characters fails",
+   "ordinals": [
+    "B28"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "r5_grade scores abstention by lexical cue and skips the judge, misgrading short non-abstentions: grader bug."
+  },
+  {
+   "finding_id": "w4_grok-16",
+   "list_id": "w4_grok",
+   "source_line": 27,
+   "quote": "LME gold of length ≥4 auto-passes as a substring within gold+70 characters",
+   "ordinals": [
+    "B28"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "LME grader substring auto-pass: same grader-shortcut defect, collapses into B28:C16."
+  },
+  {
+   "finding_id": "w4_grok-17",
+   "list_id": "w4_grok",
+   "source_line": 27,
+   "quote": "One Nemotron endpoint answers, writes echoes, and judges.",
+   "ordinals": [
+    "B28"
+   ],
+   "defect_class": "C15",
+   "alignment_note": "Same endpoint generates echoes, answers and judges: oracle/system independence violation."
+  },
+  {
+   "finding_id": "w4_grok-18",
+   "list_id": "w4_grok",
+   "source_line": 29,
+   "quote": "Three-valued RLVR pays for withholding the value.",
+   "ordinals": [
+    "B35"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "RLVR reward design (0 for over-abstention, +0.25 for verdict plus ABSTAIN) rewards withholding the value: reward flaw. RLVR audit is a #35 side artifact."
+  },
+  {
+   "finding_id": "w4_grok-19",
+   "list_id": "w4_grok",
+   "source_line": 29,
+   "quote": "Both val checks call `compute_alternating_wfs_oracle`",
+   "ordinals": [
+    "B35"
+   ],
+   "defect_class": "C15",
+   "alignment_note": "Reference and checked path share the same WFS oracle, so the 0-mismatch validation is not independent."
+  },
+  {
+   "finding_id": "w4_grok-20",
+   "list_id": "w4_grok",
+   "source_line": 29,
+   "quote": "p_U is 5/17 by round-robin, so 0.584 tracks that mix.",
+   "ordinals": [
+    "B35"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "The +0.584 RLVR separation headline is an artifact of the round-robin U mixture; line 43 demands disclosure."
+  },
+  {
+   "finding_id": "w4_grok-21",
+   "list_id": "w4_grok",
+   "source_line": 31,
+   "quote": "Rules 1 and 4 (`scripts/run_r6_pm4_conversational_kappa_n200.py:62-73`) mark extra context YES",
+   "ordinals": [
+    "B31"
+   ],
+   "defect_class": "C17",
+   "alignment_note": "C17 (rubric validity): v8 rules embed contestable grading choices that drive all 16 disagreements; no C01-C16 class fits."
+  },
+  {
+   "finding_id": "w4_grok-22",
+   "list_id": "w4_grok",
+   "source_line": 31,
+   "quote": "`parse_binary_verdict` (`:167-168`) treats YES and NO in one string as a clean parse.",
+   "ordinals": [
+    "B31"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Verdict parser accepts contradictory YES+NO output as clean: parsing bug."
+  },
+  {
+   "finding_id": "w4_grok-23",
+   "list_id": "w4_grok",
+   "source_line": 31,
+   "quote": "Stratum κ has no CI. The bootstrap (`:206-207`) ignores LoCoMo conversation clusters.",
+   "ordinals": [
+    "B31"
+   ],
+   "defect_class": "C14",
+   "alignment_note": "Missing stratum CIs and non-cluster bootstrap: CI method error."
+  },
+  {
+   "finding_id": "w4_grok-24",
+   "list_id": "w4_grok",
+   "source_line": 35,
+   "quote": "Quote D3's Clopper–Pearson interval, not the [0, 0] bootstrap",
+   "ordinals": [
+    "B35"
+   ],
+   "defect_class": "C14",
+   "alignment_note": "D3 reports a degenerate [0,0] bootstrap CI for zero successes: CI method error."
+  },
+  {
+   "finding_id": "w4_grok-25",
+   "list_id": "w4_grok",
+   "source_line": 35,
+   "quote": "`grade_answer` (`:597-601`) takes one substring.",
+   "ordinals": [
+    "B35"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "D3 answer grader uses one substring: grader flaw; collapses into B35:C16."
+  },
+  {
+   "finding_id": "w4_grok-26",
+   "list_id": "w4_grok",
+   "source_line": 35,
+   "quote": "Qwen truncates at 2048",
+   "ordinals": [
+    "B31"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "PM-4 Qwen judge output truncated at 2048: implementation flaw; collapses into B31:C16."
+  },
+  {
+   "finding_id": "w4_grok-27",
+   "list_id": "w4_grok",
+   "source_line": 40,
+   "quote": "Regrade structured rows under v8 or delete the pooled gate.",
+   "ordinals": [
+    "B31"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Fix demand for the pooled-kappa defect; collapses into B31:C03."
+  },
+  {
+   "finding_id": "w4_grok-28",
+   "list_id": "w4_grok",
+   "source_line": 40,
+   "quote": "State κ=2p_o−1 at these margins.",
+   "ordinals": [
+    "B31"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "kappa=2p_o-1 at balanced margins must be disclosed (caveat that shrinks the claim); collapses into B31:C03."
+  },
+  {
+   "finding_id": "w4_grok-29",
+   "list_id": "w4_grok",
+   "source_line": 42,
+   "quote": "State the clean EK5 answer delta as 0.",
+   "ordinals": [
+    "B28"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Fix demand for the PM1b misattribution; collapses into B28:C03."
+  },
+  {
+   "finding_id": "w4_grok-30",
+   "list_id": "w4_grok",
+   "source_line": 42,
+   "quote": "Treat LoCoMo type 5 and LongMemEval preference (gated 0.10) as primary harms.",
+   "ordinals": [
+    "B28"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "Adverse Cat-5 abstention and preference results must be reported as primary harms: adverse result under-disclosed."
+  },
+  {
+   "finding_id": "w4_grok-31",
+   "list_id": "w4_grok",
+   "source_line": 42,
+   "quote": "Print `assignment_gates_pass=false` next to the +25.6 pp knowledge-update mean.",
+   "ordinals": [
+    "B28"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "Failed PM1b assignment gate must be shown next to the +25.6 pp headline; collapses into B28:C05."
+  },
+  {
+   "finding_id": "w4_grok-32",
+   "list_id": "w4_grok",
+   "source_line": 43,
+   "quote": "Disclose the 0.25 verdict margin, the 0 reward for over-abstention",
+   "ordinals": [
+    "B35"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "RLVR margin/reward-design caveats must be disclosed; collapses into B35:C03."
+  },
+  {
+   "finding_id": "w4_neon-01",
+   "list_id": "w4_neon",
+   "source_line": 8,
+   "quote": "mechanism proof under trusted bus tiers and fixed templates",
+   "ordinals": [
+    "B35"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "D3 must be bounded as a mechanism proof under trusted tiers/fixed templates, not field security: caveat that shrinks the claim."
+  },
+  {
+   "finding_id": "w4_neon-02",
+   "list_id": "w4_neon",
+   "source_line": 10,
+   "quote": "Whitepaper v3.1 omits this caveat.",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Whitepaper omits the TRA-1 vs vec2vec caveat; TRA-1 is not a Wave-4 audited bundle -> XC (rule 3); omitted caveat -> C03."
+  },
+  {
+   "finding_id": "w4_neon-03",
+   "list_id": "w4_neon",
+   "source_line": 14,
+   "quote": "`ZeroMu` Trails Uncentered Procrustes In-Domain (`-1 pp`)",
+   "ordinals": [
+    "B33",
+    "B34"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "ZeroMu trails uncentered Procrustes in-domain at 1M (B33) and 4096-d (B34); dominance framing overstates."
+  },
+  {
+   "finding_id": "w4_neon-04",
+   "list_id": "w4_neon",
+   "source_line": 16,
+   "quote": "`989,634/1M` (`99.0%`) vectors in `D2-1M` are Gaussian top-64 SVD draws plus noisy twins",
+   "ordinals": [
+    "B33"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "D2-1M is 99% synthetic; line 33 demands disclosure: synthetic data presented without caveat."
+  },
+  {
+   "finding_id": "w4_neon-05",
+   "list_id": "w4_neon",
+   "source_line": 16,
+   "quote": "`D2-4096d` scored `1/3` requested domains",
+   "ordinals": [
+    "B34"
+   ],
+   "defect_class": "C11",
+   "alignment_note": "Only SciFact scored of the requested domains: incomplete coverage."
+  },
+  {
+   "finding_id": "w4_neon-06",
+   "list_id": "w4_neon",
+   "source_line": 16,
+   "quote": "uses one-sided 5th-percentile `lcb95`",
+   "ordinals": [
+    "B33"
+   ],
+   "defect_class": "C14",
+   "alignment_note": "D2-1M lcb95 is a one-sided 5th percentile, not two-sided 2.5th: CI method error."
+  },
+  {
+   "finding_id": "w4_neon-07",
+   "list_id": "w4_neon",
+   "source_line": 18,
+   "quote": "`PM-1b` Failed (`assignment_gates_pass: false`) via LoCoMo Cat-5 Abstention Tradeoff",
+   "ordinals": [
+    "B28"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "PM1b failed its gates via the Cat-5 abstention crash; line 34 demands reporting it: failed gate / adverse result."
+  },
+  {
+   "finding_id": "w4_neon-08",
+   "list_id": "w4_neon",
+   "source_line": 19,
+   "quote": "LME `SSU-70` drops `-5.71 pp`",
+   "ordinals": [
+    "B28"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "SSU-70 regression, another failed PM1b check; collapses into B28:C05."
+  },
+  {
+   "finding_id": "w4_neon-09",
+   "list_id": "w4_neon",
+   "source_line": 19,
+   "quote": "One endpoint generates paraphrases, answers, and grades",
+   "ordinals": [
+    "B28"
+   ],
+   "defect_class": "C15",
+   "alignment_note": "Same endpoint generates stress paraphrases, answers and grades: independence violation."
+  },
+  {
+   "finding_id": "w4_neon-10",
+   "list_id": "w4_neon",
+   "source_line": 22,
+   "quote": "but passes oracle `c[\"entity\"], c[\"slot\"]` into `_resolve_slot_labelfree()` rather than inferring slots from retrieval",
+   "ordinals": [
+    "B29"
+   ],
+   "defect_class": "C15",
+   "alignment_note": "PM2 'label-free' resolver is fed gold entity/slot metadata: oracle consultation."
+  },
+  {
+   "finding_id": "w4_neon-11",
+   "list_id": "w4_neon",
+   "source_line": 22,
+   "quote": "`CausalEMA_vs_Native_E1` hits `tango_lcb95=-0.0572 < -0.05`",
+   "ordinals": [
+    "B29"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "PM2 non-inferiority margin missed under the Tango LCB: failed endpoint."
+  },
+  {
+   "finding_id": "w4_neon-12",
+   "list_id": "w4_neon",
+   "source_line": 22,
+   "quote": "uses the 4-byte sidecar, not zero-write",
+   "ordinals": [
+    "B29"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Arm labelled Query0W (zero-write) uses the 4-byte sidecar; line 33 demands a rename: label overstates (C03 precedes C10 in tie-break)."
+  },
+  {
+   "finding_id": "w4_neon-13",
+   "list_id": "w4_neon",
+   "source_line": 24,
+   "quote": "Non-Significant vs Live `mem0ai` (`infer=True`)",
+   "ordinals": [
+    "B33"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "D1 v2 vs live mem0ai is non-significant: null result to disclose."
+  },
+  {
+   "finding_id": "w4_neon-14",
+   "list_id": "w4_neon",
+   "source_line": 25,
+   "quote": "synthesizes 1,020 documents from templates with regex/channel-tier guards",
+   "ordinals": [
+    "B33"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "D1 v2 corpus is templated synthetic; line 34 demands labelling it templated; collapses into B33:C03."
+  },
+  {
+   "finding_id": "w4_neon-15",
+   "list_id": "w4_neon",
+   "source_line": 27,
+   "quote": "Whitepaper v3.1 Omits 2025–2026 Comparators",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C17",
+   "alignment_note": "C17 (related-work citation omission in the whitepaper, naming no bundle): not an evidence class in C01-C16."
+  },
+  {
+   "finding_id": "w4_neon-16",
+   "list_id": "w4_neon",
+   "source_line": 29,
+   "quote": "label *turn-pair supersession router*, not full $K=4$ `EK5 v3`",
+   "ordinals": [
+    "B28"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "conv-v3 runs a SUPERSEDE-only per-query store but is labelled EK5 v3: label overstates the mechanism."
+  },
+  {
+   "finding_id": "w4_neon-17",
+   "list_id": "w4_neon",
+   "source_line": 29,
+   "quote": "`Arm1_Small3B` logs `mean_completion_tokens: 0.0`",
+   "ordinals": [
+    "B33"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Telemetry bug: completion tokens logged as 0.0."
+  },
+  {
+   "finding_id": "w4_neon-18",
+   "list_id": "w4_neon",
+   "source_line": 33,
+   "quote": "standardize two-sided 2.5th-percentile CIs",
+   "ordinals": [
+    "B33"
+   ],
+   "defect_class": "C14",
+   "alignment_note": "Fix demand for the one-sided lcb95; collapses into B33:C14."
+  },
+  {
+   "finding_id": "w4_neon-19",
+   "list_id": "w4_neon",
+   "source_line": 35,
+   "quote": "scope `ek5_wfs_rlvr_1000ep_audit.json` as an **offline 3-valued reward-separation proof**",
+   "ordinals": [
+    "B35"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "RLVR audit (#35 side artifact) must be scoped as an offline proof, not trained weights; collapses into B35:C03."
+  },
+  {
+   "finding_id": "w4_opus-01",
+   "list_id": "w4_opus",
+   "source_line": 18,
+   "quote": "PM2 \"label-free\" is false (L13).",
+   "ordinals": [
+    "B29"
+   ],
+   "defect_class": "C15",
+   "alignment_note": "PM2 label-free claim false because the resolver uses gold case metadata (line 19): oracle consultation."
+  },
+  {
+   "finding_id": "w4_opus-02",
+   "list_id": "w4_opus",
+   "source_line": 19,
+   "quote": "gold case metadata, hard-coded tenant",
+   "ordinals": [
+    "B29"
+   ],
+   "defect_class": "C15",
+   "alignment_note": "Same oracle-slot defect; collapses into B29:C15."
+  },
+  {
+   "finding_id": "w4_opus-03",
+   "list_id": "w4_opus",
+   "source_line": 19,
+   "quote": "The `:250` comment claims neighborhood inference.",
+   "ordinals": [
+    "B29"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "Code comment claims neighborhood inference while code passes the gold slot: prose/code drift."
+  },
+  {
+   "finding_id": "w4_opus-04",
+   "list_id": "w4_opus",
+   "source_line": 20,
+   "quote": "are literal `True` (`:307-308`), not computed",
+   "ordinals": [
+    "B29"
+   ],
+   "defect_class": "C13",
+   "alignment_note": "Provenance flags hard-coded True and presented as measured."
+  },
+  {
+   "finding_id": "w4_opus-05",
+   "list_id": "w4_opus",
+   "source_line": 21,
+   "quote": "so the +85 pp gap partly measures the oracle",
+   "ordinals": [
+    "B29"
+   ],
+   "defect_class": "C08",
+   "alignment_note": "Oracle forces CONTESTED_ABSTAIN for EK5 arms but not Flat_No_EK5: asymmetric comparison inflates the gap."
+  },
+  {
+   "finding_id": "w4_opus-06",
+   "list_id": "w4_opus",
+   "source_line": 21,
+   "quote": "Native = 1.000: task at ceiling.",
+   "ordinals": [
+    "B29"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Ceiling task undisclosed (line 80 demands disclosure): caveat that shrinks the claim."
+  },
+  {
+   "finding_id": "w4_opus-07",
+   "list_id": "w4_opus",
+   "source_line": 24,
+   "quote": "The PM1b headline is credited to the wrong component.",
+   "ordinals": [
+    "B28"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "EK5 adds 0 on clean data; the gain is hybrid retrieval: headline misattribution."
+  },
+  {
+   "finding_id": "w4_opus-08",
+   "list_id": "w4_opus",
+   "source_line": 27,
+   "quote": "Every comparison with M1 is context-volume confounded",
+   "ordinals": [
+    "B28"
+   ],
+   "defect_class": "C08",
+   "alignment_note": "Comparisons with M1 at 4-6x more context tokens: budget-unmatched comparator."
+  },
+  {
+   "finding_id": "w4_opus-09",
+   "list_id": "w4_opus",
+   "source_line": 32,
+   "quote": "LoCoMo Cat-5 regression (0.13 vs 0.39).",
+   "ordinals": [
+    "B28"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "Cat-5 abstention regression; line 78 demands disclosure: adverse result."
+  },
+  {
+   "finding_id": "w4_opus-10",
+   "list_id": "w4_opus",
+   "source_line": 33,
+   "quote": "Anchor selection (`v3:321-327`) and window expansion (`:328-334`) ignore speakers.",
+   "ordinals": [
+    "B28"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Speaker-blind anchor selection/window expansion causes misattribution: code flaw behind the Cat-5 regression."
+  },
+  {
+   "finding_id": "w4_opus-11",
+   "list_id": "w4_opus",
+   "source_line": 37,
+   "quote": "SSU-70 dilution (Δ −5.7 pp, n01=5/n10=1).",
+   "ordinals": [
+    "B28"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "SSU-70 regression, one of four failing PM1b checks; collapses into B28:C05."
+  },
+  {
+   "finding_id": "w4_opus-12",
+   "list_id": "w4_opus",
+   "source_line": 39,
+   "quote": "No visible tuning split.",
+   "ordinals": [
+    "B28"
+   ],
+   "defect_class": "C06",
+   "alignment_note": "Budgets, weights, cap and thresholds fixed on the reported sets: in-sample tuning."
+  },
+  {
+   "finding_id": "w4_opus-13",
+   "list_id": "w4_opus",
+   "source_line": 41,
+   "quote": "D2 CSLS backfill baseline is a strawman.",
+   "ordinals": [
+    "B34"
+   ],
+   "defect_class": "C08",
+   "alignment_note": "CSLS compared only with an uncalibrated raw-mix merge; z-score/RRF baselines needed: unfair comparator."
+  },
+  {
+   "finding_id": "w4_opus-14",
+   "list_id": "w4_opus",
+   "source_line": 47,
+   "quote": "Only SciFact was scored (n=86); FiQA and NFCorpus are `MISSING_4096`.",
+   "ordinals": [
+    "B34"
+   ],
+   "defect_class": "C11",
+   "alignment_note": "Only one requested domain scored: incomplete coverage."
+  },
+  {
+   "finding_id": "w4_opus-15",
+   "list_id": "w4_opus",
+   "source_line": 48,
+   "quote": "ZeroMu vs Procrustes: −0.99 pp at 4096-d and −1.0 pp at 1M.",
+   "ordinals": [
+    "B33",
+    "B34"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "No ZeroMu win over Procrustes at 4096-d (B34) or 1M (B33); line 79 demands 'ZeroMu <= Procrustes' disclosure."
+  },
+  {
+   "finding_id": "w4_opus-16",
+   "list_id": "w4_opus",
+   "source_line": 49,
+   "quote": "At 1M, QueryAffine recall is exactly 0.0, which suggests a bug",
+   "ordinals": [
+    "B33"
+   ],
+   "defect_class": "C09",
+   "alignment_note": "The only arm ZeroMu significantly beats at 1M is a likely-broken QueryAffine baseline: invalid baseline arm."
+  },
+  {
+   "finding_id": "w4_opus-17",
+   "list_id": "w4_opus",
+   "source_line": 51,
+   "quote": "Proposer v2's rules were patched from D1 v1 forensics",
+   "ordinals": [
+    "B33"
+   ],
+   "defect_class": "C06",
+   "alignment_note": "D1 v2 proposer rules tuned on forensics from the same generator; D1 v2 is in-distribution: in-sample tuning."
+  },
+  {
+   "finding_id": "w4_opus-18",
+   "list_id": "w4_opus",
+   "source_line": 51,
+   "quote": "vs Mem0 it is +5 pp, LCB −6.7 pp",
+   "ordinals": [
+    "B33"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "D1 v2 not significant vs Mem0; line 81 demands disclosure: null result."
+  },
+  {
+   "finding_id": "w4_opus-19",
+   "list_id": "w4_opus",
+   "source_line": 55,
+   "quote": "is saturated (flat 0.968), so it does not discriminate",
+   "ordinals": [
+    "B28"
+   ],
+   "defect_class": "C17",
+   "alignment_note": "C17 (metric validity): LME per-session recall is saturated and non-discriminating; no C01-C16 class fits."
+  },
+  {
+   "finding_id": "w4_opus-20",
+   "list_id": "w4_opus",
+   "source_line": 56,
+   "quote": "LoCoMo echoes are verbatim copies (`runner:354-368`), which makes the stress trivial.",
+   "ordinals": [
+    "B28"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Echo stress test is trivial, so 'stress' overstates the evidence; collapses into B28:C03."
+  },
+  {
+   "finding_id": "w4_opus-21",
+   "list_id": "w4_opus",
+   "source_line": 57,
+   "quote": "DualAdap uses a non-causal batch mean (`pm2:202`).",
+   "ordinals": [
+    "B29"
+   ],
+   "defect_class": "C15",
+   "alignment_note": "PM2 DualAdap arm uses a non-causal batch mean (future-query leakage); order dependence noted too; collapses into B29:C15."
+  },
+  {
+   "finding_id": "w4_opus-22",
+   "list_id": "w4_opus",
+   "source_line": 58,
+   "quote": "HNSW at k_os=10 reaches recall 0.86; k_os ≥ 32 is required.",
+   "ordinals": [
+    "B34"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "HNSW parity only at k_os>=32; line 79 demands disclosure: caveat that shrinks the claim."
+  },
+  {
+   "finding_id": "w4_opus-23",
+   "list_id": "w4_opus",
+   "source_line": 59,
+   "quote": "\"1023× memory\" ignores that the raw index stays resident",
+   "ordinals": [
+    "B33"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "1023x sidecar memory headline ignores the resident raw index and lower native recall: overstated ratio."
+  },
+  {
+   "finding_id": "w4_opus-24",
+   "list_id": "w4_opus",
+   "source_line": 76,
+   "quote": "`assignment_gates_pass=false`; four PM1b checks fail",
+   "ordinals": [
+    "B28"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "Failed PM1b gate and four failing checks must be disclosed in v4.0; collapses into B28:C05."
+  },
+  {
+   "finding_id": "w4_sol-01",
+   "list_id": "w4_sol",
+   "source_line": 3,
+   "quote": "The reviewed deliverables are untracked, so the HEAD in a receipt does not establish the executed source revision.",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C07",
+   "alignment_note": "Untracked deliverables across all reviewed receipts: code-revision provenance gap naming no single bundle -> XC."
+  },
+  {
+   "finding_id": "w4_sol-02",
+   "list_id": "w4_sol",
+   "source_line": 12,
+   "quote": "The loader reads arrays without row IDs or verified order hashes.",
+   "ordinals": [
+    "B34"
+   ],
+   "defect_class": "C07",
+   "alignment_note": "D2 cache-to-row-ID lineage unverified (no row IDs/order hashes): provenance/digest gap."
+  },
+  {
+   "finding_id": "w4_sol-03",
+   "list_id": "w4_sol",
+   "source_line": 13,
+   "quote": "The fleet row says 100% at ef=32.",
+   "ordinals": [
+    "B34"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Workbench claims 100% HNSW recall at ef=32 vs receipt 99.77% mean / 90% min: derived deliverable overstates #34 (rule 3)."
+  },
+  {
+   "finding_id": "w4_sol-04",
+   "list_id": "w4_sol",
+   "source_line": 13,
+   "quote": "The detailed table calls indexed vectors 384d, although Qdrant receives 4096d target vectors",
+   "ordinals": [
+    "B34"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "Workbench prose disagrees with the artifact on the indexed dimension."
+  },
+  {
+   "finding_id": "w4_sol-05",
+   "list_id": "w4_sol",
+   "source_line": 13,
+   "quote": "repeats full-matrix nDCG 0.5252 as if computed per ANN depth",
+   "ordinals": [
+    "B34"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Workbench presents one full-matrix number as per-ANN-depth results; collapses into B34:C03."
+  },
+  {
+   "finding_id": "w4_sol-06",
+   "list_id": "w4_sol",
+   "source_line": 14,
+   "quote": "against raw mixed-score merging on 86 SciFact REPORT queries",
+   "ordinals": [
+    "B34"
+   ],
+   "defect_class": "C08",
+   "alignment_note": "CSLS gain measured only against raw mixed-score merging; line 22 asks for a stronger comparator: weak comparator."
+  },
+  {
+   "finding_id": "w4_sol-07",
+   "list_id": "w4_sol",
+   "source_line": 14,
+   "quote": "ZeroMu scored 0.5252 versus 0.5352 for uncentered Procrustes.",
+   "ordinals": [
+    "B34"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Listed under MAJOR baseline framing: ZeroMu trails Procrustes; harmonised with neon/opus B34:C03 (borderline, bare numbers)."
+  },
+  {
+   "finding_id": "w4_sol-08",
+   "list_id": "w4_sol",
+   "source_line": 14,
+   "quote": "FiQA2018 and NFCorpus were unscored.",
+   "ordinals": [
+    "B34"
+   ],
+   "defect_class": "C11",
+   "alignment_note": "Missing domains; line 22 demands publishing them: incomplete coverage."
+  },
+  {
+   "finding_id": "w4_sol-09",
+   "list_id": "w4_sol",
+   "source_line": 14,
+   "quote": "All map fits use REPORT-positive qrels for anchor exclusion.",
+   "ordinals": [
+    "B34"
+   ],
+   "defect_class": "C15",
+   "alignment_note": "Map fitting consults REPORT-split qrels: evaluation-label leakage into fitting."
+  },
+  {
+   "finding_id": "w4_sol-10",
+   "list_id": "w4_sol",
+   "source_line": 15,
+   "quote": "Two sequential 35-value threshold sweeps use labeled provenance and a separate seed drawn from the same slot/template generator.",
+   "ordinals": [
+    "B35"
+   ],
+   "defect_class": "C06",
+   "alignment_note": "D3 thresholds tuned with labels on the same template generator: in-sample selection."
+  },
+  {
+   "finding_id": "w4_sol-11",
+   "list_id": "w4_sol",
+   "source_line": 15,
+   "quote": "The selector can fall back to nonzero false positives.",
+   "ordinals": [
+    "B35"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "D3 tau selector can silently fall back to nonzero-FP thresholds, breaking the FP=0 premise: logic flaw."
+  },
+  {
+   "finding_id": "w4_sol-12",
+   "list_id": "w4_sol",
+   "source_line": 15,
+   "quote": "B0–B2 also differ in context selection, prompt annotations or gating",
+   "ordinals": [
+    "B35"
+   ],
+   "defect_class": "C09",
+   "alignment_note": "D3 baselines B0-B2 are confounded, so only B3 is a valid ablation: baseline arms invalid."
+  },
+  {
+   "finding_id": "w4_sol-13",
+   "list_id": "w4_sol",
+   "source_line": 15,
+   "quote": "The pooled episode bootstrap varies family proportions and collapses to [0,0] for zero successes.",
+   "ordinals": [
+    "B35"
+   ],
+   "defect_class": "C14",
+   "alignment_note": "Degenerate pooled bootstrap CI: CI method error."
+  },
+  {
+   "finding_id": "w4_sol-14",
+   "list_id": "w4_sol",
+   "source_line": 15,
+   "quote": "F4 survival measures context inclusion.",
+   "ordinals": [
+    "B35"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "Metric named 'F4 survival' measures only context inclusion: metric name disagrees with code."
+  },
+  {
+   "finding_id": "w4_sol-15",
+   "list_id": "w4_sol",
+   "source_line": 16,
+   "quote": "The +0.0986 subtraction uses different cohorts.",
+   "ordinals": [
+    "B31"
+   ],
+   "defect_class": "C14",
+   "alignment_note": "Kappa delta computed across different cohorts: statistical procedure error."
+  },
+  {
+   "finding_id": "w4_sol-16",
+   "list_id": "w4_sol",
+   "source_line": 16,
+   "quote": "The κ interval [0.7587, 0.9099] crosses 0.80.",
+   "ordinals": [
+    "B31"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "Kappa CI crosses the 0.80 threshold (gate fails at the lower bound), flagged under MAJOR."
+  },
+  {
+   "finding_id": "w4_sol-17",
+   "list_id": "w4_sol",
+   "source_line": 16,
+   "quote": "Pooled κ=0.9554 combines 200 conversational items with 800 historical structured ratings.",
+   "ordinals": [
+    "B31"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Pooled kappa inflated by historical structured ratings: headline overstates."
+  },
+  {
+   "finding_id": "w4_sol-18",
+   "list_id": "w4_sol",
+   "source_line": 16,
+   "quote": "The row bootstrap ignores conversation clustering and fixed strata.",
+   "ordinals": [
+    "B31"
+   ],
+   "defect_class": "C14",
+   "alignment_note": "Non-cluster, non-stratified bootstrap: CI method error."
+  },
+  {
+   "finding_id": "w4_sol-19",
+   "list_id": "w4_sol",
+   "source_line": 16,
+   "quote": "Shared instructions permit shared errors.",
+   "ordinals": [
+    "B31"
+   ],
+   "defect_class": "C15",
+   "alignment_note": "Both judges share instructions, so agreement is not independent."
+  },
+  {
+   "finding_id": "w4_sol-20",
+   "list_id": "w4_sol",
+   "source_line": 16,
+   "quote": "The human grader displays dataset and qid",
+   "ordinals": [
+    "B31"
+   ],
+   "defect_class": "C15",
+   "alignment_note": "Human grader is not blinded: independence violation; collapses into B31:C15."
+  },
+  {
+   "finding_id": "w4_sol-21",
+   "list_id": "w4_sol",
+   "source_line": 16,
+   "quote": "substitutes a placeholder for missing questions",
+   "ordinals": [
+    "B31"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Human grader shows a placeholder instead of the question: tool bug."
+  },
+  {
+   "finding_id": "w4_sol-22",
+   "list_id": "w4_sol",
+   "source_line": 16,
+   "quote": "omits the model rubric’s preference rule",
+   "ordinals": [
+    "B31"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "Human grader rubric drifts from the model rubric (no preference rule)."
+  },
+  {
+   "finding_id": "w4_sol-23",
+   "list_id": "w4_sol",
+   "source_line": 16,
+   "quote": "It can restore grades by position after a reorder beyond row five.",
+   "ordinals": [
+    "B31"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Grades restored by position rather than item ID: binding bug; collapses into B31:C16."
+  },
+  {
+   "finding_id": "w4_sol-24",
+   "list_id": "w4_sol",
+   "source_line": 17,
+   "quote": "The reference shares the alternating WFS oracle.",
+   "ordinals": [
+    "B35"
+   ],
+   "defect_class": "C15",
+   "alignment_note": "RLVR reference and checked path share the WFS oracle: non-independent validation (harmonised with grok)."
+  },
+  {
+   "finding_id": "w4_sol-25",
+   "list_id": "w4_sol",
+   "source_line": 17,
+   "quote": "The 1,000 unique maxima are over canonical verdict–answer pairs.",
+   "ordinals": [
+    "B35"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Unique-argmax claim holds only over canonical pairs: caveat that shrinks the claim."
+  },
+  {
+   "finding_id": "w4_sol-26",
+   "list_id": "w4_sol",
+   "source_line": 17,
+   "quote": "The gold-aware collapse policy is an exact-match comparator.",
+   "ordinals": [
+    "B35"
+   ],
+   "defect_class": "C08",
+   "alignment_note": "Collapse comparator is a gold-aware exact-match policy: comparator asymmetry in the +0.584 separation."
+  },
+  {
+   "finding_id": "w4_sol-27",
+   "list_id": "w4_sol",
+   "source_line": 17,
+   "quote": "The binary verdict scorer accepts F with abstention on U.",
+   "ordinals": [
+    "B35"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "Binary verdict scorer bug (accepts F with abstention on U)."
+  },
+  {
+   "finding_id": "w4_sol-28",
+   "list_id": "w4_sol",
+   "source_line": 21,
+   "quote": "distinguish oracle agreement from trained-policy performance",
+   "ordinals": [
+    "B35"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "RLVR oracle agreement must not read as trained-policy performance; collapses into B35:C03."
+  },
+  {
+   "finding_id": "w4_sol-29",
+   "list_id": "w4_sol",
+   "source_line": 22,
+   "quote": "disclose the shared centroid alongside the 4-byte sidecar",
+   "ordinals": [
+    "B33"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "4-byte sidecar claim needs the shared centroid disclosed; harmonised with opus m5 to B33 (the 1023x sidecar headline is #33's); outside sol's inferred scope."
+  }
+ ]
+}

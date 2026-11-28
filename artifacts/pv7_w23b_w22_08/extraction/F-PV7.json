@@ -1,0 +1,930 @@
+{
+ "family": "F-PV7",
+ "extractor": "implementer (main agent), single classifier for all four lists and the W23A V2 records",
+ "brief_path": null,
+ "brief_preseeds_defects": false,
+ "brief_preseed_quote": null,
+ "brief_preseed_line": null,
+ "strata": {
+  "S_A": [
+   "B47",
+   "B48",
+   "B49",
+   "B50",
+   "B51",
+   "B52",
+   "B53",
+   "B54",
+   "B55",
+   "B61",
+   "B62",
+   "B63",
+   "B64"
+  ],
+  "S_B": [
+   "B56",
+   "B57",
+   "B58",
+   "B59",
+   "B60"
+  ]
+ },
+ "lists": [
+  {
+   "list_id": "pv7_grok",
+   "source_path": "docs/research/council-logs/pv7-post-live-xval-grok47-xhigh.md",
+   "declared_scope": [
+    "B47",
+    "B48",
+    "B49",
+    "B50",
+    "B51",
+    "B52",
+    "B53",
+    "B54",
+    "B55",
+    "B61",
+    "B62",
+    "B63",
+    "B64",
+    "XC"
+   ],
+   "scope_quote": "Bundles #56–#60 were not audited.",
+   "scope_line": 23,
+   "reads_other_lists": false,
+   "independence_quote": "none found",
+   "independence_line": null
+  },
+  {
+   "list_id": "pv7_sonnet",
+   "source_path": "docs/research/council-logs/pv7-post-live-xval-sonnet55-high.md",
+   "declared_scope": [
+    "B56",
+    "B57",
+    "B58",
+    "B59",
+    "B60",
+    "XC"
+   ],
+   "scope_quote": "Wave 19 (Bundles #56-#60) and Fragment Integration",
+   "scope_line": 1,
+   "reads_other_lists": false,
+   "independence_quote": "none found",
+   "independence_line": null
+  },
+  {
+   "list_id": "pv7_carbon",
+   "source_path": "docs/research/council-logs/pv7-final-judge-carbon4-med.md",
+   "declared_scope": [
+    "B47",
+    "B48",
+    "B49",
+    "B50",
+    "B51",
+    "B52",
+    "B53",
+    "B54",
+    "B55",
+    "B61",
+    "B62",
+    "B63",
+    "B64",
+    "B56",
+    "B57",
+    "B58",
+    "B59",
+    "B60",
+    "XC"
+   ],
+   "scope_quote": "Additive Bundles `#47–#64`",
+   "scope_line": 1,
+   "reads_other_lists": true,
+   "independence_quote": "Both Post-`v7.0` adversarial peer-audit memos",
+   "independence_line": 27
+  },
+  {
+   "list_id": "pv7_fable",
+   "source_path": "docs/research/council-logs/pv7-final-judge-fable52-med.md",
+   "declared_scope": [
+    "B47",
+    "B48",
+    "B49",
+    "B50",
+    "B51",
+    "B52",
+    "B53",
+    "B54",
+    "B55",
+    "B61",
+    "B62",
+    "B63",
+    "B64",
+    "B56",
+    "B57",
+    "B58",
+    "B59",
+    "B60",
+    "XC"
+   ],
+   "scope_quote": "Bundles #47-#64",
+   "scope_line": 1,
+   "reads_other_lists": true,
+   "independence_quote": "I am blocking on two items from the grok-4.7 peer memo",
+   "independence_line": 13
+  }
+ ],
+ "findings": [
+  {
+   "finding_id": "pv7_grok-01",
+   "list_id": "pv7_grok",
+   "source_line": 13,
+   "quote": "Three of them (#49, #55, #63) have no `__main__`, so the CLI exit 0 is a no-op.",
+   "ordinals": [
+    "B49",
+    "B55",
+    "B63"
+   ],
+   "defect_class": "C02",
+   "alignment_note": "CLI verifiers without __main__ exit 0 vacuously"
+  },
+  {
+   "finding_id": "pv7_grok-02",
+   "list_id": "pv7_grok",
+   "source_line": 105,
+   "quote": "Counting the 129 ms CLI exit as a cold-start proof is L4.",
+   "ordinals": [
+    "B49"
+   ],
+   "defect_class": "C02",
+   "alignment_note": "#49 vacuous CLI exit"
+  },
+  {
+   "finding_id": "pv7_grok-03",
+   "list_id": "pv7_grok",
+   "source_line": 69,
+   "quote": "It cannot validate this file.",
+   "ordinals": [
+    "B48"
+   ],
+   "defect_class": "C01",
+   "alignment_note": "#48 verifier runs drycheck, cannot load live receipt"
+  },
+  {
+   "finding_id": "pv7_grok-04",
+   "list_id": "pv7_grok",
+   "source_line": 119,
+   "quote": "`61_verifier.py` calls `execute(\"local-drycheck\")` and does not open this report.",
+   "ordinals": [
+    "B61"
+   ],
+   "defect_class": "C01",
+   "alignment_note": "#61 verifier does not open live report"
+  },
+  {
+   "finding_id": "pv7_grok-05",
+   "list_id": "pv7_grok",
+   "source_line": 134,
+   "quote": "A green verifier beside a failed live receipt is the scorecard bug.",
+   "ordinals": [
+    "B62"
+   ],
+   "defect_class": "C01",
+   "alignment_note": "#62 verifier replays stage-1, ignores failed live receipt"
+  },
+  {
+   "finding_id": "pv7_grok-06",
+   "list_id": "pv7_grok",
+   "source_line": 224,
+   "quote": "Do not count #62 live as a pass.",
+   "ordinals": [
+    "B62"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "#62 failed live run must not be counted as pass"
+  },
+  {
+   "finding_id": "pv7_grok-07",
+   "list_id": "pv7_grok",
+   "source_line": 179,
+   "quote": "`53_verifier.py` never loads either file.",
+   "ordinals": [
+    "B53"
+   ],
+   "defect_class": "C01",
+   "alignment_note": "#53 verifier loads neither shadow file"
+  },
+  {
+   "finding_id": "pv7_grok-08",
+   "list_id": "pv7_grok",
+   "source_line": 202,
+   "quote": "The verifier does not open:",
+   "ordinals": [
+    "B47"
+   ],
+   "defect_class": "C01",
+   "alignment_note": "#47 verifier ignores the two host A/A receipts"
+  },
+  {
+   "finding_id": "pv7_grok-09",
+   "list_id": "pv7_grok",
+   "source_line": 11,
+   "quote": "There is no 64/64 Complete Evidence Scorecard in this tree.",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C11",
+   "alignment_note": "no evidence_tier / complete scorecard across registry rows"
+  },
+  {
+   "finding_id": "pv7_grok-10",
+   "list_id": "pv7_grok",
+   "source_line": 219,
+   "quote": "Add `evidence_tier` and a receipt path to every `docs/research/registry.d/*.json` row.",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C11",
+   "alignment_note": "registry rows lack evidence_tier"
+  },
+  {
+   "finding_id": "pv7_grok-11",
+   "list_id": "pv7_grok",
+   "source_line": 17,
+   "quote": "does not record the index-build knobs that were raised in the same seal commit",
+   "ordinals": [
+    "B48"
+   ],
+   "defect_class": "C06",
+   "alignment_note": "#48 knob lift undisclosed"
+  },
+  {
+   "finding_id": "pv7_grok-12",
+   "list_id": "pv7_grok",
+   "source_line": 95,
+   "quote": "Checking out the stamped commit cannot reproduce the measurement.",
+   "ordinals": [
+    "B48"
+   ],
+   "defect_class": "C07",
+   "alignment_note": "#48 spine_commit predates module; no source hash"
+  },
+  {
+   "finding_id": "pv7_grok-13",
+   "list_id": "pv7_grok",
+   "source_line": 85,
+   "quote": "and still `telemetry_passed=true`",
+   "ordinals": [
+    "B48"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "#48 telemetry None counts as pass"
+  },
+  {
+   "finding_id": "pv7_grok-14",
+   "list_id": "pv7_grok",
+   "source_line": 223,
+   "quote": "Change `telemetry_passed` so `graph_telemetry_complete is None` is not a pass.",
+   "ordinals": [
+    "B48"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "#48 telemetry predicate"
+  },
+  {
+   "finding_id": "pv7_grok-15",
+   "list_id": "pv7_grok",
+   "source_line": 225,
+   "quote": "Do not count #49 family names as live models.",
+   "ordinals": [
+    "B49"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "#49 family names read as live models"
+  },
+  {
+   "finding_id": "pv7_grok-16",
+   "list_id": "pv7_grok",
+   "source_line": 115,
+   "quote": "The name overclaims fail-closed behavior.",
+   "ordinals": [
+    "B61"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "#61 gate name vs behaviour"
+  },
+  {
+   "finding_id": "pv7_grok-17",
+   "list_id": "pv7_grok",
+   "source_line": 117,
+   "quote": "The passing gate does not require that family.",
+   "ordinals": [
+    "B61"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "#61 scale gate passes with linear_chain false"
+  },
+  {
+   "finding_id": "pv7_grok-18",
+   "list_id": "pv7_grok",
+   "source_line": 224,
+   "quote": "Log the chat-template body, including `enable_thinking`, in that receipt.",
+   "ordinals": [
+    "B62"
+   ],
+   "defect_class": "C07",
+   "alignment_note": "#62 enable_thinking not recorded"
+  },
+  {
+   "finding_id": "pv7_grok-19",
+   "list_id": "pv7_grok",
+   "source_line": 140,
+   "quote": "Current call sites that omit the flag:",
+   "ordinals": [
+    "B50",
+    "B51",
+    "B52",
+    "B53",
+    "B54",
+    "B55"
+   ],
+   "defect_class": "C11",
+   "alignment_note": "burn-ledger partial-inventory implicit smoke path at #50-#55 call sites (loft=50, beam=51, qscci=52, pm6=53, 12domain=54, wild=55)"
+  },
+  {
+   "finding_id": "pv7_grok-20",
+   "list_id": "pv7_grok",
+   "source_line": 226,
+   "quote": "Pass `allow_local_drycheck_smoke` explicitly at loft:482",
+   "ordinals": [
+    "B50",
+    "B51",
+    "B52",
+    "B53",
+    "B54",
+    "B55"
+   ],
+   "defect_class": "C11",
+   "alignment_note": "same burn-ledger defect, repair item"
+  },
+  {
+   "finding_id": "pv7_grok-21",
+   "list_id": "pv7_grok",
+   "source_line": 227,
+   "quote": "Stop setting `one_shot_consumed=true` on a non-live #50 run",
+   "ordinals": [
+    "B50"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "#50 one-shot flag consumed by drycheck"
+  },
+  {
+   "finding_id": "pv7_grok-22",
+   "list_id": "pv7_grok",
+   "source_line": 233,
+   "quote": "stop reading `token_length_est` as a measured 128k context",
+   "ordinals": [
+    "B51"
+   ],
+   "defect_class": "C13",
+   "alignment_note": "#51 token length is a label"
+  },
+  {
+   "finding_id": "pv7_grok-23",
+   "list_id": "pv7_grok",
+   "source_line": 178,
+   "quote": "Gate `live_shadow_executed` passes on the detail string `manifest-shadow-observed`.",
+   "ordinals": [
+    "B53"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "#53 live-shadow gate passes on a string"
+  },
+  {
+   "finding_id": "pv7_grok-24",
+   "list_id": "pv7_grok",
+   "source_line": 234,
+   "quote": "stop reading `run-live-shadow` as a live gateway",
+   "ordinals": [
+    "B53"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "#53 run-live-shadow overstates"
+  },
+  {
+   "finding_id": "pv7_grok-25",
+   "list_id": "pv7_grok",
+   "source_line": 186,
+   "quote": "says `>=10/12` positive. The receipt requires `11/12`.",
+   "ordinals": [
+    "B54"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "#54 registry vs receipt threshold"
+  },
+  {
+   "finding_id": "pv7_grok-26",
+   "list_id": "pv7_grok",
+   "source_line": 187,
+   "quote": "It does not require `H6B_merge.passed`.",
+   "ordinals": [
+    "B54"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "#54 gate passes while H6B_merge failed"
+  },
+  {
+   "finding_id": "pv7_grok-27",
+   "list_id": "pv7_grok",
+   "source_line": 188,
+   "quote": "`admitted_unburned` against that fixture is not a BioASQ run",
+   "ordinals": [
+    "B54"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "#54 real dataset names on synthetic fixture"
+  },
+  {
+   "finding_id": "pv7_grok-28",
+   "list_id": "pv7_grok",
+   "source_line": 196,
+   "quote": "The defect is the sibling `passed` bit.",
+   "ordinals": [
+    "B55"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "#55 passed=true on drycheck"
+  },
+  {
+   "finding_id": "pv7_grok-29",
+   "list_id": "pv7_grok",
+   "source_line": 229,
+   "quote": "Keep `preregistered_conjunction_met` next to `family_count=4`",
+   "ordinals": [
+    "B55"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "#55 conjunction shown without 4-family caveat"
+  },
+  {
+   "finding_id": "pv7_grok-30",
+   "list_id": "pv7_grok",
+   "source_line": 207,
+   "quote": "Registry status `verified-pass` is a stronger word than the verifier's `local-drycheck-pass`",
+   "ordinals": [
+    "B47"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "#47 registry status outruns verifier"
+  },
+  {
+   "finding_id": "pv7_sonnet-01",
+   "list_id": "pv7_sonnet",
+   "source_line": 16,
+   "quote": "The write-byte win depends on an asymmetric journal codec.",
+   "ordinals": [
+    "B58"
+   ],
+   "defect_class": "C08",
+   "alignment_note": "#58 codec asymmetry"
+  },
+  {
+   "finding_id": "pv7_sonnet-02",
+   "list_id": "pv7_sonnet",
+   "source_line": 46,
+   "quote": "The accounting rule depends on which constructor path ran.",
+   "ordinals": [
+    "B58"
+   ],
+   "defect_class": "C08",
+   "alignment_note": "#58 header accounting asymmetry"
+  },
+  {
+   "finding_id": "pv7_sonnet-03",
+   "list_id": "pv7_sonnet",
+   "source_line": 64,
+   "quote": "Describing it as \"LCB95 > 0\" overstates what was tested.",
+   "ordinals": [
+    "B58"
+   ],
+   "defect_class": "C14",
+   "alignment_note": "#58 zero-variance bootstrap LCB"
+  },
+  {
+   "finding_id": "pv7_sonnet-04",
+   "list_id": "pv7_sonnet",
+   "source_line": 73,
+   "quote": "for the unqualified \"strictly fewer write bytes on both layouts\" claim",
+   "ordinals": [
+    "B58"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "#58 unqualified claim"
+  },
+  {
+   "finding_id": "pv7_sonnet-05",
+   "list_id": "pv7_sonnet",
+   "source_line": 77,
+   "quote": "the drycheck margin should not be extrapolated to it",
+   "ordinals": [
+    "B58"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "#58 live extrapolation caveat"
+  },
+  {
+   "finding_id": "pv7_sonnet-06",
+   "list_id": "pv7_sonnet",
+   "source_line": 92,
+   "quote": "It carries **no `tier` and no `tier_disclosure` field**",
+   "ordinals": [
+    "B56"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "#56 floor-tier caveat missing"
+  },
+  {
+   "finding_id": "pv7_sonnet-07",
+   "list_id": "pv7_sonnet",
+   "source_line": 103,
+   "quote": "This is status drift (L13).",
+   "ordinals": [
+    "B57"
+   ],
+   "defect_class": "C04",
+   "alignment_note": "#57 registry status lags live receipt"
+  },
+  {
+   "finding_id": "pv7_sonnet-08",
+   "list_id": "pv7_sonnet",
+   "source_line": 104,
+   "quote": "A reviewer should ask who chose 50 and when relative to the first run.",
+   "ordinals": [
+    "B57"
+   ],
+   "defect_class": "C06",
+   "alignment_note": "#57 loose 50x gate possibly set after first run (judgement)"
+  },
+  {
+   "finding_id": "pv7_sonnet-09",
+   "list_id": "pv7_sonnet",
+   "source_line": 110,
+   "quote": "L5: the memory claim is untested on the production path.",
+   "ordinals": [
+    "B59"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "#59 under-1GiB is configured limit, not measurement"
+  },
+  {
+   "finding_id": "pv7_sonnet-10",
+   "list_id": "pv7_sonnet",
+   "source_line": 113,
+   "quote": "`burn_clean: true` in the manifest is therefore not evidence of an unburned corpus.",
+   "ordinals": [
+    "B59"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "#59 burn_clean label overstates"
+  },
+  {
+   "finding_id": "pv7_sonnet-11",
+   "list_id": "pv7_sonnet",
+   "source_line": 112,
+   "quote": "cannot detect corpus reuse from earlier campaigns",
+   "ordinals": [
+    "B59"
+   ],
+   "defect_class": "C11",
+   "alignment_note": "#59 partial self-derived burn inventory"
+  },
+  {
+   "finding_id": "pv7_sonnet-12",
+   "list_id": "pv7_sonnet",
+   "source_line": 121,
+   "quote": "Add a negative test that hand-builds a cache entry lacking the digest fields",
+   "ordinals": [
+    "B60"
+   ],
+   "defect_class": "C12",
+   "alignment_note": "#60 digest-omitted negative test missing"
+  },
+  {
+   "finding_id": "pv7_sonnet-13",
+   "list_id": "pv7_sonnet",
+   "source_line": 136,
+   "quote": "\"Zero-collision\" is trivially true for these loaders",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "loaders ignore 47..64 fragments"
+  },
+  {
+   "finding_id": "pv7_sonnet-14",
+   "list_id": "pv7_sonnet",
+   "source_line": 137,
+   "quote": "holds as a **count of files**, not as a count a single loader reports",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "64/64 is a file count"
+  },
+  {
+   "finding_id": "pv7_sonnet-15",
+   "list_id": "pv7_sonnet",
+   "source_line": 133,
+   "quote": "(`/fabric`, `/api/v2/fabric/*`) is never served.",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "routes.d never served"
+  },
+  {
+   "finding_id": "pv7_sonnet-16",
+   "list_id": "pv7_sonnet",
+   "source_line": 138,
+   "quote": "Schema mismatch is latent: spec ids are strings",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "id type mismatch between spec and fragments"
+  },
+  {
+   "finding_id": "pv7_carbon-01",
+   "list_id": "pv7_carbon",
+   "source_line": 107,
+   "quote": "`#48`'s receipt retains ancestor `spine_commit = d4454e2d`",
+   "ordinals": [
+    "B48"
+   ],
+   "defect_class": "C07",
+   "alignment_note": "residual: #48 spine_commit"
+  },
+  {
+   "finding_id": "pv7_carbon-02",
+   "list_id": "pv7_carbon",
+   "source_line": 107,
+   "quote": "`graph_telemetry_complete = null` on OpenSearch/pgvector (`telemetry_passed = true` on `is not False`)",
+   "ordinals": [
+    "B48"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "residual: #48 telemetry None pass"
+  },
+  {
+   "finding_id": "pv7_carbon-03",
+   "list_id": "pv7_carbon",
+   "source_line": 107,
+   "quote": "`#50`'s synthetic drycheck sets `one_shot_consumed = true`",
+   "ordinals": [
+    "B50"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "residual: #50 one-shot flag"
+  },
+  {
+   "finding_id": "pv7_carbon-04",
+   "list_id": "pv7_carbon",
+   "source_line": 107,
+   "quote": "gate checks evaluation completeness while `H6B_merge.passed = false`",
+   "ordinals": [
+    "B54"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "residual: #54 gate vs failed endpoint"
+  },
+  {
+   "finding_id": "pv7_carbon-05",
+   "list_id": "pv7_carbon",
+   "source_line": 107,
+   "quote": "`6/12` positive vs `11/12` code / `>=10/12` registry prose",
+   "ordinals": [
+    "B54"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "residual: #54 threshold drift"
+  },
+  {
+   "finding_id": "pv7_carbon-06",
+   "list_id": "pv7_carbon",
+   "source_line": 107,
+   "quote": "`#55`'s drycheck carries `passed = true` alongside `status = \"DRYCHECK\"`",
+   "ordinals": [
+    "B55"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "residual: #55 passed bit"
+  },
+  {
+   "finding_id": "pv7_carbon-07",
+   "list_id": "pv7_carbon",
+   "source_line": 107,
+   "quote": "retains legacy gate name `live_encoders_fail_closed_on_dry_fallback`",
+   "ordinals": [
+    "B61"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "residual: #61 gate name"
+  },
+  {
+   "finding_id": "pv7_fable-01",
+   "list_id": "pv7_fable",
+   "source_line": 15,
+   "quote": "That change is not disclosed anywhere in the row, the scorecard or the receipt.",
+   "ordinals": [
+    "B48"
+   ],
+   "defect_class": "C06",
+   "alignment_note": "B1: #48 knob lift undisclosed"
+  },
+  {
+   "finding_id": "pv7_fable-02",
+   "list_id": "pv7_fable",
+   "source_line": 93,
+   "quote": "Its `spine_commit` is `d4454e2d`, and that commit does not contain `hnsw_prefilter_pushdown.py` at all.",
+   "ordinals": [
+    "B48"
+   ],
+   "defect_class": "C07",
+   "alignment_note": "#48 provenance"
+  },
+  {
+   "finding_id": "pv7_fable-03",
+   "list_id": "pv7_fable",
+   "source_line": 16,
+   "quote": "The Markdown index never mentions it.",
+   "ordinals": [
+    "B54"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "B2: #54 failed endpoint hidden"
+  },
+  {
+   "finding_id": "pv7_fable-04",
+   "list_id": "pv7_fable",
+   "source_line": 101,
+   "quote": "The gate `h6b_merge_evaluated` passes because it only checks that the statistic was computed.",
+   "ordinals": [
+    "B54"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "#54 gate vs endpoint"
+  },
+  {
+   "finding_id": "pv7_fable-05",
+   "list_id": "pv7_fable",
+   "source_line": 111,
+   "quote": "still lets `None` pass for OpenSearch and pgvector",
+   "ordinals": [
+    "B48"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "#48 telemetry predicate"
+  },
+  {
+   "finding_id": "pv7_fable-06",
+   "list_id": "pv7_fable",
+   "source_line": 112,
+   "quote": "still passes with two dry stand-ins allowed",
+   "ordinals": [
+    "B61"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "#61 gate naming"
+  },
+  {
+   "finding_id": "pv7_fable-07",
+   "list_id": "pv7_fable",
+   "source_line": 112,
+   "quote": "The scale gate still does not require `linear_chain`.",
+   "ordinals": [
+    "B61"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "#61 scale gate"
+  },
+  {
+   "finding_id": "pv7_fable-08",
+   "list_id": "pv7_fable",
+   "source_line": 113,
+   "quote": "Registry `status` is still `verified-pass` beside `evidence_tier=local-drycheck-pass`.",
+   "ordinals": [
+    "B47"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "#47 status word"
+  },
+  {
+   "finding_id": "pv7_fable-09",
+   "list_id": "pv7_fable",
+   "source_line": 115,
+   "quote": "No committed #57 or #62 receipt contains the string \"spark\"",
+   "ordinals": [
+    "B57",
+    "B62"
+   ],
+   "defect_class": "C07",
+   "alignment_note": "host attribution from commit messages only"
+  },
+  {
+   "finding_id": "pv7_fable-10",
+   "list_id": "pv7_fable",
+   "source_line": 47,
+   "quote": "the registry row does not say in plain words that no live measurement exists",
+   "ordinals": [
+    "B58"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "#58 no-live-measurement caveat"
+  }
+ ],
+ "v2_external_list": {
+  "list_id": "w23a",
+  "source_path": "artifacts/pv7_w23a_seal/W23A_DISPOSITION.md",
+  "findings": [
+   {
+    "finding_id": "w23a-01",
+    "list_id": "w23a",
+    "source_line": 23,
+    "quote": "says `>=10/12` domains must be positive.",
+    "ordinals": [
+     "B54"
+    ],
+    "defect_class": "C10",
+    "alignment_note": "#54 threshold wording nit"
+   },
+   {
+    "finding_id": "w23a-02",
+    "list_id": "w23a",
+    "source_line": 70,
+    "quote": "#53's best arm is ZeroMu with raw cosine",
+    "ordinals": [
+     "B53"
+    ],
+    "defect_class": "C08",
+    "alignment_note": "W22-03 cost-matched rescore: comparator ordering changes"
+   },
+   {
+    "finding_id": "w23a-03",
+    "list_id": "w23a",
+    "source_line": 71,
+    "quote": "The conventional arms (62.97 and 62.87 JPM) beat Chelated (59.38).",
+    "ordinals": [
+     "B62"
+    ],
+    "defect_class": "C08",
+    "alignment_note": "W22-03 cost-matched comparator beats Chelated"
+   },
+   {
+    "finding_id": "w23a-04",
+    "list_id": "w23a",
+    "source_line": 71,
+    "quote": "and the sham control is invalid.",
+    "ordinals": [
+     "B62"
+    ],
+    "defect_class": "C09",
+    "alignment_note": "sham control invalid (overlaps grok's failed sham gate; class differs)"
+   },
+   {
+    "finding_id": "w23a-05",
+    "list_id": "w23a",
+    "source_line": 79,
+    "quote": "so a claim that ZeroMu is a uniquely better bridge is not supported against the conventional",
+    "ordinals": [
+     "B54"
+    ],
+    "defect_class": "C08",
+    "alignment_note": "W22-04 bridge tie vs conventional baseline"
+   },
+   {
+    "finding_id": "w23a-06",
+    "list_id": "w23a",
+    "source_line": 87,
+    "quote": "per-domain CIs, which the strict kill rule needs.",
+    "ordinals": [
+     "B54"
+    ],
+    "defect_class": "C11",
+    "alignment_note": "W22-04 missing cells"
+   }
+  ]
+ },
+ "splits_and_judgement_calls": [
+  "Strata are defined by ordinal only. XC findings belong to no stratum; they are reported separately and do not enter any stratum's estimators.",
+  "Carbon section 1 rows restate peer defects and mark them CLOSED. Under the preregistered unit those are 'already fixed' restatements and are not counted. Only NH-PV7-1 residual items (logged for v7.1+ cleanup) are counted.",
+  "Carbon NH-PV7-1 #56 placement note excluded (the disclosure exists in the registry; not a defect). NH-PV7-2 (wave6 server summary, pre-existing v6.0) and NH-PV7-3 (computational_storage_poc warning scope) are outside #47-#64 and dropped. NH-PV7-4 describes intended behaviour; not a defect.",
+  "Sonnet section 6 (computational_storage_poc EXPERIMENTAL flag) and section 8 (rebase/CRLF) name no scorecard bundle and are outside the family scope: dropped.",
+  "Grok L140 'brief's line numbers are stale' concerns review-brief call-site line numbers, not bundle evidence: not counted (coding rule 4 covers digest/number misprints only).",
+  "Grok L211-215 and L232 (#63/#64 keep protocol-ready, DEV scorers) are status confirmations (coding rule 2): not counted. Grok L211 'do not carry an evidence tier' folds into XC:C11.",
+  "Burn-ledger implicit smoke path at #50-#55 call sites (grok) and #59 partial self-derived inventory (sonnet) are both classed C11 so the same defect type aligns across strata.",
+  "Sonnet L104 (who chose the 50x gate and when) counted as B57:C06 although it is framed as a question; borderline.",
+  "Sonnet L110 'strictly_under_one_gib is configured, not measured' classed C03 (label overstates) under the tie-break order rather than C13.",
+  "Fable L46 (gate moved to clustered-only after scattered tie/loss) is explicitly accepted by the judge as disclosed: not counted. Fable L54 is a brief wording correction: not counted. Fable L114 (#50 one-shot not re-verified) is a scope limitation, not a defect claim.",
+  "W23A V2 records: the #62 ABSENT nit is explicitly not a defect in W23A and is excluded. W22-03 #53/#62 and W22-04 #54 cost-matched results are classed C08 (comparator). The W23A 'sham control is invalid' is C09 while grok/fable's failed sham gate is C05 in this coding; the coarse class split may overstate V2 misses by one.",
+  "Both judges read the peer memos (Carbon reconciles both; Fable cites the grok memo). They fail the procedural-independence filter for every stratum."
+ ]
+}

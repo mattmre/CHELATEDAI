@@ -1,0 +1,1160 @@
+{
+ "family": "F-W8",
+ "extractor": "implementer (main agent), single classifier for all four lists",
+ "brief_path": "docs/research/council-logs/wave8-r0-brief.md",
+ "brief_preseeds_defects": false,
+ "brief_preseed_quote": null,
+ "brief_preseed_line": null,
+ "lists": [
+  {
+   "list_id": "w8_grok",
+   "source_path": "docs/research/council-logs/wave8-r1-grok47-xhigh.md",
+   "declared_scope": [
+    "B36",
+    "B37",
+    "B38",
+    "B39",
+    "B40",
+    "XC"
+   ],
+   "scope_quote": "Read-only audit of the five Wave-6 Part VI manifests and the Wave-7 thesis, deck, and workbench",
+   "scope_line": 3,
+   "reads_other_lists": false,
+   "independence_quote": "none found",
+   "independence_line": null
+  },
+  {
+   "list_id": "w8_neon",
+   "source_path": "docs/research/council-logs/wave8-r1-neon-high.md",
+   "declared_scope": [
+    "B36",
+    "B37",
+    "B38",
+    "B39",
+    "B40",
+    "XC"
+   ],
+   "scope_quote": "**Scope:** Wave-6 `Part VI` (`5/5` bundles), Wave-7 deliverables, `K1–K6`",
+   "scope_line": 3,
+   "reads_other_lists": false,
+   "independence_quote": "none found",
+   "independence_line": null
+  },
+  {
+   "list_id": "w8_opus",
+   "source_path": "docs/research/council-logs/wave8-r1-opus55-high.md",
+   "declared_scope": [
+    "B36",
+    "B37",
+    "B38",
+    "B39",
+    "B40",
+    "XC"
+   ],
+   "scope_quote": "All 5 manifest SHA-256 values match their receipts.",
+   "scope_line": 3,
+   "reads_other_lists": false,
+   "independence_quote": "none found",
+   "independence_line": null
+  },
+  {
+   "list_id": "w8_sol",
+   "source_path": "docs/research/council-logs/wave8-r1-sol62-xhigh.md",
+   "declared_scope": [
+    "B36",
+    "B37",
+    "B38",
+    "B39",
+    "B40",
+    "XC"
+   ],
+   "scope_quote": "All five Wave 6 manifests and all eight receipt-listed side files matched their SHA-256 digests.",
+   "scope_line": 3,
+   "reads_other_lists": false,
+   "independence_quote": "none found",
+   "independence_line": null
+  }
+ ],
+ "findings": [
+  {
+   "finding_id": "w8_grok-01",
+   "list_id": "w8_grok",
+   "source_line": 9,
+   "quote": "The deck headline still reads as a live OpenSearch 3.9 placement",
+   "ordinals": [
+    "B40"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "deck overstates backend as live OpenSearch"
+  },
+  {
+   "finding_id": "w8_grok-02",
+   "list_id": "w8_grok",
+   "source_line": 33,
+   "quote": "Copy the Q1 backend, service-versus-e2e latency, `k_os>=32` recall, `90%` fallback",
+   "ordinals": [
+    "B40"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "headline latency/recall/fallback caveats missing from deliverables"
+  },
+  {
+   "finding_id": "w8_neon-01",
+   "list_id": "w8_neon",
+   "source_line": 10,
+   "quote": "omit `live_opensearch_java_cluster_claimed: false`",
+   "ordinals": [
+    "B40"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "deck/workbench omit OpenSearch-over-Qdrant disclosure"
+  },
+  {
+   "finding_id": "w8_neon-02",
+   "list_id": "w8_neon",
+   "source_line": 10,
+   "quote": "cites `service_rtt` (`7.90/21.19 ms` p50/p95 vs `43.55/53.20 ms` direct `4096-d`) without noting",
+   "ordinals": [
+    "B40"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "service RTT headline without e2e p95/p99 caveat"
+  },
+  {
+   "finding_id": "w8_neon-03",
+   "list_id": "w8_neon",
+   "source_line": 38,
+   "quote": "exact Track E SHA (`cba30b...457bc743`) in `verified_registry.json`",
+   "ordinals": [
+    "B40"
+   ],
+   "defect_class": "C07",
+   "alignment_note": "Track E digest must be bound exactly (judgement: aligned with brief-digest misprint)"
+  },
+  {
+   "finding_id": "w8_opus-01",
+   "list_id": "w8_opus",
+   "source_line": 12,
+   "quote": "is a load artifact. The baseline was saturated",
+   "ordinals": [
+    "B40"
+   ],
+   "defect_class": "C08",
+   "alignment_note": "saturated direct-Qdrant baseline makes latency comparison unfair"
+  },
+  {
+   "finding_id": "w8_opus-02",
+   "list_id": "w8_opus",
+   "source_line": 12,
+   "quote": "The gateway's own open-loop e2e p95/p99 (153.75 / 251.86 ms) is omitted.",
+   "ordinals": [
+    "B40"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "e2e tail omitted from latency headline"
+  },
+  {
+   "finding_id": "w8_opus-03",
+   "list_id": "w8_opus",
+   "source_line": 13,
+   "quote": "admitted Recall@10 = **0.994186 < the K1 0.995 gate**",
+   "ordinals": [
+    "B40"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "50% density recall misses K1 gate"
+  },
+  {
+   "finding_id": "w8_opus-04",
+   "list_id": "w8_opus",
+   "source_line": 14,
+   "quote": "Its recall of 1.0 is 100% exact fallback, with latency unreported.",
+   "ordinals": [
+    "B40"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "90% recall headline is fallback"
+  },
+  {
+   "finding_id": "w8_opus-05",
+   "list_id": "w8_opus",
+   "source_line": 15,
+   "quote": "*Naive baseline.* It is not budget-matched",
+   "ordinals": [
+    "B40"
+   ],
+   "defect_class": "C08",
+   "alignment_note": "naive baseline not budget-matched"
+  },
+  {
+   "finding_id": "w8_opus-06",
+   "list_id": "w8_opus",
+   "source_line": 16,
+   "quote": "*Image.* `qdrant:latest` is unpinned.",
+   "ordinals": [
+    "B40"
+   ],
+   "defect_class": "C07",
+   "alignment_note": "unpinned container image"
+  },
+  {
+   "finding_id": "w8_opus-07",
+   "list_id": "w8_opus",
+   "source_line": 7,
+   "quote": "In the brief, the Track B hash has 65 hex characters and the Track E short hash is garbled.",
+   "ordinals": [
+    "B37",
+    "B40"
+   ],
+   "defect_class": "C07",
+   "alignment_note": "brief digest misprints for Track B and Track E"
+  },
+  {
+   "finding_id": "w8_sol-01",
+   "list_id": "w8_sol",
+   "source_line": 3,
+   "quote": "The Round 0 brief misprints Track B’s digest",
+   "ordinals": [
+    "B37"
+   ],
+   "defect_class": "C07",
+   "alignment_note": "brief misprints Track B digest"
+  },
+  {
+   "finding_id": "w8_sol-02",
+   "list_id": "w8_sol",
+   "source_line": 3,
+   "quote": "gives an abbreviated erroneous Track E digest before the correct one",
+   "ordinals": [
+    "B40"
+   ],
+   "defect_class": "C07",
+   "alignment_note": "brief misprints Track E digest"
+  },
+  {
+   "finding_id": "w8_sol-03",
+   "list_id": "w8_sol",
+   "source_line": 7,
+   "quote": "At 50% retraction, admitted recall is 99.42%, below 99.5%.",
+   "ordinals": [
+    "B40"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "50% density recall misses K1 gate"
+  },
+  {
+   "finding_id": "w8_sol-04",
+   "list_id": "w8_sol",
+   "source_line": 7,
+   "quote": "The 21.19 ms LAN p95 measures service RTT with certified stopping disabled.",
+   "ordinals": [
+    "B40"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "LAN p95 headline caveat (service RTT, certification off)"
+  },
+  {
+   "finding_id": "w8_sol-05",
+   "list_id": "w8_sol",
+   "source_line": 7,
+   "quote": "Direct Qdrant achieved 218.79 Hz at the shared 250 Hz target.",
+   "ordinals": [
+    "B40"
+   ],
+   "defect_class": "C08",
+   "alignment_note": "saturated baseline (judgement: neutral phrasing but in the timing-boundary corrections)"
+  },
+  {
+   "finding_id": "w8_sol-06",
+   "list_id": "w8_sol",
+   "source_line": 7,
+   "quote": "The 99.611% D1 number divides two reader means and cannot isolate decode.",
+   "ordinals": [
+    "B40"
+   ],
+   "defect_class": "C14",
+   "alignment_note": "ratio of means cannot isolate decode"
+  },
+  {
+   "finding_id": "w8_sol-07",
+   "list_id": "w8_sol",
+   "source_line": 9,
+   "quote": "Native OpenSearch compatibility remains unverified.",
+   "ordinals": [
+    "B40"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "OpenSearch compatibility claim overstated"
+  },
+  {
+   "finding_id": "w8_sol-08",
+   "list_id": "w8_sol",
+   "source_line": 9,
+   "quote": "The ANN stop bound assumes an exact dot prefix; D5 permits an approximate prefix.",
+   "ordinals": [
+    "B40"
+   ],
+   "defect_class": "C16",
+   "alignment_note": "certificate stop bound invalid under approximate prefix"
+  },
+  {
+   "finding_id": "w8_grok-03",
+   "list_id": "w8_grok",
+   "source_line": 13,
+   "quote": "`0.87%` is FiQA `500/57,638`. The same 500 anchors are `9.65%` of SciFact",
+   "ordinals": [
+    "B37"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "anchor fraction denominator FiQA-only"
+  },
+  {
+   "finding_id": "w8_grok-04",
+   "list_id": "w8_grok",
+   "source_line": 34,
+   "quote": "the NFCorpus Look #2 miss, the SciFact null, the FiQA sensitivity loss, and the three bf16 minima",
+   "ordinals": [
+    "B37"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "undisclosed nulls/losses and bf16 minima below K3 floor"
+  },
+  {
+   "finding_id": "w8_neon-04",
+   "list_id": "w8_neon",
+   "source_line": 12,
+   "quote": "**Missing caveats:**",
+   "ordinals": [
+    "B37"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "per-domain nulls, CSLS trails cosine at 100%, SciFact null, FiQA regression undisclosed"
+  },
+  {
+   "finding_id": "w8_opus-08",
+   "list_id": "w8_opus",
+   "source_line": 21,
+   "quote": "**\"0.87%\" is FiQA-only.**",
+   "ordinals": [
+    "B37"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "anchor fraction denominator FiQA-only"
+  },
+  {
+   "finding_id": "w8_opus-09",
+   "list_id": "w8_opus",
+   "source_line": 22,
+   "quote": "Mode A against QueryAffine is null on SciFact (p 0.89), which the thesis omits.",
+   "ordinals": [
+    "B37"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "SciFact null omitted"
+  },
+  {
+   "finding_id": "w8_opus-10",
+   "list_id": "w8_opus",
+   "source_line": 23,
+   "quote": "\"Matching Procrustes\" hides the FiQA sensitivity result",
+   "ordinals": [
+    "B37"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "FiQA sensitivity loss hidden"
+  },
+  {
+   "finding_id": "w8_opus-11",
+   "list_id": "w8_opus",
+   "source_line": 17,
+   "quote": "*SciFact.* ZeroMu (0.5252) < Procrustes (0.5318), and it is n.s. against QueryAffine",
+   "ordinals": [
+    "B37"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "SciFact Mode A null (listed under D5 heading; content is Track B)"
+  },
+  {
+   "finding_id": "w8_sol-09",
+   "list_id": "w8_sol",
+   "source_line": 11,
+   "quote": "The 500 anchors represent 0.87% only on FiQA.",
+   "ordinals": [
+    "B37"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "anchor fraction denominator FiQA-only"
+  },
+  {
+   "finding_id": "w8_sol-10",
+   "list_id": "w8_sol",
+   "source_line": 11,
+   "quote": "All three 4096-d document minima (0.999467–0.999764) miss K3’s 0.9999 floor.",
+   "ordinals": [
+    "B37"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "bf16 minima miss K3 floor"
+  },
+  {
+   "finding_id": "w8_sol-11",
+   "list_id": "w8_sol",
+   "source_line": 11,
+   "quote": "The runner uses 0.9990, and its duplicate-aware",
+   "ordinals": [
+    "B37"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "runner threshold drifts from K3 spec"
+  },
+  {
+   "finding_id": "w8_sol-12",
+   "list_id": "w8_sol",
+   "source_line": 11,
+   "quote": "can credit cosine agreement despite a different neighbor",
+   "ordinals": [
+    "B37"
+   ],
+   "defect_class": "C08",
+   "alignment_note": "metric depends on implementation choice"
+  },
+  {
+   "finding_id": "w8_grok-05",
+   "list_id": "w8_grok",
+   "source_line": 35,
+   "quote": "Keep `assignment_gates_pass=false` beside virgin `95%`. Print Holm `0.0766`",
+   "ordinals": [
+    "B36"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "failed Holm / gate / LME loss must be disclosed"
+  },
+  {
+   "finding_id": "w8_grok-06",
+   "list_id": "w8_grok",
+   "source_line": 35,
+   "quote": "Cite `6,088` from the J4 receipt.",
+   "ordinals": [
+    "B36"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "6,088 denominator is cross-run (aligned with 2.78x ratio defect; grok frames it as provenance)"
+  },
+  {
+   "finding_id": "w8_neon-05",
+   "list_id": "w8_neon",
+   "source_line": 16,
+   "quote": "fix `wave8-r0-brief.md` L20's `+28.21 pp` typo",
+   "ordinals": [
+    "B36"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "brief number misprint"
+  },
+  {
+   "finding_id": "w8_neon-06",
+   "list_id": "w8_neon",
+   "source_line": 18,
+   "quote": "does not beat `Flat_BGEM3_TM=91.67%`",
+   "ordinals": [
+    "B36"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "primary virgin contrasts fail Holm; claims must be restricted"
+  },
+  {
+   "finding_id": "w8_opus-12",
+   "list_id": "w8_opus",
+   "source_line": 28,
+   "quote": "**Primary virgin test fails Holm.**",
+   "ordinals": [
+    "B36"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "primary virgin test fails Holm"
+  },
+  {
+   "finding_id": "w8_opus-13",
+   "list_id": "w8_opus",
+   "source_line": 29,
+   "quote": "**KU gain is the embedder.**",
+   "ordinals": [
+    "B36"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "KU gain misattributed to EK5"
+  },
+  {
+   "finding_id": "w8_opus-14",
+   "list_id": "w8_opus",
+   "source_line": 29,
+   "quote": "Its p=5e-5 lies outside the Holm family.",
+   "ordinals": [
+    "B36"
+   ],
+   "defect_class": "C14",
+   "alignment_note": "KU p-value outside multiplicity family"
+  },
+  {
+   "finding_id": "w8_opus-15",
+   "list_id": "w8_opus",
+   "source_line": 30,
+   "quote": "is misattributed.** That Holm p is v4 vs **MiniLM**.",
+   "ordinals": [
+    "B36"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "+5.13pp Holm p misattributed"
+  },
+  {
+   "finding_id": "w8_opus-16",
+   "list_id": "w8_opus",
+   "source_line": 31,
+   "quote": "**LME-500 carries a do-not-cite label.**",
+   "ordinals": [
+    "B36"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "do-not-cite pooled DEV number headlined"
+  },
+  {
+   "finding_id": "w8_opus-17",
+   "list_id": "w8_opus",
+   "source_line": 32,
+   "quote": "**2.78× tokens** is a cross-run ratio.",
+   "ordinals": [
+    "B36"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "cross-run ratio"
+  },
+  {
+   "finding_id": "w8_opus-18",
+   "list_id": "w8_opus",
+   "source_line": 33,
+   "quote": "is contradicted by ties",
+   "ordinals": [
+    "B36"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "K2 compliance flag true but artifact shows ties"
+  },
+  {
+   "finding_id": "w8_sol-13",
+   "list_id": "w8_sol",
+   "source_line": 15,
+   "quote": "The compliance flag checks only the primary Flat BGE-M3 comparison.",
+   "ordinals": [
+    "B36"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "K2 compliance flag broader than what it checks"
+  },
+  {
+   "finding_id": "w8_sol-14",
+   "list_id": "w8_sol",
+   "source_line": 15,
+   "quote": "LME-500 averages 2,191 tokens versus 6,088 on historical J4 TEST N=251. Name both denominators.",
+   "ordinals": [
+    "B36"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "2.78x cross-run ratio denominators"
+  },
+  {
+   "finding_id": "w8_sol-15",
+   "list_id": "w8_sol",
+   "source_line": 17,
+   "quote": "so the nominal token control is loose",
+   "ordinals": [
+    "B36"
+   ],
+   "defect_class": "C08",
+   "alignment_note": "token-matched control not matched"
+  },
+  {
+   "finding_id": "w8_sol-16",
+   "list_id": "w8_sol",
+   "source_line": 17,
+   "quote": "sits outside the four-test Holm family",
+   "ordinals": [
+    "B36"
+   ],
+   "defect_class": "C14",
+   "alignment_note": "KU p-value outside multiplicity family"
+  },
+  {
+   "finding_id": "w8_grok-07",
+   "list_id": "w8_grok",
+   "source_line": 36,
+   "quote": "State GRPO−SFT `lcb_975<0`, `false_commit_on_U=0.875`, `contested_successor≈0`, and max zero-std fraction `1.0`.",
+   "ordinals": [
+    "B39"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "adverse endpoints (false commits, zero-std max) undisclosed"
+  },
+  {
+   "finding_id": "w8_grok-08",
+   "list_id": "w8_grok",
+   "source_line": 36,
+   "quote": "Lead D4 with SFT. State GRPO",
+   "ordinals": [
+    "B39"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "lift credited to GRPO rather than SFT (split from same line)"
+  },
+  {
+   "finding_id": "w8_neon-07",
+   "list_id": "w8_neon",
+   "source_line": 22,
+   "quote": "**Defect:** `investor-thesis` L75 cites `max_new_tokens=256`",
+   "ordinals": [
+    "B39"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "thesis 256 vs code/manifest 272"
+  },
+  {
+   "finding_id": "w8_neon-08",
+   "list_id": "w8_neon",
+   "source_line": 38,
+   "quote": "`D4` `87.5%` false-commit rate",
+   "ordinals": [
+    "B39"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "false-commit rate must be disclosed"
+  },
+  {
+   "finding_id": "w8_opus-19",
+   "list_id": "w8_opus",
+   "source_line": 40,
+   "quote": "but the abort flag tests the mean (0.1667). Disclose both.",
+   "ordinals": [
+    "B39"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "max zero-std 1.0 undisclosed"
+  },
+  {
+   "finding_id": "w8_opus-20",
+   "list_id": "w8_opus",
+   "source_line": 41,
+   "quote": "**Critical — false commits on U.**",
+   "ordinals": [
+    "B39"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "false_commit_on_U 0.875 undisclosed"
+  },
+  {
+   "finding_id": "w8_opus-21",
+   "list_id": "w8_opus",
+   "source_line": 43,
+   "quote": "Moat claim #3 (\"verifiable 3-valued reward\") is unsupported.",
+   "ordinals": [
+    "B39"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "moat claim overstated"
+  },
+  {
+   "finding_id": "w8_opus-22",
+   "list_id": "w8_opus",
+   "source_line": 44,
+   "quote": "**Format confound.** Bare 30B `valid_format_rate = 0.0`",
+   "ordinals": [
+    "B39"
+   ],
+   "defect_class": "C08",
+   "alignment_note": "format-confounded comparator"
+  },
+  {
+   "finding_id": "w8_opus-23",
+   "list_id": "w8_opus",
+   "source_line": 45,
+   "quote": "**D1.** SFT is 100% on every D1 regime, so D1 is an SFT result.",
+   "ordinals": [
+    "B39"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "D1 credited to GRPO / zero-shot wording"
+  },
+  {
+   "finding_id": "w8_sol-17",
+   "list_id": "w8_sol",
+   "source_line": 21,
+   "quote": "K4 requires 256 completion tokens and the thesis advertises 256.",
+   "ordinals": [
+    "B39"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "thesis/spec 256 vs run 272"
+  },
+  {
+   "finding_id": "w8_sol-18",
+   "list_id": "w8_sol",
+   "source_line": 23,
+   "quote": "Attribute the observed lift primarily to SFT.",
+   "ordinals": [
+    "B39"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "lift credited to GRPO rather than SFT"
+  },
+  {
+   "finding_id": "w8_grok-09",
+   "list_id": "w8_grok",
+   "source_line": 27,
+   "quote": "is a substring scan of `formatted_context`",
+   "ordinals": [
+    "B38"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "stale_resurrection metric name vs computation"
+  },
+  {
+   "finding_id": "w8_grok-10",
+   "list_id": "w8_grok",
+   "source_line": 37,
+   "quote": "Rename `stale_resurrection_*` before registry seal.",
+   "ordinals": [
+    "B38"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "rename mislabelled metric"
+  },
+  {
+   "finding_id": "w8_neon-09",
+   "list_id": "w8_neon",
+   "source_line": 26,
+   "quote": "footnote Suite B ran `ChelatedConversationalV3` + inline reranker",
+   "ordinals": [
+    "B38"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "Suite B ran V3 not V4 as labelled"
+  },
+  {
+   "finding_id": "w8_neon-10",
+   "list_id": "w8_neon",
+   "source_line": 33,
+   "quote": "Deck Slide 3 omits Suite A's raw-prose extraction cost (`6,883` toks)",
+   "ordinals": [
+    "B38"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "raw-prose extraction cost omitted"
+  },
+  {
+   "finding_id": "w8_neon-11",
+   "list_id": "w8_neon",
+   "source_line": 33,
+   "quote": "and `[SUPERSEDED]` audit-note disclosure",
+   "ordinals": [
+    "B38"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "stale-resurrection 0.7833 audit-note disclosure (aligned with metric-label defect)"
+  },
+  {
+   "finding_id": "w8_opus-24",
+   "list_id": "w8_opus",
+   "source_line": 50,
+   "quote": "But the manifest's Clopper-Pearson lcb₉₅ is **≤ 0 against 3 of 4 arms**",
+   "ordinals": [
+    "B38"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "conservative intervals include zero, undisclosed"
+  },
+  {
+   "finding_id": "w8_opus-25",
+   "list_id": "w8_opus",
+   "source_line": 51,
+   "quote": "The margin is 15 U items in a self-authored corpus.",
+   "ordinals": [
+    "B38"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "Suite A margin overstated"
+  },
+  {
+   "finding_id": "w8_opus-26",
+   "list_id": "w8_opus",
+   "source_line": 52,
+   "quote": "Chelated `stale_resurrection = 0.7833` contradicts Regime II's \"$0 ops.\"",
+   "ordinals": [
+    "B38"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "metric vs prose contradiction"
+  },
+  {
+   "finding_id": "w8_opus-27",
+   "list_id": "w8_opus",
+   "source_line": 56,
+   "quote": "The \"70×–207×\" slogan omits Mem0 infer=False at **1.56×**.",
+   "ordinals": [
+    "B38"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "token-ratio slogan omits weakest comparator"
+  },
+  {
+   "finding_id": "w8_opus-28",
+   "list_id": "w8_opus",
+   "source_line": 57,
+   "quote": "Chelated read p50 is **521 ms vs 5–14 ms**, which is omitted.",
+   "ordinals": [
+    "B38"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "adverse read latency omitted"
+  },
+  {
+   "finding_id": "w8_opus-29",
+   "list_id": "w8_opus",
+   "source_line": 59,
+   "quote": "assigns our emulations' behaviour to real vendors",
+   "ordinals": [
+    "B38"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "emulation behaviour presented as vendor behaviour"
+  },
+  {
+   "finding_id": "w8_sol-19",
+   "list_id": "w8_sol",
+   "source_line": 27,
+   "quote": "Three conservative Clopper–Pearson intervals include zero.",
+   "ordinals": [
+    "B38"
+   ],
+   "defect_class": "C05",
+   "alignment_note": "conservative intervals include zero (judgement: stated in a corrections memo)"
+  },
+  {
+   "finding_id": "w8_sol-20",
+   "list_id": "w8_sol",
+   "source_line": 27,
+   "quote": "excluded from 123.1 ms median ack",
+   "ordinals": [
+    "B38"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "extraction cost excluded from ack latency headline"
+  },
+  {
+   "finding_id": "w8_sol-21",
+   "list_id": "w8_sol",
+   "source_line": 27,
+   "quote": "Disclose live Mem0’s MiniLM encoder, wrapper repairs and uncounted retry failures.",
+   "ordinals": [
+    "B38"
+   ],
+   "defect_class": "C08",
+   "alignment_note": "comparator configuration/repairs undisclosed"
+  },
+  {
+   "finding_id": "w8_sol-22",
+   "list_id": "w8_sol",
+   "source_line": 27,
+   "quote": "Visibility clocks cover immediate and post-consolidation states, with no intermediate checkpoints.",
+   "ordinals": [
+    "B38"
+   ],
+   "defect_class": "C11",
+   "alignment_note": "coverage gap in visibility checkpoints"
+  },
+  {
+   "finding_id": "w8_grok-11",
+   "list_id": "w8_grok",
+   "source_line": 29,
+   "quote": "Write rates `620 / 740 / 580` and Mem0 read `1,900` are not Suite A",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C13",
+   "alignment_note": "TCO coefficients presented as measured but unsourced"
+  },
+  {
+   "finding_id": "w8_grok-12",
+   "list_id": "w8_grok",
+   "source_line": 29,
+   "quote": "`server.py` calls those defaults measured.",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C13",
+   "alignment_note": "assumed coefficients labelled measured"
+  },
+  {
+   "finding_id": "w8_grok-13",
+   "list_id": "w8_grok",
+   "source_line": 29,
+   "quote": "The workbench OpenSearch arm is only `13,500` tokens; the deck defaults to `2,178.6`.",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "workbench vs deck default drift"
+  },
+  {
+   "finding_id": "w8_grok-14",
+   "list_id": "w8_grok",
+   "source_line": 29,
+   "quote": "The close says `85%+` and `8B-sidecar`",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "margin and sidecar size overstated in close"
+  },
+  {
+   "finding_id": "w8_grok-15",
+   "list_id": "w8_grok",
+   "source_line": 29,
+   "quote": "`index.html` still denies an accuracy edge vs Mem0 `infer=True`.",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C04",
+   "alignment_note": "stale workbench disclaimer"
+  },
+  {
+   "finding_id": "w8_grok-16",
+   "list_id": "w8_grok",
+   "source_line": 15,
+   "quote": "`16/18` and `51.2x` CAR are absent from this manifest.",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C07",
+   "alignment_note": "out-of-bundle citations without receipt"
+  },
+  {
+   "finding_id": "w8_neon-12",
+   "list_id": "w8_neon",
+   "source_line": 29,
+   "quote": "**Wrong `Mem0` read-token input:**",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C13",
+   "alignment_note": "Mem0 1,900 read tokens contradict measured"
+  },
+  {
+   "finding_id": "w8_neon-13",
+   "list_id": "w8_neon",
+   "source_line": 30,
+   "quote": "Mark `620/740/580` write tokens and `15%/10%` incident rates illustrative",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C13",
+   "alignment_note": "assumptions must be labelled"
+  },
+  {
+   "finding_id": "w8_neon-14",
+   "list_id": "w8_neon",
+   "source_line": 30,
+   "quote": "show (or label equal-offset) embedding, ANN compute, and base storage",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C11",
+   "alignment_note": "TCO omits embed/ANN/storage lines"
+  },
+  {
+   "finding_id": "w8_neon-15",
+   "list_id": "w8_neon",
+   "source_line": 31,
+   "quote": "default OpenSearch to `13,500` read tokens (`$4.21M`) instead of Deck's `2,178.6`",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "workbench vs deck default drift"
+  },
+  {
+   "finding_id": "w8_neon-16",
+   "list_id": "w8_neon",
+   "source_line": 31,
+   "quote": "cites stale `\"46.7% D1 abstention\"` vs `33.33%`",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C04",
+   "alignment_note": "stale workbench number"
+  },
+  {
+   "finding_id": "w8_neon-17",
+   "list_id": "w8_neon",
+   "source_line": 10,
+   "quote": "`index.html` Tab 2 hardcodes stale Wave-3 SciFact numbers",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C04",
+   "alignment_note": "stale workbench numbers"
+  },
+  {
+   "finding_id": "w8_neon-18",
+   "list_id": "w8_neon",
+   "source_line": 32,
+   "quote": "**Margin contradiction:**",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "85% margin prose contradicts table"
+  },
+  {
+   "finding_id": "w8_opus-30",
+   "list_id": "w8_opus",
+   "source_line": 6,
+   "quote": "is **untracked**, so the SHA does not reproduce the run",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C07",
+   "alignment_note": "producing code untracked; git_sha not reproducing"
+  },
+  {
+   "finding_id": "w8_opus-31",
+   "list_id": "w8_opus",
+   "source_line": 61,
+   "quote": "The **coefficients are not measured**:",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C13",
+   "alignment_note": "TCO coefficients not measured"
+  },
+  {
+   "finding_id": "w8_opus-32",
+   "list_id": "w8_opus",
+   "source_line": 64,
+   "quote": "`server.py:305` labels them \"Measured\".",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C13",
+   "alignment_note": "assumed coefficients labelled measured"
+  },
+  {
+   "finding_id": "w8_opus-33",
+   "list_id": "w8_opus",
+   "source_line": 65,
+   "quote": "`test_workbench_server.py:85-90` asserts the ranking.",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C12",
+   "alignment_note": "test asserts the ranking rather than arithmetic"
+  },
+  {
+   "finding_id": "w8_opus-34",
+   "list_id": "w8_opus",
+   "source_line": 66,
+   "quote": "K6's embed/ANN terms are missing.",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C11",
+   "alignment_note": "TCO omits embed/ANN"
+  },
+  {
+   "finding_id": "w8_opus-35",
+   "list_id": "w8_opus",
+   "source_line": 67,
+   "quote": "contradicting the thesis's \"multi-hundred-thousand-dollar wall.\"",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "migration cost prose contradicts measured"
+  },
+  {
+   "finding_id": "w8_opus-36",
+   "list_id": "w8_opus",
+   "source_line": 82,
+   "quote": "Give out-of-bundle citations (353,105 WFS checks, 16/18 OOD",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C07",
+   "alignment_note": "out-of-bundle citations without receipt"
+  },
+  {
+   "finding_id": "w8_sol-23",
+   "list_id": "w8_sol",
+   "source_line": 29,
+   "quote": "Competitor batching, manual-audit shares and prices are assumptions.",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C13",
+   "alignment_note": "TCO coefficients are assumptions"
+  },
+  {
+   "finding_id": "w8_sol-24",
+   "list_id": "w8_sol",
+   "source_line": 29,
+   "quote": "Recurring embedding, ANN, base storage, output tokens and bridge fitting are omitted.",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C11",
+   "alignment_note": "TCO omits cost lines"
+  },
+  {
+   "finding_id": "w8_sol-25",
+   "list_id": "w8_sol",
+   "source_line": 33,
+   "quote": "remove production margin and drop-in guarantees",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "margin and drop-in guarantee overstated"
+  },
+  {
+   "finding_id": "w8_sol-26",
+   "list_id": "w8_sol",
+   "source_line": 34,
+   "quote": "The API omits raw prose and defaults to 13,500 OpenSearch read tokens.",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C10",
+   "alignment_note": "workbench vs deck default drift"
+  },
+  {
+   "finding_id": "w8_sol-27",
+   "list_id": "w8_sol",
+   "source_line": 34,
+   "quote": "Label the NumPy migration simulator and its legacy-shard-only stop check explicitly.",
+   "ordinals": [
+    "XC"
+   ],
+   "defect_class": "C03",
+   "alignment_note": "simulator not labelled as simulator"
+  }
+ ],
+ "splits_and_judgement_calls": [
+  "Ordinal mapping from wave8-r0-brief.md L12-L48 and scorecard bundle_id: Track A=B36 wave6_pm1b_v4, Track B=B37 wave6_d2, Track C=B38 wave6_pm3_v2, Track D=B39 wave6_d4, Track E=B40 wave6_d5.",
+  "The brief is a claim summary with no prior defect list, so brief_preseeds_defects=false. All four memos answer the same brief; none cites another memo.",
+  "Wave-7 deliverable defects that misstate one bundle's receipt map to that bundle; TCO/workbench/margin/untracked-code defects map to XC (coding_rules.md rule 3).",
+  "Brief digest misprints (opus L6, sol L3) map to B37:C07 and B40:C07; neon L38 'exact Track E SHA in verified_registry.json' aligned to B40:C07 (judgement call: registry binding, not the brief).",
+  "grok L35 'Cite 6,088 from the J4 receipt' aligned to B36:C03 with opus L32 and sol L15 (same 2.78x cross-run ratio), though grok frames it as provenance.",
+  "neon L33 [SUPERSEDED] disclosure aligned with grok/opus stale_resurrection metric-label defect as B38:C10.",
+  "sol L7 'Direct Qdrant achieved 218.79 Hz ...' counted as B40:C08 saturated baseline (judgement: neutral phrasing inside the timing-boundary corrections).",
+  "sol L27 Clopper-Pearson counted as B38:C05 (judgement, same reason).",
+  "Excluded under coding rule 1 (neutral restatement): sol L11 SciFact null and FiQA -2.08pp; neon L22 bold 'incremental GRPO-SFT is non-significant'; neon L16 '1/N ties' (explicitly excused); grok L19 tie counts; sol L17 Holm .0766; sol L21 and neon L22 zero-std max.",
+  "Coarse class IDs collapse distinct defects of one class in one bundle (B40:C03 holds the OpenSearch label, service-RTT headline and 90% fallback). This is the preregistered unit; it raises pairwise overlap."
+ ]
+}
