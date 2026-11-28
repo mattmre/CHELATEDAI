@@ -4,48 +4,39 @@ on:
   push:
     paths:
       - 'computational_storage_poc/firmware/**'
-      - '.github/workflows/build_firmware.yml'
   pull_request:
     paths:
       - 'computational_storage_poc/firmware/**'
-      - '.github/workflows/build_firmware.yml'
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: [self-hosted, linux, arm64, spark2]
-    
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Install ARM GCC & CMake
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gcc-arm-none-eabi libnewlib-arm-none-eabi build-essential cmake
+      - name: Setup Pico SDK
+        run: |
+          if [ ! -d "$HOME/pico-sdk" ]; then
+            git clone https://github.com/raspberrypi/pico-sdk.git "$HOME/pico-sdk" --branch master --depth 1
+            git -C "$HOME/pico-sdk" submodule update --init
+          fi
+          echo "PICO_SDK_PATH=$HOME/pico-sdk" >> $GITHUB_ENV
 
-    - name: Setup Pico SDK
-      run: |
-        cd ~
-        git clone https://github.com/raspberrypi/pico-sdk.git --branch master --depth 1
-        cd pico-sdk
-        git submodule update --init
-        echo "PICO_SDK_PATH=$HOME/pico-sdk" >> $GITHUB_ENV
+      - name: Build Firmware
+        working-directory: computational_storage_poc/firmware
+        run: |
+          rm -rf build && mkdir build && cd build
+          cmake ..
+          make -j$(nproc)
 
-    - name: Build Firmware
-      working-directory: computational_storage_poc/firmware
-      run: |
-        mkdir build
-        cd build
-        cmake ..
-        make -j$(nproc)
-
-    - name: Upload UF2 Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: computational_storage_firmware
-        path: |
-          computational_storage_poc/firmware/build/*.uf2
-          computational_storage_poc/firmware/build/*.elf
-          computational_storage_poc/firmware/build/*.bin
-        retention-days: 14
+      - name: Upload UF2 Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: computational_storage_firmware
+          path: |
+            computational_storage_poc/firmware/build/*.uf2
+            computational_storage_poc/firmware/build/*.elf
+            computational_storage_poc/firmware/build/*.bin
+          retention-days: 14
