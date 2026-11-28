@@ -1,0 +1,72 @@
+{
+  "calibration_sweep": {
+    "target_0.005": {
+      "clean_tpr": 0.024,
+      "eval_sib_cp_ub95": 0.011911,
+      "eval_sib_fp": 0,
+      "eval_sib_fpr": 0.0,
+      "eval_sib_n": 250,
+      "n_cal_neg": 750,
+      "r2b_nfkc_bypass_rate": 0.984,
+      "r2b_raw_bypass_rate": 0.984,
+      "rcps_cal_cp_ub95": 0.003986,
+      "rcps_k": 0,
+      "threshold": 0.739115
+    },
+    "target_0.01": {
+      "clean_tpr": 0.088,
+      "eval_sib_cp_ub95": 0.030721,
+      "eval_sib_fp": 3,
+      "eval_sib_fpr": 0.012,
+      "eval_sib_n": 250,
+      "n_cal_neg": 750,
+      "r2b_nfkc_bypass_rate": 0.912,
+      "r2b_raw_bypass_rate": 0.936,
+      "rcps_cal_cp_ub95": 0.00837,
+      "rcps_k": 2,
+      "threshold": 0.679516
+    },
+    "target_0.02": {
+      "clean_tpr": 0.176,
+      "eval_sib_cp_ub95": 0.056997,
+      "eval_sib_fp": 8,
+      "eval_sib_fpr": 0.032,
+      "eval_sib_n": 250,
+      "n_cal_neg": 750,
+      "r2b_nfkc_bypass_rate": 0.816,
+      "r2b_raw_bypass_rate": 0.848,
+      "rcps_cal_cp_ub95": 0.019164,
+      "rcps_k": 8,
+      "threshold": 0.607751
+    }
+  },
+  "claim_registry_sha256": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "elapsed_seconds": 200.21,
+  "experiment_id": "pv7_w24_10b_pm6_ncal750_spark2",
+  "gates": {
+    "G1_n_eval_sib_ge_200": true,
+    "G2_r2b_nfkc_bypass_lt_5pct": true,
+    "G3_clean_tpr_ge_95pct": true,
+    "G4_live_gateway_executed": true,
+    "G5_eval_sib_fpr_le_2pct": true,
+    "G6_eval_sib_cp_ub95_le_2pct": false
+  },
+  "git_commit_sha": "6cdbf6ac86b2ac3256609ea6200082422b97851c",
+  "hardware_cohort": "spark2_gb10:NVIDIA GB10",
+  "live_gateway_primary_target_0.005": {
+    "clean_tpr": 1.0,
+    "eval_sibling_cp_ub95": 0.030721,
+    "eval_sibling_fp": 3,
+    "eval_sibling_fpr": 0.012,
+    "ledger_chain_verified": true,
+    "ledger_entries": 259,
+    "live_pm6_gateway_executed": true,
+    "r2b_nfkc_bypass_rate": 0.0,
+    "r2b_raw_bypass_rate": 0.984,
+    "threshold": 0.739115
+  },
+  "n_cal_neg": 750,
+  "n_eval_sibling_benign": 250,
+  "n_vault": 125,
+  "timestamp_utc": "2026-11-26T14:59:45.293688+00:00"
+}

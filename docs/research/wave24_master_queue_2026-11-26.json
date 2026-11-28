@@ -1,0 +1,184 @@
+{
+  "schema_version": "wave24.master_queue.v1",
+  "created_at_utc": "2026-11-26T12:15:00Z",
+  "updated_at_utc": "2026-11-26T17:35:00Z",
+  "spine_branch": "pv7/w16-core",
+  "policy": {
+    "github_paid_billing": "FORBIDDEN_FOREVER_ZERO_DOLLAR_ONLY",
+    "compute_preference": [
+      "dgx_spark_gx10_6724_lan_10.0.0.194",
+      "dgx_spark_gx10_37c3_100.109.172.18",
+      "dgx_spark_gx10_eba1_100.78.162.54_colab_ultra_dispatcher"
+    ],
+    "human_time_scheduling": "STRICTLY_LAST_P3_ONLY",
+    "brutal_honesty_rulebook": "v3.3",
+    "never_touch_paths": [
+      "*sealed_key*",
+      "*blind-followup*",
+      "pm4_human_audit_100_blind_sheet.csv"
+    ]
+  },
+  "summary": {
+    "automated_compute_and_formal_lanes_completed": "13/13",
+    "bonus_followups_completed": ["W24-10b", "W24-13b"],
+    "verify_all_offline_full_formal": "PASS (formal_tier=PASS, 18/18 verifiers, 82 Lean 4 theorems, 25540 nanoda_bin declarations, 0 sorry/native_decide)",
+    "pending_owner_approval_outward_actions": "W24-04 (push 3 P0 branches + PR #368/#369/#295/#376 hygiene)",
+    "pending_human_time_strictly_last": ["W24-15 (PM-4b human grading, ~6h)", "W24-16 (external partner trial)"]
+  },
+  "items": [
+    {
+      "id": "W24-01",
+      "tier": "P0",
+      "title": "Zero-Cost CI Replacement (Free Self-Hosted Spark 2 Runner + Zero Paid GitHub Actions)",
+      "compute_target": "gx10-6724 (linux-arm64 self-hosted runner)",
+      "status": "COMPLETED",
+      "cost_usd": 0,
+      "evidence": "Runner id=21 (spark2-gx10-6724, v2.338.2, labels self-hosted,Linux,ARM64,spark2) ONLINE via systemd user service; branch ci/w24-zero-billing-self-hosted-spark-runner (f245d923, off origin/main) switches all 5 workflows off ubuntu-latest. Confirmed Ruleset 13081256 has 0 required_status_checks."
+    },
+    {
+      "id": "W24-02",
+      "tier": "P0",
+      "title": "Fix CD-W22-11-01 User-Facing Stale Reason Telemetry in Compliance Copilot Engine",
+      "compute_target": "isolated worktree fix/w24-cd-w22-11-01-canonical-reason",
+      "status": "COMPLETED",
+      "evidence": "Commit 5b0b604b canonicalizes lines 785, 929, 1086 via export_canonical_ek5_audit_trace + regression test; 63/63 unit tests PASS (2.03s)."
+    },
+    {
+      "id": "W24-03",
+      "tier": "P0",
+      "title": "Split mlr-v1 (09184c83) Out of PR #364 into Clean Signed Linear PR Against main",
+      "compute_target": "isolated worktree fix/w24-mlr-v1-canonical-ndcg",
+      "status": "COMPLETED",
+      "evidence": "Commit 692b44aa off origin/main (38 files, linear history, chelation_events.jsonl stripped); 141/141 unit tests PASS."
+    },
+    {
+      "id": "W24-04",
+      "tier": "P0",
+      "title": "PR Hygiene: Push P0 Branches + Land #369 (Opt-In D-06), Finish #368 (3 Float Tie Sites), Close #295, Clear #376 to BHS 100",
+      "compute_target": "local / Spark 2 self-hosted CI",
+      "status": "QUEUED_READY_FOR_OWNER_PUSH",
+      "evidence": "All 3 P0 branches are clean, tested, and ready locally; awaiting owner approval for outward git push / PR mutations."
+    },
+    {
+      "id": "W24-05",
+      "tier": "P1",
+      "lane": "Lane 8 (#49 SDK Cold-Start)",
+      "title": "Bundle #49 Live 3-Family Cold-Start with 7B-Class Open Coding Models",
+      "compute_target": "colab:NVIDIA L4 (0.37 CU, session closed cleanly)",
+      "status": "COMPLETED",
+      "artifact": "artifacts/pv7_w24_05_b49_sdk_7b_coders/w24_05_b49_sdk_7b_coders_manifest.json",
+      "evidence": "28/36 strict pass (qwen2.5-coder-7b: 8/12, phi-4-mini: 10/12, deepseek-coder-6.7b: 10/12 — all 3 families >=8/12); 34/36 (94.4%) functional_ok (Qwen 12/12, Phi 12/12, DeepSeek 10/12); 0 leaks, 0 private imports; all 6 misses on Qwen/Phi were omitting canary_blocked on unmodified README (which lacks a negotiate_capability code snippet)."
+    },
+    {
+      "id": "W24-06",
+      "tier": "P1",
+      "lane": "Lane 1 (W22-15 Fast-Path Serving)",
+      "title": "W22-15 Fast-Path 0.5B Extraction on vLLM + Deterministic Pre-Filter",
+      "compute_target": "gx10-6724 (NVIDIA GB10, vllm/vllm-openai:v0.27.1)",
+      "status": "COMPLETED",
+      "artifact": "artifacts/pv7_w24_06_vllm_spark2/w24_06_vllm_fastpath_manifest.json",
+      "evidence": "HF eager bf16 1176.75 ms/case -> vLLM unrouted 59.30 ms/case -> vLLM + deterministic pre-filter 29.07 ms/case (p95 58.34 ms, batched 1.11 ms/case; 40.48x faster than HF eager, 2.04x faster than unrouted vLLM), 98.22% binary stance accuracy at 28.44% trigger rate. Clears G1 (<=1500 ms) & stretch (<=250 ms). Scope: binary ASSERT/SUPERSEDE on #55 120 wild families; D9-A merged weights drop into identical 0.5B vLLM serving stack."
+    },
+    {
+      "id": "W24-07",
+      "tier": "P1",
+      "lane": "Lane 2 (W22-05 / #55 EK5 vs SQL)",
+      "title": "Fix EK5 classify_high_similarity_pair Acronym Bug + Cyclic Multi-Hop & CITES_AUDIT Benchmark vs SQLite",
+      "compute_target": "gx10-6724 CPU (1.03s)",
+      "status": "COMPLETED",
+      "artifact": "artifacts/pv7_w24_07_spark2/w24_07_results.json",
+      "evidence": "Part A: #55 wild echo recall 0.00% -> 60.00% at 100.00% precision (0 FP, 5/5 conflict guards). Part B: at N=2000 cyclic/copy/CITES_AUDIT nodes, EK5_v3 runs in 13.4 ms (0 oracle mismatches, 200/200 unfounded positive cycles rejected, 200/200 CITES_AUDIT preserved) vs SQLite recursive CTE 711.2 ms (53x slower) and 0/200 unfounded cycles detected."
+    },
+    {
+      "id": "W24-08",
+      "tier": "P1",
+      "lane": "Lane 3 (W22-07 lambda>0 + W22-10 N3)",
+      "title": "Fine-Grid Provenance Signal Crossover (lambda*) + W22-10 N3 Swarm Threshold",
+      "compute_target": "gx10-6724 CPU (180.23s)",
+      "status": "COMPLETED",
+      "artifact": "artifacts/pv7_w24_08_spark2/w24_08_results.json",
+      "evidence": "Part A: Sharp crossover at lambda*=0.10 (below 0.10: KILL 7-8/18; at lambda>=0.10: ADVANCE_T_D 18/18 B=1 wins, harm drops 0.1764->0.1492 vs flat A5 ~0.172). Part B (N3 Swarm): 12/45 strict wins at lambda>0 (M=2, 4), hits flood-dilution tie boundary at M>=8, B=1."
+    },
+    {
+      "id": "W24-09",
+      "tier": "P1",
+      "lane": "Lane 4 (W22-04 Drift + Adaptive Backfill + W22-06b)",
+      "title": "12-Domain Online Prompt/Query Drift (ZeroMu EMA vs Frozen CenteredProcrustes), CSLS + Unlabeled Adaptive Backfill, and W22-06(b) 3 Extra Encoders",
+      "compute_target": "gx10-6724 (NVIDIA GB10, 1127s)",
+      "status": "COMPLETED",
+      "artifact": "artifacts/pv7_w24_09_drift_spark2/w24_09_manifest.json",
+      "evidence": "Part C (W22-06b 3 new encoders): massive CSLS merge replication (+35.42pp bge-base-768, +31.10pp bge-large-1024, +38.80pp e5-large-1024), while CenteredProcrustes+CSLS beats ZeroMu+CSLS by +1.49..+2.33pp. Part B (12 domains, N=1865 pooled queries): BOTH 20% backfill+CSLS arms decisively clear Tango NI vs -0.0500 native oracle (adaptive LCB95=-0.0120 z=7.76 p=4.2e-15, uniform LCB95=-0.0150 z=7.33 p=1.2e-13; adaptive wins 8/12 domains incl. +3.08pp on climate-fever, mean nDCG delta -0.003pp CI [-0.66,+0.77]pp). Part A (Honest Null): ZeroMu causal EMA did NOT beat frozen CenteredProcrustes under uniform prompt-wrapper shift (-0.61pp, 6/12, CI [-1.57,+0.20]pp)."
+    },
+    {
+      "id": "W24-10",
+      "tier": "P1",
+      "lane": "Lane 6 (W22-18 / #53 PM-6 Firewall)",
+      "title": "Public-Corpus Real Sibling Benigns (N=250) + Unicode NFKC/Confusable Defense + Live #53 Streaming Gateway (+ W24-10b N_cal=750)",
+      "compute_target": "gx10-37c3 (311s) + gx10-6724 (W24-10b N_cal=750)",
+      "status": "COMPLETED",
+      "artifact": "artifacts/pv7_w24_10_pm6_spark1/w24_10_pm6_gateway_manifest.json",
+      "followup_artifact": "artifacts/pv7_w24_10b_pm6_ncal750_spark2/w24_10b_pm6_ncal750_manifest.json",
+      "evidence": "W24-10 (N_cal=350): 100% clean TPR, R2b bypass 93.6%->0.00%, live gateway chain=259, sibling FPR 6/250=2.40%. W24-10b (N_cal=750, target_0.005): sibling FPR drops to 3/250=1.20% (clears <=2.0% G5, CP_UB95=3.07%), 100% clean TPR, R2b bypass 98.4%->0.00%. Honest ablation: ZeroMu semantic layer alone had 0/250 FPR (CP_UB95=1.19%) with 2.4% TPR (17.6% at target_0.02); NFKC-normalized wrap_stream 5-token span guard drove both 100% recall and all 3/250 sibling FPs."
+    },
+    {
+      "id": "W24-11",
+      "tier": "P2",
+      "lane": "Lane 5 (W22-11 Large-Graph + Lean 4 T-Rs / CW-1)",
+      "title": "Large-Graph (50-1,000 Node) Incremental WFS Deletion Stress + Lean 4 CW-1 Formalization & nanoda_bin Verification",
+      "compute_target": "gx10-6724 CPU (0.77s stress) + Local Lean 4 v4.36.0-rc1 & nanoda_bin",
+      "status": "COMPLETED",
+      "artifact": "artifacts/pv7_w24_11_spark2/w24_11_results.json",
+      "formal_module": "formal/ChelatedFormal/Theorem5_IncrementalWFS_CW1.lean",
+      "evidence": "Stress: 166,700 node checkpoints (N=50..1,000, 580 cyclic/deletion batches), 0 mismatches, 0.14 ms mean incremental apply_mutation at N=1,000. Formal: Theorem5_IncrementalWFS_CW1.lean proves wfs_frame_isolation, incrementalWfsSplice_sound (CW-1 under arbitrary deletions/mutations in affected cone A), unfounded_pos_cycle_false, delete_refute_gamma_mono, delete_dep_posClosure_mono, and non-vacuity witness with 0 sorry / 0 native_decide; verify_all_offline.py --full-formal PASS (82 theorems, 25,540 nanoda_bin declarations, Spec.lean SHA-256 lock intact)."
+    },
+    {
+      "id": "W24-12",
+      "tier": "P2",
+      "lane": "Lane 7a (#52 Multi-Layer QSCCI)",
+      "title": "Multi-Layer (k=1,4,8,16 across Layers 11-18) Causal-Gradient QSCCI Restoration vs CAA & Sham",
+      "compute_target": "gx10-37c3 (NVIDIA GB10, 425s)",
+      "status": "COMPLETED",
+      "artifact": "artifacts/pv7_w24_12_qscci_spark1/w24_12_multilayer_qscci_manifest.json",
+      "evidence": "Overcomes single-layer L11 restoration null (-15.4%/-7.5%): multi-layer L11-18 QSCCI achieves +34.62% restoration on Qwen2.5-1.5B (CI [+0.0625,+0.2188] vs CAA -19.23%, sham -7.69%) and +60.00% (k=1) / +62.50% (k=4, CI [+0.3125,+0.4844]) on Qwen3.5-2B-Base (vs CAA +17.50%, sham 0.00%)."
+    },
+    {
+      "id": "W24-13",
+      "tier": "P2",
+      "lane": "Lane 7b (W22-09 True Recurrent/SSM State)",
+      "title": "Exploratory T-Rn Test on Genuine Frozen Gated-DeltaNet Recurrent States (Qwen/Qwen3.5-2B-Base, 28 -> 2,053 Suffix Tokens)",
+      "compute_target": "gx10-6724 (NVIDIA GB10, 55.2s + 60.0s W24-13b)",
+      "status": "COMPLETED",
+      "artifact": "artifacts/pv7_w24_13_deltanet_spark2/w24_13_deltanet_retraction_manifest.json",
+      "followup_artifact": "artifacts/pv7_w24_13b_deltanet_long_spark2/w24_13b_deltanet_long_decay_manifest.json",
+      "evidence": "Breakthrough on 18 real Gated-DeltaNet (1,16,128,128) + 6 full-attn layers: W24-13 (28..325 tok) hit 97.2%..100.5% recovery, KL=0.013..0.017, 9.1x..13.3x speedup. W24-13b (325 -> 1,027 -> 2,053 tok) attached exact decay hooks to all 18 linear_attn layers (mean cumulative decay 0.338->0.302->0.278): at 2,053 tokens, hybrid_deltanet_g0.25_plus_kv hits KL=0.0084 (145x below stale 1.2183, 3.0x below KV-excise-only 0.0250), 93.7% recovery, in constant O(1) 9.91 ms (42.4x faster than exact replay 420.5 ms); exact_decay_plus_kv hits 106.5% recovery, KL=0.0183, 41.0x speedup."
+    },
+    {
+      "id": "W24-14",
+      "tier": "P2",
+      "lane": "W22-08 Blind Second Coder",
+      "title": "Independent Blind Second Coding of F-W8 and F-R5 Reviewer Defect Lists",
+      "compute_target": "independent blind subagent (d4777657-97f5-41ec-9700-86a4fb04cccd)",
+      "status": "COMPLETED",
+      "artifact": "artifacts/pv7_w24_14_blind_second_coder/blind_coder2_f_w8_f_r5.json",
+      "evidence": "Independently confirms K2 kill (>0.80 max pairwise overlap) across ALL slices: F-W8 1.000, F-R5 all-4 0.875, F-R5 r5_grok 7-manifest 0.846, F-R5 3-list 0.875. Fragility closed."
+    },
+    {
+      "id": "W24-15",
+      "tier": "P3_HUMAN_LAST",
+      "lane": "W22-13 (PM-4b Human Audit)",
+      "title": "Independent Human Grading of pm4_human_audit_100_blind_sheet.csv (~6 Human Hours)",
+      "compute_target": "HUMAN_OWNER_LAST",
+      "status": "QUEUED_LAST",
+      "acceptance": "Independent grader completes blind sheet without touching sealed key; clears sole remaining human gate blocking PRE-RELEASE lift on v6.0/v7.0."
+    },
+    {
+      "id": "W24-16",
+      "tier": "P3_HUMAN_LAST",
+      "lane": "W22-14 (External Partner Trial)",
+      "title": "Outside Workload-Owner Trial (#63 Search Operator or #64 Records Owner)",
+      "compute_target": "HUMAN_OWNER_LAST",
+      "status": "QUEUED_LAST",
+      "depends_on": ["W24-02", "W24-06", "W24-07", "W24-09", "W24-10", "W24-15"]
+    }
+  ]
+}

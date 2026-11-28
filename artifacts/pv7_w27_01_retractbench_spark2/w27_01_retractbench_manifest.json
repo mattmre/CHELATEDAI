@@ -1,0 +1,90 @@
+{
+  "arms": {
+    "appended_correction_notice": {
+      "P1_direct_recall_leak": 0.25,
+      "P2_paraphrase_recall_leak": 0.43333,
+      "P3_multihop_inference_leak": 0.46667,
+      "P4_hidden_probe_auroc_vs_gold": 1.0,
+      "P5_extraction_prompt_leak": 0.86667,
+      "collateral_kl_mean": 0.188237,
+      "p50_latency_ms": 114.896,
+      "p95_latency_ms": 126.975,
+      "p95_latency_ratio_vs_gold": 0.7789
+    },
+    "ek5_routed_operator_exact_wy": {
+      "P1_direct_recall_leak": 0.16667,
+      "P2_paraphrase_recall_leak": 0.25,
+      "P3_multihop_inference_leak": 0.53333,
+      "P4_hidden_probe_auroc_vs_gold": 0.56611,
+      "P5_extraction_prompt_leak": 0.5,
+      "collateral_kl_mean": 0.005614,
+      "p50_latency_ms": 139.384,
+      "p95_latency_ms": 165.91,
+      "p95_latency_ratio_vs_gold": 1.0177
+    },
+    "gold_delete_and_rebuild": {
+      "P1_direct_recall_leak": 0.16667,
+      "P2_paraphrase_recall_leak": 0.25,
+      "P3_multihop_inference_leak": 0.55,
+      "P4_hidden_probe_auroc_vs_gold": 0.5,
+      "P5_extraction_prompt_leak": 0.5,
+      "collateral_kl_mean": 0.0,
+      "p50_latency_ms": 148.729,
+      "p95_latency_ms": 163.017,
+      "p95_latency_ratio_vs_gold": 1.0
+    },
+    "leace_linear_erasure": {
+      "P1_direct_recall_leak": 0.0,
+      "P2_paraphrase_recall_leak": 0.13333,
+      "P3_multihop_inference_leak": 0.51667,
+      "P4_hidden_probe_auroc_vs_gold": 0.91528,
+      "P5_extraction_prompt_leak": 0.45,
+      "collateral_kl_mean": 0.021858,
+      "p50_latency_ms": 6.767,
+      "p95_latency_ms": 7.61,
+      "p95_latency_ratio_vs_gold": 0.0467
+    },
+    "unrouted_kv_excise_only": {
+      "P1_direct_recall_leak": 0.0,
+      "P2_paraphrase_recall_leak": 0.13333,
+      "P3_multihop_inference_leak": 0.51667,
+      "P4_hidden_probe_auroc_vs_gold": 0.77472,
+      "P5_extraction_prompt_leak": 0.45,
+      "collateral_kl_mean": 0.018194,
+      "p50_latency_ms": 6.717,
+      "p95_latency_ms": 7.56,
+      "p95_latency_ratio_vs_gold": 0.0464
+    },
+    "volatile_tail_prefix_cache": {
+      "P1_direct_recall_leak": 0.16667,
+      "P2_paraphrase_recall_leak": 0.25,
+      "P3_multihop_inference_leak": 0.55,
+      "P4_hidden_probe_auroc_vs_gold": 0.5,
+      "P5_extraction_prompt_leak": 0.5,
+      "collateral_kl_mean": 0.0,
+      "p50_latency_ms": 74.086,
+      "p95_latency_ms": 164.386,
+      "p95_latency_ratio_vs_gold": 1.0084
+    }
+  },
+  "claim_registry_sha256": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "elapsed_seconds": 313.18,
+  "experiment_id": "pv7_w27_01_retractbench_5probes",
+  "hardware": "NVIDIA GB10",
+  "model_id": "Qwen/Qwen3.5-2B-Base",
+  "n_report": 60,
+  "n_select": 20,
+  "timestamp_utc": "2026-11-27T01:58:52.862442+00:00",
+  "verdict": {
+    "leace_matches_probe_kill_triggered": false,
+    "ours_P4_probe_auroc_vs_gold": 0.56611,
+    "ours_clean_cone_p95_ratio_vs_gold": 0.7267,
+    "ours_max_behavioral_gap_vs_gold_pp": 1.67,
+    "ours_pooled_p95_ratio_vs_gold": 1.0177,
+    "qscci_status": "EXCLUDED_RETIRED_BY_W25_03",
+    "status": "REGIME_QUALIFIED_OR_HOLD_W27_01",
+    "unedited_P4_probe_auroc_vs_gold": 1.0,
+    "volatile_tail_matches_at_le_2x_latency": true
+  },
+  "wave_item_id": "W27-01"
+}

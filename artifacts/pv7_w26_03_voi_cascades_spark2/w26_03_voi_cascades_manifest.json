@@ -1,0 +1,341 @@
+{
+  "claim_registry_sha256": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+  "elapsed_seconds": 11.46,
+  "experiment_id": "pv7_w26_03_voi_and_real_cascades",
+  "part_a_voi_heldout_topologies": {
+    "H1_bipartite_bridge_cascade": {
+      "budget_B1_selection": {
+        "copy_aware_minus_greedy_loss": {
+          "ci95": [
+            -0.47575,
+            -0.34131
+          ],
+          "mean": -0.40637,
+          "strictly_lower_loss": true
+        },
+        "mean_loss_bayes_optimal_dp": 0.97506,
+        "mean_loss_copy_aware_voi": 0.97262,
+        "mean_loss_greedy_independent_voi": 1.379
+      },
+      "check_cost_c": 0.25,
+      "copy_aware_minus_greedy_loss": {
+        "ci95": [
+          -0.27557,
+          -0.17281
+        ],
+        "mean": -0.22381,
+        "strictly_lower_loss": true
+      },
+      "dp_le_greedy_invariant_ok": true,
+      "mean_loss_bayes_optimal_dp": 0.80325,
+      "mean_loss_copy_aware_voi": 0.79825,
+      "mean_loss_greedy_independent_voi": 1.02206,
+      "mean_loss_one_hop_no_check": 1.83825,
+      "n_trials": 4000,
+      "topology": "H1_bipartite_bridge_cascade"
+    },
+    "H2_hub_spoke_mutual_refute": {
+      "budget_B1_selection": {
+        "copy_aware_minus_greedy_loss": {
+          "ci95": [
+            -0.34388,
+            -0.23975
+          ],
+          "mean": -0.29137,
+          "strictly_lower_loss": true
+        },
+        "mean_loss_bayes_optimal_dp": 0.8885,
+        "mean_loss_copy_aware_voi": 0.88862,
+        "mean_loss_greedy_independent_voi": 1.18
+      },
+      "check_cost_c": 0.25,
+      "copy_aware_minus_greedy_loss": {
+        "ci95": [
+          -0.19219,
+          -0.11981
+        ],
+        "mean": -0.15656,
+        "strictly_lower_loss": true
+      },
+      "dp_le_greedy_invariant_ok": true,
+      "mean_loss_bayes_optimal_dp": 0.74225,
+      "mean_loss_copy_aware_voi": 0.74313,
+      "mean_loss_greedy_independent_voi": 0.89969,
+      "mean_loss_one_hop_no_check": 1.5985,
+      "n_trials": 4000,
+      "topology": "H2_hub_spoke_mutual_refute"
+    },
+    "cost_sweep": {
+      "c_0.08": {
+        "H1_bipartite_bridge_cascade": {
+          "budget_B1_selection": {
+            "copy_aware_minus_greedy_loss": {
+              "ci95": [
+                -0.4278,
+                -0.30162
+              ],
+              "mean": -0.36466,
+              "strictly_lower_loss": true
+            },
+            "mean_loss_bayes_optimal_dp": 0.79626,
+            "mean_loss_copy_aware_voi": 0.79626,
+            "mean_loss_greedy_independent_voi": 1.16092
+          },
+          "check_cost_c": 0.08,
+          "copy_aware_minus_greedy_loss": {
+            "ci95": [
+              -0.03854,
+              0.00182
+            ],
+            "mean": -0.01816,
+            "strictly_lower_loss": false
+          },
+          "dp_le_greedy_invariant_ok": true,
+          "mean_loss_bayes_optimal_dp": 0.5089,
+          "mean_loss_copy_aware_voi": 0.51015,
+          "mean_loss_greedy_independent_voi": 0.52831,
+          "mean_loss_one_hop_no_check": 1.8525,
+          "n_trials": 4000,
+          "topology": "H1_bipartite_bridge_cascade"
+        },
+        "H2_hub_spoke_mutual_refute": {
+          "budget_B1_selection": {
+            "copy_aware_minus_greedy_loss": {
+              "ci95": [
+                -0.3281,
+                -0.22904
+              ],
+              "mean": -0.27654,
+              "strictly_lower_loss": true
+            },
+            "mean_loss_bayes_optimal_dp": 0.73652,
+            "mean_loss_copy_aware_voi": 0.73652,
+            "mean_loss_greedy_independent_voi": 1.01306
+          },
+          "check_cost_c": 0.08,
+          "copy_aware_minus_greedy_loss": {
+            "ci95": [
+              -0.02784,
+              0.00266
+            ],
+            "mean": -0.0124,
+            "strictly_lower_loss": false
+          },
+          "dp_le_greedy_invariant_ok": true,
+          "mean_loss_bayes_optimal_dp": 0.44652,
+          "mean_loss_copy_aware_voi": 0.44748,
+          "mean_loss_greedy_independent_voi": 0.45988,
+          "mean_loss_one_hop_no_check": 1.6555,
+          "n_trials": 4000,
+          "topology": "H2_hub_spoke_mutual_refute"
+        }
+      },
+      "c_0.25": {
+        "H1_bipartite_bridge_cascade": {
+          "budget_B1_selection": {
+            "copy_aware_minus_greedy_loss": {
+              "ci95": [
+                -0.47575,
+                -0.34131
+              ],
+              "mean": -0.40637,
+              "strictly_lower_loss": true
+            },
+            "mean_loss_bayes_optimal_dp": 0.97506,
+            "mean_loss_copy_aware_voi": 0.97262,
+            "mean_loss_greedy_independent_voi": 1.379
+          },
+          "check_cost_c": 0.25,
+          "copy_aware_minus_greedy_loss": {
+            "ci95": [
+              -0.27557,
+              -0.17281
+            ],
+            "mean": -0.22381,
+            "strictly_lower_loss": true
+          },
+          "dp_le_greedy_invariant_ok": true,
+          "mean_loss_bayes_optimal_dp": 0.80325,
+          "mean_loss_copy_aware_voi": 0.79825,
+          "mean_loss_greedy_independent_voi": 1.02206,
+          "mean_loss_one_hop_no_check": 1.83825,
+          "n_trials": 4000,
+          "topology": "H1_bipartite_bridge_cascade"
+        },
+        "H2_hub_spoke_mutual_refute": {
+          "budget_B1_selection": {
+            "copy_aware_minus_greedy_loss": {
+              "ci95": [
+                -0.34388,
+                -0.23975
+              ],
+              "mean": -0.29137,
+              "strictly_lower_loss": true
+            },
+            "mean_loss_bayes_optimal_dp": 0.8885,
+            "mean_loss_copy_aware_voi": 0.88862,
+            "mean_loss_greedy_independent_voi": 1.18
+          },
+          "check_cost_c": 0.25,
+          "copy_aware_minus_greedy_loss": {
+            "ci95": [
+              -0.19219,
+              -0.11981
+            ],
+            "mean": -0.15656,
+            "strictly_lower_loss": true
+          },
+          "dp_le_greedy_invariant_ok": true,
+          "mean_loss_bayes_optimal_dp": 0.74225,
+          "mean_loss_copy_aware_voi": 0.74313,
+          "mean_loss_greedy_independent_voi": 0.89969,
+          "mean_loss_one_hop_no_check": 1.5985,
+          "n_trials": 4000,
+          "topology": "H2_hub_spoke_mutual_refute"
+        }
+      },
+      "c_0.40": {
+        "H1_bipartite_bridge_cascade": {
+          "budget_B1_selection": {
+            "copy_aware_minus_greedy_loss": {
+              "ci95": [
+                -0.66966,
+                -0.52625
+              ],
+              "mean": -0.5995,
+              "strictly_lower_loss": true
+            },
+            "mean_loss_bayes_optimal_dp": 1.0994,
+            "mean_loss_copy_aware_voi": 1.10565,
+            "mean_loss_greedy_independent_voi": 1.70515
+          },
+          "check_cost_c": 0.4,
+          "copy_aware_minus_greedy_loss": {
+            "ci95": [
+              -0.68361,
+              -0.548
+            ],
+            "mean": -0.6149,
+            "strictly_lower_loss": true
+          },
+          "dp_le_greedy_invariant_ok": true,
+          "mean_loss_bayes_optimal_dp": 1.0121,
+          "mean_loss_copy_aware_voi": 1.01355,
+          "mean_loss_greedy_independent_voi": 1.62845,
+          "mean_loss_one_hop_no_check": 1.90725,
+          "n_trials": 4000,
+          "topology": "H1_bipartite_bridge_cascade"
+        },
+        "H2_hub_spoke_mutual_refute": {
+          "budget_B1_selection": {
+            "copy_aware_minus_greedy_loss": {
+              "ci95": [
+                -0.43481,
+                -0.3278
+              ],
+              "mean": -0.3822,
+              "strictly_lower_loss": true
+            },
+            "mean_loss_bayes_optimal_dp": 1.038,
+            "mean_loss_copy_aware_voi": 1.0348,
+            "mean_loss_greedy_independent_voi": 1.417
+          },
+          "check_cost_c": 0.4,
+          "copy_aware_minus_greedy_loss": {
+            "ci95": [
+              -0.4534,
+              -0.3488
+            ],
+            "mean": -0.3996,
+            "strictly_lower_loss": true
+          },
+          "dp_le_greedy_invariant_ok": true,
+          "mean_loss_bayes_optimal_dp": 0.9535,
+          "mean_loss_copy_aware_voi": 0.9497,
+          "mean_loss_greedy_independent_voi": 1.3493,
+          "mean_loss_one_hop_no_check": 1.5995,
+          "n_trials": 4000,
+          "topology": "H2_hub_spoke_mutual_refute"
+        }
+      }
+    },
+    "frozen_rule": {
+      "cost_grid_c": [
+        0.08,
+        0.25,
+        0.4
+      ],
+      "formula": "buy iff M_eff_shared_source * max(0, min(p, 1 - p) - eps) * H > c",
+      "harm_per_poisoned_claim_H": 1.0,
+      "primary_cost_c": 0.25,
+      "sensor_error_eps": 0.05
+    }
+  },
+  "part_b_openalex_live_retracted_cascades": {
+    "heldout_year_ge_2023": {
+      "ek5_minus_onehop_coverage": {
+        "ci95": [
+          0.78793,
+          0.84675
+        ],
+        "mean": 0.81734,
+        "strictly_positive_lcb": true
+      },
+      "ek5_multihop_harm_coverage": 1.0,
+      "empirical_multihop_cascade_share": 0.81734,
+      "exceeds_lambda_010": true,
+      "n_hop1": 118,
+      "n_hop2": 528,
+      "one_hop_harm_coverage": 0.18266,
+      "total_affected": 646
+    },
+    "n_edges_h1_to_h2": 637,
+    "n_edges_ret_to_h1": 225,
+    "n_hop1_citing_papers": 225,
+    "n_hop2_transitive_citing_papers": 618,
+    "n_retracted_roots": 15,
+    "source": "live_api_openalex_org"
+  },
+  "part_c_cyclic_citogenesis_prevalence": {
+    "citogenesis_prevalence_sweep": [
+      {
+        "ek5_wfs_fp": 0,
+        "ek5_wfs_ms": 2.107,
+        "ek5_wfs_recall": 1.0,
+        "one_hop_and_sqlite_cte_recall": 0.0,
+        "prevalence_weighted_harm_exposure": 0.007,
+        "raw_cluster_cycle_incidence": 0.02,
+        "total_nodes": 2000,
+        "unfounded_citogenesis_nodes": 14
+      },
+      {
+        "ek5_wfs_fp": 0,
+        "ek5_wfs_ms": 1.964,
+        "ek5_wfs_recall": 1.0,
+        "one_hop_and_sqlite_cte_recall": 0.0,
+        "prevalence_weighted_harm_exposure": 0.028,
+        "raw_cluster_cycle_incidence": 0.05,
+        "total_nodes": 2000,
+        "unfounded_citogenesis_nodes": 56
+      },
+      {
+        "ek5_wfs_fp": 0,
+        "ek5_wfs_ms": 1.802,
+        "ek5_wfs_recall": 1.0,
+        "one_hop_and_sqlite_cte_recall": 0.0,
+        "prevalence_weighted_harm_exposure": 0.0595,
+        "raw_cluster_cycle_incidence": 0.1,
+        "total_nodes": 2000,
+        "unfounded_citogenesis_nodes": 119
+      }
+    ]
+  },
+  "timestamp_utc": "2026-11-27T01:38:22.845752+00:00",
+  "verdict": {
+    "copy_aware_voi_beats_greedy_both_heldout": true,
+    "ek5_beats_onehop_on_live_openalex_heldout_year": true,
+    "empirical_multihop_share_ge_010": true,
+    "status": "ADVANCE_W26_03"
+  },
+  "wave_item_id": "W26-03"
+}

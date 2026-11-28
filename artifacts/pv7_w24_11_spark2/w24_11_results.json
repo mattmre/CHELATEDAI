@@ -1,0 +1,85 @@
+{
+  "all_clean": true,
+  "generated_utc": "2026-11-26T12:49:04.932533+00:00",
+  "runs": [
+    {
+      "canon_semantic_mismatches": 0,
+      "fresh_rebuild_mismatches": 0,
+      "max_apply_ms": 0.592,
+      "mean_apply_ms": 0.279,
+      "n_batches": 120,
+      "n_nodes_base": 50,
+      "n_nodes_final": 110,
+      "node_checkpoints_verified": 9600,
+      "seed": 241101,
+      "semantic_mismatches": 0
+    },
+    {
+      "canon_semantic_mismatches": 0,
+      "fresh_rebuild_mismatches": 0,
+      "max_apply_ms": 0.438,
+      "mean_apply_ms": 0.277,
+      "n_batches": 120,
+      "n_nodes_base": 50,
+      "n_nodes_final": 110,
+      "node_checkpoints_verified": 9600,
+      "seed": 241102,
+      "semantic_mismatches": 0
+    },
+    {
+      "canon_semantic_mismatches": 0,
+      "fresh_rebuild_mismatches": 0,
+      "max_apply_ms": 1.014,
+      "mean_apply_ms": 0.278,
+      "n_batches": 100,
+      "n_nodes_base": 200,
+      "n_nodes_final": 250,
+      "node_checkpoints_verified": 22500,
+      "seed": 241103,
+      "semantic_mismatches": 0
+    },
+    {
+      "canon_semantic_mismatches": 0,
+      "fresh_rebuild_mismatches": 0,
+      "max_apply_ms": 1.067,
+      "mean_apply_ms": 0.395,
+      "n_batches": 100,
+      "n_nodes_base": 200,
+      "n_nodes_final": 250,
+      "node_checkpoints_verified": 22500,
+      "seed": 241104,
+      "semantic_mismatches": 0
+    },
+    {
+      "canon_semantic_mismatches": 0,
+      "fresh_rebuild_mismatches": 0,
+      "max_apply_ms": 0.373,
+      "mean_apply_ms": 0.162,
+      "n_batches": 80,
+      "n_nodes_base": 500,
+      "n_nodes_final": 540,
+      "node_checkpoints_verified": 41600,
+      "seed": 241105,
+      "semantic_mismatches": 0
+    },
+    {
+      "canon_semantic_mismatches": 0,
+      "fresh_rebuild_mismatches": 0,
+      "max_apply_ms": 0.283,
+      "mean_apply_ms": 0.136,
+      "n_batches": 60,
+      "n_nodes_base": 1000,
+      "n_nodes_final": 1030,
+      "node_checkpoints_verified": 60900,
+      "seed": 241106,
+      "semantic_mismatches": 0
+    }
+  ],
+  "runtime_seconds": 0.77,
+  "schema_version": "w24_11_large_graph_wfs_stress_v1",
+  "total_canon_semantic_mismatches": 0,
+  "total_fresh_rebuild_mismatches": 0,
+  "total_node_checkpoints_verified": 166700,
+  "total_semantic_mismatches": 0,
+  "wave_item_id": "W24-11"
+}

@@ -1,0 +1,150 @@
+{
+  "generated_utc": "2026-11-26T12:30:20.824686+00:00",
+  "part_a_echo_classifier_fix": {
+    "baseline": {
+      "f1": 0.0,
+      "fn": 300,
+      "fp": 0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "tn": 780,
+      "tp": 0
+    },
+    "baseline_fn_reasons": {
+      "CONFLICT_PROPER_ENTITY": 300
+    },
+    "conflict_guard_passed": 5,
+    "conflict_guard_total": 5,
+    "fixed": {
+      "f1": 0.75,
+      "fn": 120,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 0.6,
+      "tn": 780,
+      "tp": 180
+    },
+    "fixed_fn_reasons": {
+      "CONFLICT_NUMERIC_OR_CODE": 111,
+      "CONFLICT_PROPER_ENTITY": 9
+    },
+    "n_families": 240,
+    "sample_fn_baseline": [
+      {
+        "a": "OSV advisory GHSA-22mf-97vh-x8rw (parso): Deserialization vulnerability exists in parso",
+        "b": "Syndicated mirror A: OSV advisory GHSA-22mf-97vh-x8rw (parso): Deserialization vulnerability exists in parso",
+        "reason": "CONFLICT_PROPER_ENTITY"
+      },
+      {
+        "a": "OSV advisory GHSA-22mf-97vh-x8rw (parso): Deserialization vulnerability exists in parso",
+        "b": "Syndicated mirror B: OSV advisory GHSA-22mf-97vh-x8rw (parso): Deserialization vulnerability exists in parso",
+        "reason": "CONFLICT_PROPER_ENTITY"
+      },
+      {
+        "a": "Syndicated mirror A: OSV advisory GHSA-22mf-97vh-x8rw (parso): Deserialization vulnerability exists in parso",
+        "b": "Syndicated mirror B: OSV advisory GHSA-22mf-97vh-x8rw (parso): Deserialization vulnerability exists in parso",
+        "reason": "CONFLICT_PROPER_ENTITY"
+      },
+      {
+        "a": "OSV advisory GHSA-25pw-q952-x37g (pyload-ng): Duplicate Advisory: pyload-ng vulnerable to RCE with js2py sandbox escape",
+        "b": "Syndicated mirror A: OSV advisory GHSA-25pw-q952-x37g (pyload-ng): Duplicate Advisory: pyload-ng vulnerable to RCE with js2py sandbox escape",
+        "reason": "CONFLICT_PROPER_ENTITY"
+      },
+      {
+        "a": "OSV advisory GHSA-25pw-q952-x37g (pyload-ng): Duplicate Advisory: pyload-ng vulnerable to RCE with js2py sandbox escape",
+        "b": "Syndicated mirror B: OSV advisory GHSA-25pw-q952-x37g (pyload-ng): Duplicate Advisory: pyload-ng vulnerable to RCE with js2py sandbox escape",
+        "reason": "CONFLICT_PROPER_ENTITY"
+      }
+    ],
+    "sample_fn_fixed": [
+      {
+        "a": "SEC Form 10-K (0001683168-23-001165, filed 2023-02-27) for Aclarion, Inc. reports audited financial statements as reliable.",
+        "b": "Press wire recap: SEC Form 10-K (0001683168-23-001165, filed 2023-02-27) for Aclarion, Inc. reports audited financial statements as reliable",
+        "reason": "CONFLICT_NUMERIC_OR_CODE"
+      },
+      {
+        "a": "SEC Form 10-K (0001096906-24-000647, filed 2024-03-28) for SPECTRAL CAPITAL Corp reports audited financial statements as reliable.",
+        "b": "Press wire recap: SEC Form 10-K (0001096906-24-000647, filed 2024-03-28) for SPECTRAL CAPITAL Corp reports audited financial statements as r",
+        "reason": "CONFLICT_NUMERIC_OR_CODE"
+      },
+      {
+        "a": "SEC Form 10-K (0001213900-23-002887, filed 2023-01-17) for Genufood Energy Enzymes Corp. reports audited financial statements as reliable.",
+        "b": "Press wire recap: SEC Form 10-K (0001213900-23-002887, filed 2023-01-17) for Genufood Energy Enzymes Corp. reports audited financial stateme",
+        "reason": "CONFLICT_NUMERIC_OR_CODE"
+      },
+      {
+        "a": "SEC Form 10-K (0001493152-26-029927, filed 2026-06-24) for Crypto Co reports audited financial statements as reliable.",
+        "b": "Press wire recap: SEC Form 10-K (0001493152-26-029927, filed 2026-06-24) for Crypto Co reports audited financial statements as reliable.",
+        "reason": "CONFLICT_NUMERIC_OR_CODE"
+      },
+      {
+        "a": "SEC Form 10-K (0001213900-22-033049, filed 2022-06-15) for Better For You Wellness, Inc. reports audited financial statements as reliable.",
+        "b": "Press wire recap: SEC Form 10-K (0001213900-22-033049, filed 2022-06-15) for Better For You Wellness, Inc. reports audited financial stateme",
+        "reason": "CONFLICT_NUMERIC_OR_CODE"
+      }
+    ]
+  },
+  "part_b_cyclic_and_deletion_benchmark": {
+    "scales": [
+      {
+        "ek5_apply_ms": 0.37,
+        "ek5_cites_audit_preserved": "5/5",
+        "ek5_copy_cascade_ok": "5/5",
+        "ek5_mutual_refute_2cycle_ok": "5/5",
+        "ek5_oracle_mismatches": 0,
+        "ek5_unfounded_pos_cycle_ok": "5/5",
+        "n_blocks": 5,
+        "n_nodes": 50,
+        "sqlite_copy_cascade_ok": "5/5",
+        "sqlite_ingest_ms": 0.65,
+        "sqlite_query_ms": 1.14,
+        "sqlite_unfounded_pos_cycle_detected": "0/5"
+      },
+      {
+        "ek5_apply_ms": 1.17,
+        "ek5_cites_audit_preserved": "20/20",
+        "ek5_copy_cascade_ok": "20/20",
+        "ek5_mutual_refute_2cycle_ok": "20/20",
+        "ek5_oracle_mismatches": 0,
+        "ek5_unfounded_pos_cycle_ok": "20/20",
+        "n_blocks": 20,
+        "n_nodes": 200,
+        "sqlite_copy_cascade_ok": "20/20",
+        "sqlite_ingest_ms": 2.51,
+        "sqlite_query_ms": 7.8,
+        "sqlite_unfounded_pos_cycle_detected": "0/20"
+      },
+      {
+        "ek5_apply_ms": 2.9,
+        "ek5_cites_audit_preserved": "50/50",
+        "ek5_copy_cascade_ok": "50/50",
+        "ek5_mutual_refute_2cycle_ok": "50/50",
+        "ek5_oracle_mismatches": 0,
+        "ek5_unfounded_pos_cycle_ok": "50/50",
+        "n_blocks": 50,
+        "n_nodes": 500,
+        "sqlite_copy_cascade_ok": "50/50",
+        "sqlite_ingest_ms": 7.91,
+        "sqlite_query_ms": 51.0,
+        "sqlite_unfounded_pos_cycle_detected": "0/50"
+      },
+      {
+        "ek5_apply_ms": 13.43,
+        "ek5_cites_audit_preserved": "200/200",
+        "ek5_copy_cascade_ok": "200/200",
+        "ek5_mutual_refute_2cycle_ok": "200/200",
+        "ek5_oracle_mismatches": 0,
+        "ek5_unfounded_pos_cycle_ok": "200/200",
+        "n_blocks": 200,
+        "n_nodes": 2000,
+        "sqlite_copy_cascade_ok": "200/200",
+        "sqlite_ingest_ms": 64.7,
+        "sqlite_query_ms": 646.51,
+        "sqlite_unfounded_pos_cycle_detected": "0/200"
+      }
+    ]
+  },
+  "runtime_seconds": 1.03,
+  "schema_version": "w24_07_ek5_cyclic_and_echo_fix_v1",
+  "wave_item_id": "W24-07"
+}

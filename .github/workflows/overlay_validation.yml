@@ -10,21 +10,32 @@ on:
 
 jobs:
   overlay-model-scope-validation:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, arm64, spark2]
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: "pip"
-      - name: Install PyTorch CPU
-        run: pip install torch --index-url https://download.pytorch.org/whl/cpu
-      - name: Install dependencies
-        run: pip install -r requirements.txt
       - name: Run overlay Model-Scope validation bundle
+        env:
+          CUDA_VISIBLE_DEVICES: ""
+          HF_HOME: ${{ runner.temp }}/chelated-hf-cache
         run: |
-          python run_overlay_model_scope_validation.py \
+          mkdir -p "$HOME/.cache"
+          VENV_DIR="$HOME/.cache/chelated-ci-uv-py312"
+          flock "$HOME/.cache/chelated-ci-uv-py312.lock" bash -ec '
+            PY_BIN="${HOME}/.local/bin/python3.12"
+            [ -x "$PY_BIN" ] || PY_BIN="python3"
+            VENV_DIR="$HOME/.cache/chelated-ci-uv-py312"
+            if [ ! -x "$VENV_DIR/bin/python" ]; then
+              "$PY_BIN" -m venv "$VENV_DIR"
+              "$VENV_DIR/bin/pip" install --upgrade pip
+            fi
+            if [ ! -f "$VENV_DIR/.cpu_torch_ok" ]; then
+              "$VENV_DIR/bin/pip" install torch --index-url https://download.pytorch.org/whl/cpu
+              touch "$VENV_DIR/.cpu_torch_ok"
+            fi
+            "$VENV_DIR/bin/pip" install -q -r requirements.txt
+          '
+          "$VENV_DIR/bin/python" run_overlay_model_scope_validation.py \
             --output-dir experiment_runs/overlay-model-scope-validation/ci \
             --timeout-seconds "${{ inputs.timeout-seconds }}"
       - name: Upload validation summary

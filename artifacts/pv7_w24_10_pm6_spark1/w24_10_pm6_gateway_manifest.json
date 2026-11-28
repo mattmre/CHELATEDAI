@@ -1,0 +1,42 @@
+{
+  "calibration": {
+    "n_cal_neg": 350,
+    "rcps_cal_cp_ub95": 0.017878,
+    "rcps_k": 2,
+    "threshold": 0.679516
+  },
+  "generated_utc": "2026-11-26T13:33:06.900384+00:00",
+  "live_pm6_gateway_executed": true,
+  "provenance": {
+    "git_commit_sha": "11a8c06edbd42586a4e12b525c06ea99385f1c0d",
+    "gpu_name": "NVIDIA GB10",
+    "hardware_cohort": "spark1_gb10:NVIDIA GB10",
+    "public_forums": [
+      "cqadupstack-android",
+      "cqadupstack-unix",
+      "cqadupstack-physics",
+      "cqadupstack-programmers",
+      "cqadupstack-stats"
+    ],
+    "python_version": "3.12.3",
+    "source_archive_sha256": "unknown",
+    "spine_claim_registry_sha256": "32693f54e0ce7ad3d401ceb752ae4723b0eee251f6d49b95cdfb26a6201971e9",
+    "torch_version": "2.14.1+cu130",
+    "wall_seconds_total": 311.18
+  },
+  "results": {
+    "clean_positive_tp": 125,
+    "clean_positive_tpr": 1.0,
+    "gateway_audit_chain_len": 259,
+    "n_sibling_benign": 250,
+    "passes_r2b_bypass_lt_005": true,
+    "passes_sibling_fpr_le_002": false,
+    "r2b_homoglyph_bypass_after_nfkc": 0.0,
+    "r2b_homoglyph_bypass_before_nfkc": 0.936,
+    "sibling_benign_cp_ub95": 0.046817,
+    "sibling_benign_fp": 6,
+    "sibling_benign_fpr": 0.024
+  },
+  "schema_version": "colab_l4_w24_10_pm6_gateway_v1",
+  "wave_item_id": "W24-10"
+}
