@@ -11,13 +11,17 @@ jobs:
     runs-on: [self-hosted, linux, arm64, spark2]
     steps:
       - uses: actions/checkout@v4
-      - name: Run ruff lint in cached Spark 2 venv
+      - name: Run ruff lint in locked Spark 2 venv
         run: |
+          mkdir -p "$HOME/.cache"
           VENV_DIR="$HOME/.cache/chelated-ci-py312"
-          if [ ! -x "$VENV_DIR/bin/python" ]; then
-            python3 -m venv "$VENV_DIR"
-          fi
-          "$VENV_DIR/bin/pip" install -q "ruff>=0.4"
+          flock "$HOME/.cache/chelated-ci-py312.lock" bash -ec '
+            VENV_DIR="$HOME/.cache/chelated-ci-py312"
+            if [ ! -x "$VENV_DIR/bin/python" ]; then
+              python3 -m venv "$VENV_DIR"
+            fi
+            "$VENV_DIR/bin/pip" install -q "ruff>=0.4"
+          '
           "$VENV_DIR/bin/ruff" check .
 
   test:
@@ -28,13 +32,20 @@ jobs:
         env:
           CUDA_VISIBLE_DEVICES: ""
         run: |
+          mkdir -p "$HOME/.cache"
           VENV_DIR="$HOME/.cache/chelated-ci-py312"
-          if [ ! -x "$VENV_DIR/bin/python" ]; then
-            python3 -m venv "$VENV_DIR"
-            "$VENV_DIR/bin/pip" install --upgrade pip
-            "$VENV_DIR/bin/pip" install torch --index-url https://download.pytorch.org/whl/cpu
-          fi
-          "$VENV_DIR/bin/pip" install -q -r requirements.txt
+          flock "$HOME/.cache/chelated-ci-py312.lock" bash -ec '
+            VENV_DIR="$HOME/.cache/chelated-ci-py312"
+            if [ ! -x "$VENV_DIR/bin/python" ]; then
+              python3 -m venv "$VENV_DIR"
+              "$VENV_DIR/bin/pip" install --upgrade pip
+            fi
+            if [ ! -f "$VENV_DIR/.cpu_torch_ok" ]; then
+              "$VENV_DIR/bin/pip" install torch --index-url https://download.pytorch.org/whl/cpu
+              touch "$VENV_DIR/.cpu_torch_ok"
+            fi
+            "$VENV_DIR/bin/pip" install -q -r requirements.txt
+          '
           "$VENV_DIR/bin/python" -m unittest discover -s . -p "test_*.py" -v
 
   computational-storage-fundamentals:
@@ -45,13 +56,20 @@ jobs:
         env:
           CUDA_VISIBLE_DEVICES: ""
         run: |
+          mkdir -p "$HOME/.cache"
           VENV_DIR="$HOME/.cache/chelated-ci-py312"
-          if [ ! -x "$VENV_DIR/bin/python" ]; then
-            python3 -m venv "$VENV_DIR"
-            "$VENV_DIR/bin/pip" install --upgrade pip
-            "$VENV_DIR/bin/pip" install torch --index-url https://download.pytorch.org/whl/cpu
-          fi
-          "$VENV_DIR/bin/pip" install -q -r requirements.txt
+          flock "$HOME/.cache/chelated-ci-py312.lock" bash -ec '
+            VENV_DIR="$HOME/.cache/chelated-ci-py312"
+            if [ ! -x "$VENV_DIR/bin/python" ]; then
+              python3 -m venv "$VENV_DIR"
+              "$VENV_DIR/bin/pip" install --upgrade pip
+            fi
+            if [ ! -f "$VENV_DIR/.cpu_torch_ok" ]; then
+              "$VENV_DIR/bin/pip" install torch --index-url https://download.pytorch.org/whl/cpu
+              touch "$VENV_DIR/.cpu_torch_ok"
+            fi
+            "$VENV_DIR/bin/pip" install -q -r requirements.txt
+          '
           "$VENV_DIR/bin/python" -m unittest test_computational_storage_poc.py -v
           "$VENV_DIR/bin/python" computational_storage_poc/run_all_tests.py
 
@@ -61,10 +79,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run emulation validation
         run: |
+          mkdir -p "$HOME/.cache"
           VENV_DIR="$HOME/.cache/chelated-ci-py312"
-          if [ ! -x "$VENV_DIR/bin/python" ]; then
-            python3 -m venv "$VENV_DIR"
-          fi
-          "$VENV_DIR/bin/pip" install -q numpy
+          flock "$HOME/.cache/chelated-ci-py312.lock" bash -ec '
+            VENV_DIR="$HOME/.cache/chelated-ci-py312"
+            if [ ! -x "$VENV_DIR/bin/python" ]; then
+              python3 -m venv "$VENV_DIR"
+            fi
+            "$VENV_DIR/bin/pip" install -q numpy
+          '
           "$VENV_DIR/bin/python" -m unittest test_computational_storage_emulation.py -v
           "$VENV_DIR/bin/python" computational_storage_poc/emulation/validate_emulation_path.py

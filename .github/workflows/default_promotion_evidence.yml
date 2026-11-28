@@ -23,26 +23,58 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies & run evidence chain
+      - name: Prepare ephemeral venv (preserving shared Spark 2 cache cleanliness)
         env:
           CUDA_VISIBLE_DEVICES: ""
         run: |
-          VENV_DIR="$HOME/.cache/chelated-ci-py312"
-          if [ ! -x "$VENV_DIR/bin/python" ]; then
-            python3 -m venv "$VENV_DIR"
-            "$VENV_DIR/bin/pip" install --upgrade pip
-            "$VENV_DIR/bin/pip" install torch --index-url https://download.pytorch.org/whl/cpu
-          fi
-          "$VENV_DIR/bin/pip" install -q -e .[dev]
-          "$VENV_DIR/bin/python" run_default_promotion_evidence_chain.py \
+          mkdir -p "$HOME/.cache"
+          flock "$HOME/.cache/chelated-ci-py312.lock" bash -ec '
+            BASE_VENV="$HOME/.cache/chelated-ci-py312"
+            if [ ! -x "$BASE_VENV/bin/python" ]; then
+              python3 -m venv "$BASE_VENV"
+              "$BASE_VENV/bin/pip" install --upgrade pip
+            fi
+            if [ ! -f "$BASE_VENV/.cpu_torch_ok" ]; then
+              "$BASE_VENV/bin/pip" install torch --index-url https://download.pytorch.org/whl/cpu
+              touch "$BASE_VENV/.cpu_torch_ok"
+            fi
+          '
+          JOB_VENV="$RUNNER_TEMP/ev-chain-venv"
+          python3 -m venv --system-site-packages "$JOB_VENV"
+          SITE_PKGS=$("$HOME/.cache/chelated-ci-py312/bin/python" -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')
+          echo "PYTHONPATH=$SITE_PKGS" >> "$GITHUB_ENV"
+          "$JOB_VENV/bin/pip" install -q --no-build-isolation --no-deps -e .
+          echo "$JOB_VENV/bin" >> "$GITHUB_PATH"
+
+      - name: Run default-promotion evidence chain & index audit
+        env:
+          CUDA_VISIBLE_DEVICES: ""
+        run: |
+          python run_default_promotion_evidence_chain.py \
             --output-dir experiment_runs/default-promotion-evidence-chain/ci \
             --timeout-seconds "${{ inputs.timeout-seconds }}"
-          "$VENV_DIR/bin/python" generate_evidence_index.py \
+          python generate_evidence_index.py \
             --root experiment_runs \
             --output experiment_runs/evidence-index/ci/evidence_index.json
-          "$VENV_DIR/bin/python" audit_evidence_index_freshness.py \
+          python audit_evidence_index_freshness.py \
             --index experiment_runs/evidence-index/ci/evidence_index.json \
             --output experiment_runs/evidence-index/ci/freshness_audit.json
+
+      - name: Plan evidence artifact cleanup
+        id: cleanup-plan
+        continue-on-error: true
+        run: |
+          cleanup_guard_args=()
+          if [ "${{ inputs.cleanup-guard-mode }}" = "fail" ]; then
+            cleanup_guard_args+=(--fail-on-blocked-review)
+          fi
+          python plan_evidence_artifact_cleanup.py \
+            --root experiment_runs \
+            --keep-latest 1 \
+            --evidence-index experiment_runs/evidence-index/ci/evidence_index.json \
+            --freshness-audit experiment_runs/evidence-index/ci/freshness_audit.json \
+            --output experiment_runs/evidence-cleanup/ci/cleanup_plan.json \
+            "${cleanup_guard_args[@]}"
 
       - name: Upload evidence-chain artifacts
         if: always()
@@ -52,3 +84,16 @@ jobs:
           path: |
             experiment_runs/default-promotion-evidence-chain/ci/
             experiment_runs/evidence-index/ci/
+            experiment_runs/evidence-cleanup/ci/
+
+      - name: Report cleanup review warning summary
+        if: always() && inputs.cleanup-guard-mode == 'warn'
+        run: |
+          python cleanup_review_diagnostic.py --mode warn --github-summary
+
+      - name: Fail on blocked cleanup review
+        if: steps.cleanup-plan.outcome == 'failure' && inputs.cleanup-guard-mode == 'fail'
+        run: |
+          python cleanup_review_diagnostic.py --mode blocked --github-summary
+          echo "Cleanup review is blocked; uploaded available evidence artifacts for debugging."
+          exit 1
