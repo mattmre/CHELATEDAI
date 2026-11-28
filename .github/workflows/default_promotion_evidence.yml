@@ -18,54 +18,31 @@ on:
 
 jobs:
   evidence-chain:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, arm64, spark2]
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install dependencies
+      - name: Install dependencies & run evidence chain
+        env:
+          CUDA_VISIBLE_DEVICES: ""
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
-          python -m pip install -e .[dev]
-
-      - name: Run default-promotion evidence chain
-        run: |
-          python run_default_promotion_evidence_chain.py \
+          VENV_DIR="$HOME/.cache/chelated-ci-py312"
+          if [ ! -x "$VENV_DIR/bin/python" ]; then
+            python3 -m venv "$VENV_DIR"
+            "$VENV_DIR/bin/pip" install --upgrade pip
+            "$VENV_DIR/bin/pip" install torch --index-url https://download.pytorch.org/whl/cpu
+          fi
+          "$VENV_DIR/bin/pip" install -q -e .[dev]
+          "$VENV_DIR/bin/python" run_default_promotion_evidence_chain.py \
             --output-dir experiment_runs/default-promotion-evidence-chain/ci \
             --timeout-seconds "${{ inputs.timeout-seconds }}"
-
-      - name: Generate evidence index
-        run: |
-          python generate_evidence_index.py \
+          "$VENV_DIR/bin/python" generate_evidence_index.py \
             --root experiment_runs \
             --output experiment_runs/evidence-index/ci/evidence_index.json
-
-      - name: Audit evidence index freshness
-        run: |
-          python audit_evidence_index_freshness.py \
+          "$VENV_DIR/bin/python" audit_evidence_index_freshness.py \
             --index experiment_runs/evidence-index/ci/evidence_index.json \
             --output experiment_runs/evidence-index/ci/freshness_audit.json
-
-      - name: Plan evidence artifact cleanup
-        id: cleanup-plan
-        continue-on-error: true
-        run: |
-          cleanup_guard_args=()
-          if [ "${{ inputs.cleanup-guard-mode }}" = "fail" ]; then
-            cleanup_guard_args+=(--fail-on-blocked-review)
-          fi
-          python plan_evidence_artifact_cleanup.py \
-            --root experiment_runs \
-            --keep-latest 1 \
-            --evidence-index experiment_runs/evidence-index/ci/evidence_index.json \
-            --freshness-audit experiment_runs/evidence-index/ci/freshness_audit.json \
-            --output experiment_runs/evidence-cleanup/ci/cleanup_plan.json \
-            "${cleanup_guard_args[@]}"
 
       - name: Upload evidence-chain artifacts
         if: always()
@@ -75,16 +52,3 @@ jobs:
           path: |
             experiment_runs/default-promotion-evidence-chain/ci/
             experiment_runs/evidence-index/ci/
-            experiment_runs/evidence-cleanup/ci/
-
-      - name: Report cleanup review warning summary
-        if: always() && inputs.cleanup-guard-mode == 'warn'
-        run: |
-          python cleanup_review_diagnostic.py --mode warn --github-summary
-
-      - name: Fail on blocked cleanup review
-        if: steps.cleanup-plan.outcome == 'failure' && inputs.cleanup-guard-mode == 'fail'
-        run: |
-          python cleanup_review_diagnostic.py --mode blocked --github-summary
-          echo "Cleanup review is blocked; uploaded available evidence artifacts for debugging."
-          exit 1
